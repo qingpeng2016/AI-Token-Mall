@@ -9,7 +9,7 @@ server:
 
 db:
   user: "ai_token_mall"
-  password: "2kHjniEMBGh7rRWz"
+  password: "36zMdr5EZ8rYshFD"
   host: "127.0.0.1"
   db_name: "ai_token_mall"
   max_idle_conn: 20
