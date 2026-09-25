@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS `user_payments` (
   KEY `idx_user_payments_order` (`order_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户支付记录';
 
-CREATE TABLE IF NOT EXISTS `payment_callbacks` (
+CREATE TABLE IF NOT EXISTS `user_payment_callbacks` (
   `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `channel`         VARCHAR(32)  NOT NULL,
   `idempotency_key` VARCHAR(128) NOT NULL COMMENT '幂等键',
@@ -156,8 +156,8 @@ CREATE TABLE IF NOT EXISTS `payment_callbacks` (
   `process_result`  VARCHAR(32)  NOT NULL COMMENT 'success|ignored|failed',
   `processed_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_payment_callbacks_idem` (`channel`, `idempotency_key`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='支付回调幂等与对账';
+  UNIQUE KEY `uk_user_payment_callbacks_idem` (`channel`, `idempotency_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户支付回调幂等与对账';
 
 CREATE TABLE IF NOT EXISTS `user_refunds` (
   `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
