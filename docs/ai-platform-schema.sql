@@ -101,25 +101,11 @@ CREATE TABLE IF NOT EXISTS `products` (
   KEY `idx_products_status_sort` (`status`, `sort_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='商城 SKU（含品牌筛选：upstream_name）';
 
-CREATE TABLE IF NOT EXISTS `marketing_banners` (
-  `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `title`           VARCHAR(128) NOT NULL,
-  `image_url`       VARCHAR(512) NOT NULL,
-  `link_url`        VARCHAR(512) DEFAULT NULL,
-  `sort_order`      INT          NOT NULL DEFAULT 0,
-  `is_enabled`      TINYINT(1)   NOT NULL DEFAULT 1,
-  `start_at`        DATETIME     DEFAULT NULL,
-  `end_at`          DATETIME     DEFAULT NULL,
-  `created_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='商城 Banner（P1）';
-
 -- ---------------------------------------------------------------------------
 -- 交易与订单
 -- ---------------------------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS `orders` (
+CREATE TABLE IF NOT EXISTS `user_orders` (
   `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `order_no`        VARCHAR(64)  NOT NULL COMMENT '业务订单号',
   `user_id`         BIGINT UNSIGNED NOT NULL,
@@ -137,13 +123,13 @@ CREATE TABLE IF NOT EXISTS `orders` (
   `created_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_orders_order_no` (`order_no`),
-  KEY `idx_orders_user_status` (`user_id`, `status`),
-  KEY `idx_orders_expire` (`expire_at`),
-  KEY `idx_orders_product` (`product_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='订单（MVP：一单对应一个 product）';
+  UNIQUE KEY `uk_user_orders_order_no` (`order_no`),
+  KEY `idx_user_orders_user_status` (`user_id`, `status`),
+  KEY `idx_user_orders_expire` (`expire_at`),
+  KEY `idx_user_orders_product` (`product_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户订单（MVP：一单对应一个 product）';
 
-CREATE TABLE IF NOT EXISTS `payments` (
+CREATE TABLE IF NOT EXISTS `user_payments` (
   `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `order_id`        BIGINT UNSIGNED NOT NULL,
   `channel`         VARCHAR(32)  NOT NULL COMMENT 'alipay|wechat|stripe|paypal',
@@ -157,9 +143,9 @@ CREATE TABLE IF NOT EXISTS `payments` (
   `created_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_payments_out_trade_no` (`out_trade_no`),
-  KEY `idx_payments_order` (`order_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='支付记录';
+  UNIQUE KEY `uk_user_payments_out_trade_no` (`out_trade_no`),
+  KEY `idx_user_payments_order` (`order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户支付记录';
 
 CREATE TABLE IF NOT EXISTS `payment_callbacks` (
   `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -173,7 +159,7 @@ CREATE TABLE IF NOT EXISTS `payment_callbacks` (
   UNIQUE KEY `uk_payment_callbacks_idem` (`channel`, `idempotency_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='支付回调幂等与对账';
 
-CREATE TABLE IF NOT EXISTS `refunds` (
+CREATE TABLE IF NOT EXISTS `user_refunds` (
   `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `order_id`        BIGINT UNSIGNED NOT NULL,
   `payment_id`      BIGINT UNSIGNED DEFAULT NULL,
@@ -185,9 +171,9 @@ CREATE TABLE IF NOT EXISTS `refunds` (
   `created_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_refunds_refund_no` (`refund_no`),
-  KEY `idx_refunds_order` (`order_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='退款';
+  UNIQUE KEY `uk_user_refunds_refund_no` (`refund_no`),
+  KEY `idx_user_refunds_order` (`order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户退款';
 
 CREATE TABLE IF NOT EXISTS `user_invoices` (
   `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -211,14 +197,14 @@ CREATE TABLE IF NOT EXISTS `user_invoices` (
 -- 履约：用户订阅 + API Key
 -- 履约约定：started_at/expires_at=整段服务有效期（续费延长 expires_at）；
 -- period_start/period_end=当前 token 计费周期（滚动时 used=0, limit=base）；新开 base=limit=products.limit_tokens；
--- 永久升档改 base_limit_tokens；本周期加购 limit_tokens+=N，orders 追加订单 id
+-- 永久升档改 base_limit_tokens；本周期加购 limit_tokens+=N，user_orders 追加订单 id
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS `user_subscriptions` (
   `id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`           BIGINT UNSIGNED NOT NULL,
   `product_id`        BIGINT UNSIGNED NOT NULL,
-  `orders`            JSON         NOT NULL DEFAULT (JSON_ARRAY()) COMMENT '关联 orders.id 数组（同一 product 的开通、续费等）',
+  `orders`            JSON         NOT NULL DEFAULT (JSON_ARRAY()) COMMENT '关联 user_orders.id 数组（同一 product 的开通、续费等）',
   `upstream_name`     VARCHAR(32)  NOT NULL,
   `upstream_product`  VARCHAR(128) NOT NULL,
   `base_limit_tokens` BIGINT       NOT NULL COMMENT '套餐基准上限；续费升档改此值；周期重置时 limit_tokens 回到此值',
@@ -255,7 +241,7 @@ CREATE TABLE IF NOT EXISTS `user_api_keys` (
   KEY `idx_user_api_keys_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户 API Key（同 user_subscriptions 下多条平级）';
 
-CREATE TABLE IF NOT EXISTS `notifications` (
+CREATE TABLE IF NOT EXISTS `user_notifications` (
   `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`         BIGINT UNSIGNED NOT NULL,
   `user_subscription_id` BIGINT UNSIGNED DEFAULT NULL,
@@ -266,8 +252,8 @@ CREATE TABLE IF NOT EXISTS `notifications` (
   `sent_at`         DATETIME     DEFAULT NULL,
   `created_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_notifications_user` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='站内/邮件等通知（开通 Key、续费提醒等）';
+  KEY `idx_user_notifications_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户通知（站内/邮件等，开通 Key、续费提醒）';
 
 -- ---------------------------------------------------------------------------
 -- 用户 API 网关访问日志

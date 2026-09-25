@@ -167,7 +167,7 @@
 
 ## 8. 数据实体（参考）
 
-`users`, `orders`, `products`, `user_subscriptions`（订阅+用户额度）, `user_api_keys`（同 `user_subscriptions` 下多条平级 Key）, `upstream_info`（上游凭证与容量）, `user_access_logs`
+`users`, `user_orders`, `products`, `user_subscriptions`（订阅+用户额度）, `user_api_keys`（同 `user_subscriptions` 下多条平级 Key）, `upstream_info`（上游凭证与容量）, `user_access_logs`
 
 ---
 
