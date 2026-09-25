@@ -1,0 +1,12 @@
+{
+  "liquidation_id": "LQ202509190004",
+  "loan_order_id": "LO1234560004",
+  "uid": "user_001",
+  "original_ratio": "0.5",
+  "trigger_ratio": "0.85",
+  "trigger_mark_price": "84198",
+  "trigger_collateral_asset": "BTC",
+  "trigger_collateral_qty": "0.0004",
+  "trigger_collateral_due_amount": "20",
+  "symbol": "BTCUSDT"
+}

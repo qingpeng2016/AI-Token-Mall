@@ -1,0 +1,462 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "质押清算策略服务（BeTrust 触发 / 查询 / 取消；鉴权见 docs/api.md）",
+        "title": "mojo-strategy-liquidation API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "basePath": "/",
+    "paths": {
+        "/betrust/contract/liquidation/callback": {
+            "post": {
+                "description": "生产环境由本服务 callback 脚本 POST 到 BeTrust 配置的 callback_url；此路由仅在本服务 Swagger 中展示请求/响应格式，便于对方对接。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "betrust-contract"
+                ],
+                "summary": "接收强平结果回调（BeTrust 需实现）",
+                "parameters": [
+                    {
+                        "description": "强平结果（与查询接口 data 同结构 + timestamp/sign）",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.LiquidationTaskNotifyReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.BeTrustLiquidationCallbackResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/liquidation/tasks": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "liquidation-task"
+                ],
+                "summary": "查询强平任务",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "强平任务 ID（参与 sign）",
+                        "name": "liquidation_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "毫秒时间戳",
+                        "name": "timestamp",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "HMAC 签名",
+                        "name": "sign",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResp"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/response.GetTaskResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "BeTrust 下发强平信号；liquidation_id 幂等。body 须含 timestamp、sign，见 docs/api.md 鉴权章节。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "liquidation-task"
+                ],
+                "summary": "触发强平任务",
+                "parameters": [
+                    {
+                        "description": "触发参数",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.CreateTaskReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResp"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/response.CreateTaskResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/liquidation/tasks/cancel": {
+            "post": {
+                "description": "停止后续卖出；已在途 IOC 由服务撤单",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "liquidation-task"
+                ],
+                "summary": "取消强平任务",
+                "parameters": [
+                    {
+                        "description": "取消参数（含 liquidation_id、timestamp、sign）",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.CancelTaskReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResp"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/response.CancelTaskResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "request.CancelTaskReq": {
+            "type": "object",
+            "required": [
+                "cancel_reason",
+                "liquidation_id",
+                "requested_at",
+                "sign",
+                "timestamp"
+            ],
+            "properties": {
+                "cancel_reason": {
+                    "type": "string"
+                },
+                "liquidation_id": {
+                    "type": "string"
+                },
+                "requested_at": {
+                    "type": "integer"
+                },
+                "sign": {
+                    "type": "string",
+                    "example": "a1b2..."
+                },
+                "timestamp": {
+                    "type": "integer",
+                    "example": 1757923200123
+                }
+            }
+        },
+        "request.CreateTaskReq": {
+            "type": "object",
+            "required": [
+                "trigger_collateral_qty",
+                "trigger_collateral_asset",
+                "liquidation_id",
+                "loan_order_id",
+                "original_ratio",
+                "sign",
+                "symbol",
+                "timestamp",
+                "trigger_collateral_due_amount",
+                "trigger_mark_price",
+                "trigger_ratio",
+                "uid"
+            ],
+            "properties": {
+                "trigger_collateral_qty": {
+                    "type": "string"
+                },
+                "trigger_collateral_asset": {
+                    "type": "string"
+                },
+                "liquidation_id": {
+                    "type": "string"
+                },
+                "loan_order_id": {
+                    "type": "string"
+                },
+                "original_ratio": {
+                    "type": "string"
+                },
+                "sign": {
+                    "description": "hex_lower(HMAC-SHA256(app_secret, 待签名字符串))",
+                    "type": "string",
+                    "example": "a1b2..."
+                },
+                "symbol": {
+                    "description": "Symbol Binance 现货交易对（执行所需，参与 sign）",
+                    "type": "string"
+                },
+                "timestamp": {
+                    "description": "毫秒时间戳，参与 sign",
+                    "type": "integer",
+                    "example": 1757923200123
+                },
+                "trigger_collateral_due_amount": {
+                    "type": "string"
+                },
+                "trigger_mark_price": {
+                    "type": "string"
+                },
+                "trigger_ratio": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "request.LiquidationTaskNotifyReq": {
+            "type": "object",
+            "properties": {
+                "avg_price": {
+                    "type": "string"
+                },
+                "callback_status": {
+                    "type": "string"
+                },
+                "fills": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/response.FillItem"
+                    }
+                },
+                "liquidation_id": {
+                    "type": "string"
+                },
+                "loan_order_id": {
+                    "type": "string"
+                },
+                "remaining_collateral_qty": {
+                    "type": "string"
+                },
+                "remaining_debt_amount": {
+                    "type": "string"
+                },
+                "sign": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "symbol": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "integer"
+                },
+                "total_amount": {
+                    "type": "string"
+                },
+                "total_fee": {
+                    "type": "string"
+                },
+                "total_net_proceeds_amount": {
+                    "type": "string"
+                },
+                "total_qty": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.ApiResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "业务码，200 表示成功",
+                    "type": "integer"
+                },
+                "data": {
+                    "description": "业务数据，失败时可为 null"
+                },
+                "message": {
+                    "description": "提示信息",
+                    "type": "string"
+                }
+            }
+        },
+        "response.BeTrustLiquidationCallbackResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.CancelTaskResp": {
+            "type": "object",
+            "properties": {
+                "cancel_result": {
+                    "description": "accepted | already_finished | rejected",
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.CreateTaskResp": {
+            "type": "object",
+            "properties": {
+                "result": {
+                    "description": "accepted | rejected",
+                    "type": "string"
+                },
+                "result_message": {
+                    "description": "结果说明",
+                    "type": "string"
+                }
+            }
+        },
+        "response.FillItem": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "string"
+                },
+                "batch_no": {
+                    "type": "string"
+                },
+                "exchange_trade_id": {
+                    "type": "string"
+                },
+                "fee": {
+                    "type": "string"
+                },
+                "fee_asset": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "string"
+                },
+                "trade_time_ms": {
+                    "type": "integer"
+                }
+            }
+        },
+        "response.GetTaskResp": {
+            "type": "object",
+            "properties": {
+                "avg_price": {
+                    "type": "string"
+                },
+                "callback_status": {
+                    "type": "string"
+                },
+                "fills": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/response.FillItem"
+                    }
+                },
+                "liquidation_id": {
+                    "type": "string"
+                },
+                "loan_order_id": {
+                    "type": "string"
+                },
+                "remaining_collateral_qty": {
+                    "type": "string"
+                },
+                "remaining_debt_amount": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "symbol": {
+                    "type": "string"
+                },
+                "total_amount": {
+                    "type": "string"
+                },
+                "total_fee": {
+                    "type": "string"
+                },
+                "total_net_proceeds_amount": {
+                    "type": "string"
+                },
+                "total_qty": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

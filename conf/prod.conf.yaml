@@ -1,0 +1,41 @@
+server:
+  service_name: "mojo_strategy_liquidation"
+  run_mode: ""
+  port: "0.0.0.0:9994"
+  product_name: "mojo_strategy_liquidation"
+  env: "prod"
+  machine_name: "mojo-strategy-liquidation-0"
+  http_timeout_sec: 30
+
+db:
+  user: "uat_mm"
+  password: "Wn5fkwNEfP}2pR1#v#*u"
+  host: "10.100.0.32"
+  db_name: "uat_mojo_strategy_liquidation"
+  max_idle_conn: 20
+  max_open_conn: 200
+  log_mode: false
+
+redis:
+  mode: standalone
+  username: ""
+  password: ""
+  host: "10.100.0.34"
+  port: 6379
+  db: 2
+  tls: false
+  pool_size: 200
+  min_idle: 50
+
+binance:
+  base_url: "https://api.binance.com"
+  recv_window: 5000
+  fee_rate: 0.001
+
+notification:
+  lark:
+    alert_webhook_url: "https://open.larksuite.com/open-apis/bot/v2/hook/a39656ff-a571-4802-98c7-dc86110c484d"
+    notify_webhook_url: "https://open.larksuite.com/open-apis/bot/v2/hook/fc2a412a-c336-4a8c-a40b-f79fe3981e6b"
+    error_webhook_url: "https://open.larksuite.com/open-apis/bot/v2/hook/a39656ff-a571-4802-98c7-dc86110c484d"
+    service_name: "mojo-strategy-liquidation"
+    timeout: 10
