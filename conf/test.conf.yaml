@@ -34,8 +34,8 @@ binance:
 
 notification:
   lark:
-    alert_webhook_url: "https://open.larksuite.com/open-apis/bot/v2/hook/998606d8-a95d-4d93-98a0-e903c7348483"
-    notify_webhook_url: "https://open.larksuite.com/open-apis/bot/v2/hook/f8525e0f-db03-4457-8b82-a8217f1bceb8"
-    error_webhook_url: "https://open.larksuite.com/open-apis/bot/v2/hook/998606d8-a95d-4d93-98a0-e903c7348483"
+    alert_webhook_url: "https://open.larksuite.com/open-apis/bot/v2/hook/63cb5b8a-86f9-4fc0-9a2a-978676ab2be2"
+    notify_webhook_url: "https://open.larksuite.com/open-apis/bot/v2/hook/91bd3ed6-cb14-4b9a-b58f-2834ed276da8"
+    error_webhook_url: "https://open.larksuite.com/open-apis/bot/v2/hook/63cb5b8a-86f9-4fc0-9a2a-978676ab2be2"
     service_name: "mojo-strategy-liquidation"
     timeout: 10
