@@ -110,8 +110,8 @@
 |------|------|
 | `marketing_tier` | 对外名（如 Pro 20X） |
 | `upstream_line` | openai / anthropic / xai / gemini / perplexity |
-| `quota_profile_id` | 用户 token/RPM/允许 models |
-| `pool_route_id` | 池侧 Key 组与池 RPM |
+| （见 `user_subscriptions`） | 用户使用容量在履约表；SKU 上定义默认 quota/RPM/models |
+| `upstream_name` / `upstream_product` | 网关按组选 `upstream_info`（组内 `weight` 加权） |
 
 | 对外 SKU（例） | upstream_line | API 通道 |
 |----------------|---------------|----------|
@@ -167,7 +167,7 @@
 
 ## 8. 数据实体（参考）
 
-`users`, `orders`, `products`, `subscriptions`, `api_keys`（`parent_key_id` 空=主 Key，非空=子 Key）, `usage_counters`（主订阅）, `sub_key_usage`（分 Key token/金额）, `sub_key_budgets`（金额 cap）, `quota_profiles`, `upstream_pools`, `upstream_keys`, `pool_usage_counters`（池）, `pool_routes`, `access_logs`
+`users`, `orders`, `products`, `user_subscriptions`（订阅+用户额度）, `user_api_keys`（同 `user_subscriptions` 下多条平级 Key）, `upstream_info`（上游凭证与容量）, `user_access_logs`
 
 ---
 
