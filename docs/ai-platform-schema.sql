@@ -287,4 +287,29 @@ CREATE TABLE IF NOT EXISTS `user_access_logs` (
   KEY `idx_user_access_logs_key_time` (`api_key_id`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户 API 网关访问日志（默认不存完整 prompt）';
 
+-- ---------------------------------------------------------------------------
+-- 脚本调度配置
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS `bot_schedule_config` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `module` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `task_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `interval_seconds` float NOT NULL DEFAULT '60',
+  `exe_sort` int DEFAULT NULL,
+  `concurrency` int DEFAULT NULL,
+  `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `is_enabled` tinyint(1) NOT NULL DEFAULT '1',
+  `is_strategy_enabled` tinyint(1) DEFAULT '1',
+  `last_live_time` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `last_live_time_by_machine` json DEFAULT NULL,
+  `is_primary_machine_run` int NOT NULL DEFAULT '0',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_module_task` (`module`,`task_name`),
+  KEY `idx_module` (`module`),
+  KEY `idx_bot_schedule_module_enabled` (`module`,`is_enabled`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='脚本调度配置';
+
 SET FOREIGN_KEY_CHECKS = 1;

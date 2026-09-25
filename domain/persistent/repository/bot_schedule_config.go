@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"github.com/gph-tech/fgmm-strategy-bitfinex/domain/persistent/entity"
+	"github.com/qingpeng2016/ai-token-mall/domain/persistent/entity"
 	"gorm.io/gorm"
 )
 

@@ -1,9 +1,3 @@
-// mojo-strategy-liquidation
-//
-// @title           mojo-strategy-liquidation API
-// @version         1.0
-// @description     质押清算策略服务（BeTrust 触发 / 查询 / 取消；鉴权见 docs/api.md）
-// @BasePath        /
 package main
 
 import (
@@ -14,14 +8,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gph-tech/fgmm-strategy-bitfinex/application/strategy"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/boot"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/common/constants"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/common/dederi/logger"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/common/notification"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/conf"
-	_ "github.com/gph-tech/fgmm-strategy-bitfinex/docs"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/interfaces/rest"
+	bot "github.com/qingpeng2016/ai-token-mall/application/bot"
+	"github.com/qingpeng2016/ai-token-mall/boot"
+	"github.com/qingpeng2016/ai-token-mall/common/constants"
+	"github.com/qingpeng2016/ai-token-mall/common/dederi/logger"
+	"github.com/qingpeng2016/ai-token-mall/common/notification"
+	"github.com/qingpeng2016/ai-token-mall/conf"
+	"github.com/qingpeng2016/ai-token-mall/interfaces/rest"
 
 	"go.uber.org/dig"
 	"go.uber.org/zap"
@@ -34,9 +27,9 @@ func main() {
 	container := boot.BuildContainer()
 
 	if conf.IsRunBot() {
-		var function any = func(bot *strategy.Entry) error {
+		var function any = func(entry *bot.Entry) error {
 			go func() {
-				if err := bot.Start(); err != nil {
+				if err := entry.Start(); err != nil {
 					notification.SendErrorLog(context.Background(), "bot start failed", zap.Error(err))
 				}
 			}()
@@ -67,11 +60,11 @@ func gracefulExit(container *dig.Container) {
 	logger.InfoZ(context.Background(), "graceful-shutdown-start")
 
 	if conf.IsRunBot() {
-		var function any = func(bot *strategy.Entry) error {
-			return bot.Stop()
+		var function any = func(entry *bot.Entry) error {
+			return entry.Stop()
 		}
 		if err := container.Invoke(function); err != nil {
-			logger.ErrorZ(context.Background(), "stop bot failed11", zap.String("error", err.Error()))
+			logger.ErrorZ(context.Background(), "stop bot failed", zap.String("error", err.Error()))
 		}
 	} else {
 		var function any = func(router *rest.Router) {

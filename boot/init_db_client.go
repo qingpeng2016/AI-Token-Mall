@@ -1,7 +1,7 @@
 package boot
 
 import (
-	"github.com/gph-tech/fgmm-strategy-bitfinex/infrastructure/mysql"
+	"github.com/qingpeng2016/ai-token-mall/infrastructure/mysql"
 	"gorm.io/gorm"
 )
 

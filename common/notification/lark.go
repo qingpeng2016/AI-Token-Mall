@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/common/dederi/logger"
+	"github.com/qingpeng2016/ai-token-mall/common/dederi/logger"
 	"go.uber.org/zap"
 	"io"
 	"net/http"

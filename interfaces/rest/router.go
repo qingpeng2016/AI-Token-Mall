@@ -6,56 +6,39 @@ import (
 	"net/http"
 	"strings"
 
-	coreservice "github.com/gph-tech/fgmm-strategy-bitfinex/application/core-service"
-	ginMiddleware "github.com/gph-tech/fgmm-strategy-bitfinex/common/dederi/gin/middleware"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/common/notification"
-	conf2 "github.com/gph-tech/fgmm-strategy-bitfinex/conf"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/interfaces/handler"
+	ginMiddleware "github.com/qingpeng2016/ai-token-mall/common/dederi/gin/middleware"
+	"github.com/qingpeng2016/ai-token-mall/common/notification"
+	conf2 "github.com/qingpeng2016/ai-token-mall/conf"
+	"github.com/qingpeng2016/ai-token-mall/interfaces/handler"
 
 	"github.com/gin-gonic/gin"
-	swaggerFiles "github.com/swaggo/files"
-	gs "github.com/swaggo/gin-swagger"
 	"go.uber.org/zap"
 )
 
 type Router struct {
-	httpServer             *http.Server
-	setting                *conf2.Config
-	platformSvc            *coreservice.PlatformConfigService
-	taskHandler            *handler.TaskHandler
-	beTrustContractHandler *handler.BeTrustContractHandler
+	httpServer  *http.Server
+	setting     *conf2.Config
+	userHandler *handler.UserHandler
 }
 
 func NewRouter(
 	setting *conf2.Config,
-	platformSvc *coreservice.PlatformConfigService,
-	taskHandler *handler.TaskHandler,
-	beTrustContractHandler *handler.BeTrustContractHandler,
+	userHandler *handler.UserHandler,
 ) *Router {
 	return &Router{
-		setting:                setting,
-		platformSvc:            platformSvc,
-		taskHandler:            taskHandler,
-		beTrustContractHandler: beTrustContractHandler,
+		setting:     setting,
+		userHandler: userHandler,
 	}
 }
 
 func (r *Router) setupRouters() *gin.Engine {
 	engine := gin.Default()
 	engine.Use(ginMiddleware.TraceRequestLog, ginMiddleware.CORSMiddleware)
-	engine.GET("/swagger/*any", gs.WrapHandler(swaggerFiles.Handler))
 
-	liqGroup := engine.Group("/liquidation")
+	api := engine.Group("/api/v1")
 	{
-		liqGroup.POST("/tasks", ginMiddleware.BeTrustSignVerify(r.platformSvc), r.taskHandler.CreateTask)
-		liqGroup.GET("/tasks", ginMiddleware.BeTrustSignVerify(r.platformSvc), r.taskHandler.GetTask)
-		liqGroup.POST("/tasks/cancel", ginMiddleware.BeTrustSignVerify(r.platformSvc), r.taskHandler.CancelTask)
-	}
-
-	// 契约打桩：展示 BeTrust 需提供的强平结果回调（非生产入口）
-	beTrustGroup := engine.Group("/betrust/contract")
-	{
-		beTrustGroup.POST("/liquidation/callback", r.beTrustContractHandler.ReceiveLiquidationResult)
+		api.POST("/users/register", r.userHandler.Register)
+		api.POST("/users/login", r.userHandler.Login)
 	}
 
 	return engine

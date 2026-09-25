@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gph-tech/fgmm-strategy-bitfinex/conf"
+	"github.com/qingpeng2016/ai-token-mall/conf"
 	"github.com/redis/go-redis/v9"
 )
 

@@ -3,8 +3,8 @@ package coreservice
 import (
 	"context"
 
-	"github.com/gph-tech/fgmm-strategy-bitfinex/domain/persistent/entity"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/domain/persistent/repository"
+	"github.com/qingpeng2016/ai-token-mall/domain/persistent/entity"
+	"github.com/qingpeng2016/ai-token-mall/domain/persistent/repository"
 	"gorm.io/gorm"
 )
 

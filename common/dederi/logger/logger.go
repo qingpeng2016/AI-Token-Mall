@@ -3,7 +3,7 @@ package logger
 import (
 	"context"
 	"fmt"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/common/dederi/trace"
+	"github.com/qingpeng2016/ai-token-mall/common/dederi/trace"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"

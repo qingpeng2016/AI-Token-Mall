@@ -1,72 +1,52 @@
 package boot
 
 import (
-	"github.com/gph-tech/fgmm-strategy-bitfinex/application/core-service"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/application/strategy"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/application/strategy/scripts/callback"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/application/strategy/scripts/orderreconcile"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/application/strategy/scripts/taskcancel"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/application/strategy/scripts/taskalert"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/application/strategy/scripts/taskexec"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/application/strategy/scripts/tasktiercalc"
-	log2 "github.com/gph-tech/fgmm-strategy-bitfinex/common/dederi/logger"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/common/notification"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/conf"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/infrastructure/http"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/infrastructure/http/binance"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/infrastructure/mysql"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/infrastructure/redis"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/interfaces/handler"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/interfaces/rest"
+	bot "github.com/qingpeng2016/ai-token-mall/application/bot"
+	coreservice "github.com/qingpeng2016/ai-token-mall/application/core-service"
+	"github.com/qingpeng2016/ai-token-mall/conf"
+	"github.com/qingpeng2016/ai-token-mall/infrastructure/http"
+	"github.com/qingpeng2016/ai-token-mall/infrastructure/http/alipay"
+	"github.com/qingpeng2016/ai-token-mall/infrastructure/mysql"
+	"github.com/qingpeng2016/ai-token-mall/infrastructure/redis"
+	"github.com/qingpeng2016/ai-token-mall/interfaces/handler"
+	"github.com/qingpeng2016/ai-token-mall/interfaces/rest"
+	log2 "github.com/qingpeng2016/ai-token-mall/common/dederi/logger"
+	"github.com/qingpeng2016/ai-token-mall/common/notification"
 
 	"go.uber.org/dig"
 	"go.uber.org/zap/zapcore"
 )
 
 func init() {
-	log2.NewLogger("mojo", "./log", zapcore.DebugLevel)
+	log2.NewLogger("ai-token-mall", "./log", zapcore.DebugLevel)
 }
 
 func BuildContainer() *dig.Container {
 	c := dig.New()
 
 	cfg := conf.NewCfg()
-	_ = c.Provide(func() *conf.Config {
-		return cfg
-	})
+	_ = c.Provide(func() *conf.Config { return cfg })
 
-	// 接口侧
+	// HTTP
 	_ = c.Provide(rest.NewRouter)
-	_ = c.Provide(coreservice.NewPlatformConfigService)
-	_ = c.Provide(coreservice.NewTaskService)
-	_ = c.Provide(handler.NewTaskHandler)
-	_ = c.Provide(handler.NewBeTrustContractHandler)
-
-	// 脚本侧
-	_ = c.Provide(tasktiercalc.NewTaskTierCalc)
-	_ = c.Provide(taskalert.NewTaskAlert)
-	_ = c.Provide(taskexec.NewTaskExec)
-	_ = c.Provide(callback.NewCallback)
-	_ = c.Provide(orderreconcile.NewOrderReconcile)
-	_ = c.Provide(taskcancel.NewTaskCancel)
+	_ = c.Provide(handler.NewUserHandler)
+	_ = c.Provide(coreservice.NewUserService)
+	_ = c.Provide(coreservice.NewAlipayService)
 	_ = c.Provide(coreservice.NewBotScheduleConfigService)
-	_ = c.Provide(strategy.NewScheduler)
-	_ = c.Provide(strategy.NewEntry)
 
-	// 基础设施（脚本侧读 bot_schedule_config 时才会连库）
+	// Bot
+	_ = c.Provide(bot.NewStatsJob)
+	_ = c.Provide(bot.NewScheduler)
+	_ = c.Provide(bot.NewEntry)
+
+	// Infra
 	_ = c.Provide(NewDBClient)
+	_ = c.Provide(mysql.NewUserImpl)
+	_ = c.Provide(mysql.NewStatsImpl)
 	_ = c.Provide(mysql.NewBotScheduleConfigImpl)
-	_ = c.Provide(mysql.NewLiquidationPlatformConfigImpl)
-	_ = c.Provide(mysql.NewLiquidationInboundLogImpl)
-	_ = c.Provide(mysql.NewLiquidationTaskImpl)
-	_ = c.Provide(mysql.NewLiquidationCallbackLogImpl)
-	_ = c.Provide(mysql.NewLiquidationOrderImpl)
-	_ = c.Provide(mysql.NewLiquidationTraderImpl)
-	_ = c.Provide(mysql.NewLiquidationExecutionConfigImpl)
-	_ = c.Provide(mysql.NewLiquidationTaskEventImpl)
 	_ = c.Provide(redis.NewClient)
-	_ = c.Provide(http.NewHttpClient)
-	_ = c.Provide(binance.NewBinance)
+	_ = c.Provide(http.NewHTTPClient)
+	_ = c.Provide(alipay.NewClient)
 
 	_ = c.Provide(notification.NewNotificationManager)
 

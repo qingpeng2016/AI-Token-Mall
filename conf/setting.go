@@ -27,8 +27,7 @@ type Config struct {
 	MysqlMasterConf  *Mysql        `mapstructure:"db"`
 	RedisConf        *Redis        `mapstructure:"redis"`
 	NotificationConf *Notification `mapstructure:"notification"`
-	BinanceConf      *Binance      `mapstructure:"binance"`
-	BitfinexConf     *Bitfinex     `mapstructure:"bitfinex"`
+	AlipayConf       *Alipay       `mapstructure:"alipay"`
 }
 
 type Server struct {
@@ -76,17 +75,11 @@ type LarkNotification struct {
 	Timeout          int    `mapstructure:"timeout"`
 }
 
-// Binance 现货执行账户（强平 IOC）
-type Binance struct {
-	BaseURL    string  `mapstructure:"base_url"`
-	RecvWindow int     `mapstructure:"recv_window"`
-	FeeRate    float64 `mapstructure:"fee_rate"`
-}
-
-// Bitfinex 保留旧策略 HTTP 默认基址
-type Bitfinex struct {
-	PublicBaseURL string `mapstructure:"public_base_url"`
-	APIBaseURL    string `mapstructure:"api_base_url"`
+// Alipay OpenAPI（账务明细等）
+type Alipay struct {
+	AppID      string `mapstructure:"app_id"`
+	PrivateKey string `mapstructure:"private_key"`
+	Gateway    string `mapstructure:"gateway"`
 }
 
 var GlobalConf *Config
@@ -205,52 +198,9 @@ func GetHTTPTimeout() time.Duration {
 	return time.Duration(defaultHTTPTimeoutSec) * time.Second
 }
 
-const (
-	defaultBinanceBaseURL     = "https://api.binance.com"
-	defaultBitfinexPublicBase = "https://api-pub.bitfinex.com"
-	defaultBitfinexAPIBase    = "https://api.bitfinex.com"
-	defaultBinanceFeeRate = 0.001
-)
-
-func GetBinanceConf() *Binance {
+func GetAlipayConf() *Alipay {
 	if GlobalConf == nil {
 		return nil
 	}
-	return GlobalConf.BinanceConf
+	return GlobalConf.AlipayConf
 }
-
-func GetBinanceBaseURL() string {
-	if c := GetBinanceConf(); c != nil && c.BaseURL != "" {
-		return c.BaseURL
-	}
-	return defaultBinanceBaseURL
-}
-
-func GetBinanceRecvWindow() int64 {
-	if c := GetBinanceConf(); c != nil && c.RecvWindow > 0 {
-		return int64(c.RecvWindow)
-	}
-	return 0
-}
-
-func GetBinanceFeeRate() float64 {
-	if c := GetBinanceConf(); c != nil && c.FeeRate > 0 {
-		return c.FeeRate
-	}
-	return defaultBinanceFeeRate
-}
-
-func GetBitfinexPublicBaseURL() string {
-	if GlobalConf != nil && GlobalConf.BitfinexConf != nil && GlobalConf.BitfinexConf.PublicBaseURL != "" {
-		return GlobalConf.BitfinexConf.PublicBaseURL
-	}
-	return defaultBitfinexPublicBase
-}
-
-func GetBitfinexAPIBaseURL() string {
-	if GlobalConf != nil && GlobalConf.BitfinexConf != nil && GlobalConf.BitfinexConf.APIBaseURL != "" {
-		return GlobalConf.BitfinexConf.APIBaseURL
-	}
-	return defaultBitfinexAPIBase
-}
-

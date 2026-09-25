@@ -2,7 +2,7 @@ package mysqlclient
 
 import (
 	"fmt"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/conf"
+	"github.com/qingpeng2016/ai-token-mall/conf"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm/logger"
 	"gorm.io/plugin/dbresolver"

@@ -1,8 +1,8 @@
 package mysql
 
 import (
-	mysqlclient "github.com/gph-tech/fgmm-strategy-bitfinex/common/dederi/mysql"
-	"github.com/gph-tech/fgmm-strategy-bitfinex/conf"
+	mysqlclient "github.com/qingpeng2016/ai-token-mall/common/dederi/mysql"
+	"github.com/qingpeng2016/ai-token-mall/conf"
 	"gorm.io/gorm"
 	"sync"
 )
