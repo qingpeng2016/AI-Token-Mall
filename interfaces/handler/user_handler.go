@@ -30,7 +30,17 @@ func (h *UserHandler) Register(c *gin.Context) {
 		response.ResponseErr(c, err)
 		return
 	}
-	response.ResponseSuccess(c, data)
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie(
+		constants.AuthTokenCookie,
+		data.Token,
+		constants.AuthTokenMaxAge,
+		"/",
+		"",
+		false,
+		false,
+	)
+	response.ResponseSuccess(c, gin.H{"user": data.User})
 }
 
 // Login 用户登录

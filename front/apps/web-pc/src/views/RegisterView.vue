@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import AuthShell from '@/components/auth/AuthShell.vue'
 import { userApi } from '@/api'
+import { setSessionUser } from '@/composables/useSessionUser'
 
 const router = useRouter()
+const route = useRoute()
 const loading = ref(false)
 const form = reactive({
   email: '',
@@ -47,9 +49,19 @@ async function onSubmit() {
             password: form.password,
             confirm_password: form.confirmPassword,
           }
-    await userApi.register(body)
-    ElMessage.success('注册成功，请登录')
-    router.push('/login')
+    const { user } = await userApi.register(body)
+    setSessionUser({
+      id: user.id,
+      email: user.email ?? null,
+      phone: user.phone ?? null,
+      nickname: user.nickname ?? null,
+    })
+    ElMessage.success('注册成功')
+    const redirect =
+      typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/')
+        ? route.query.redirect
+        : '/'
+    await router.push(redirect)
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : '注册失败')
   } finally {

@@ -34,7 +34,7 @@ func NewUserService(users repository.UserRepo) *UserService {
 	return &UserService{users: users}
 }
 
-func (s *UserService) Register(ctx context.Context, req *request.RegisterUserReq) (*response.UserProfileResp, error) {
+func (s *UserService) Register(ctx context.Context, req *request.RegisterUserReq) (*response.LoginUserResp, error) {
 	if req.Password != req.ConfirmPassword {
 		return nil, errorx.ErrPasswordMismatch
 	}
@@ -88,7 +88,7 @@ func (s *UserService) Register(ctx context.Context, req *request.RegisterUserReq
 		}
 		return nil, errorx.ErrDbError
 	}
-	return toUserProfile(u), nil
+	return s.loginUserResp(u)
 }
 
 func (s *UserService) Login(ctx context.Context, req *request.LoginUserReq) (*response.LoginUserResp, error) {
@@ -118,12 +118,14 @@ func (s *UserService) Login(ctx context.Context, req *request.LoginUserReq) (*re
 		return nil, errorx.ErrWrongPassword
 	}
 	_ = s.users.UpdateLastLogin(ctx, u.ID)
+	return s.loginUserResp(u)
+}
 
+func (s *UserService) loginUserResp(u *entity.User) (*response.LoginUserResp, error) {
 	token, err := auth.IssueUserToken(u.ID, sessionTokenSecret, sessionTokenTTL)
 	if err != nil {
 		return nil, errorx.ErrUnknown
 	}
-
 	profile := toUserProfile(u)
 	return &response.LoginUserResp{
 		Token: token,

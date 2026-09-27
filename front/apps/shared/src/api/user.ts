@@ -15,8 +15,8 @@ export function createUserApi(options: HttpClientOptions) {
   const http = createHttpClient(options)
 
   return {
-    async register(body: RegisterRequest): Promise<UserProfile> {
-      const res = await http.post<ApiEnvelope<UserProfile>>('/api/v1/users/register', body)
+    async register(body: RegisterRequest): Promise<LoginResponse> {
+      const res = await http.post<ApiEnvelope<LoginResponse>>('/api/v1/users/register', body)
       return unwrap(res)
     },
     async login(body: LoginRequest): Promise<LoginResponse> {
