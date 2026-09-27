@@ -8,12 +8,10 @@ export function getSessionUser(): UserProfile | null {
   if (!hasAuthToken()) return null
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) {
-      return { id: 0, email: null, phone: null, nickname: '会员' }
-    }
+    if (!raw) return null
     return JSON.parse(raw) as UserProfile
   } catch {
-    return { id: 0, email: null, phone: null, nickname: '会员' }
+    return null
   }
 }
 

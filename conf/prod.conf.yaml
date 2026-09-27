@@ -1,3 +1,7 @@
+auth:
+  jwt_secret: "CHANGE_ME_IN_PRODUCTION"
+  jwt_expire_hours: 720
+
 server:
   service_name: "mojo_strategy_liquidation"
   run_mode: ""

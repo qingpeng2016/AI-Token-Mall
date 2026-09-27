@@ -11,17 +11,42 @@ const form = reactive({
   email: '',
   phone: '',
   password: '',
-  nickname: '',
+  confirmPassword: '',
   mode: 'email' as 'email' | 'phone',
 })
 
 async function onSubmit() {
+  if (form.mode === 'email' && !form.email.trim()) {
+    ElMessage.warning('请输入邮箱')
+    return
+  }
+  if (form.mode === 'phone' && !form.phone.trim()) {
+    ElMessage.warning('请输入手机号')
+    return
+  }
+  if (form.password.length < 8) {
+    ElMessage.warning('密码至少 8 位')
+    return
+  }
+  if (form.password !== form.confirmPassword) {
+    ElMessage.warning('两次输入的密码不一致')
+    return
+  }
+
   loading.value = true
   try {
     const body =
       form.mode === 'email'
-        ? { email: form.email, password: form.password, nickname: form.nickname || undefined }
-        : { phone: form.phone, password: form.password, nickname: form.nickname || undefined }
+        ? {
+            email: form.email.trim(),
+            password: form.password,
+            confirm_password: form.confirmPassword,
+          }
+        : {
+            phone: form.phone.trim(),
+            password: form.password,
+            confirm_password: form.confirmPassword,
+          }
     await userApi.register(body)
     ElMessage.success('注册成功，请登录')
     router.push('/login')
@@ -60,20 +85,19 @@ async function onSubmit() {
         <el-input
           v-model="form.email"
           type="email"
+          autocomplete="email"
           placeholder="you@example.com"
           size="large"
         />
       </label>
       <label v-else class="auth-field">
         <span class="auth-field-label">手机号</span>
-        <el-input v-model="form.phone" placeholder="11 位手机号" size="large" />
-      </label>
-
-      <label class="auth-field">
-        <span class="auth-field-label"
-          >昵称<span class="auth-field-optional">选填</span></span
-        >
-        <el-input v-model="form.nickname" placeholder="显示在会员中心" size="large" />
+        <el-input
+          v-model="form.phone"
+          autocomplete="tel"
+          placeholder="11 位手机号"
+          size="large"
+        />
       </label>
 
       <label class="auth-field">
@@ -81,7 +105,20 @@ async function onSubmit() {
         <el-input
           v-model="form.password"
           type="password"
+          autocomplete="new-password"
           placeholder="至少 8 位"
+          show-password
+          size="large"
+        />
+      </label>
+
+      <label class="auth-field">
+        <span class="auth-field-label">确认密码</span>
+        <el-input
+          v-model="form.confirmPassword"
+          type="password"
+          autocomplete="new-password"
+          placeholder="再次输入密码"
           show-password
           size="large"
         />

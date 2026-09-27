@@ -3,6 +3,7 @@ import { reactive, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import AuthShell from '@/components/auth/AuthShell.vue'
+import { userApi } from '@/api'
 import { setSessionUser } from '@/composables/useSessionUser'
 import { setAuthToken } from '@/utils/auth-cookie'
 
@@ -32,13 +33,17 @@ async function onSubmit() {
 
   loading.value = true
   try {
-    await new Promise((r) => setTimeout(r, 200))
-    setAuthToken()
+    const body =
+      form.mode === 'email'
+        ? { email: form.email.trim(), password: form.password }
+        : { phone: form.phone.trim(), password: form.password }
+    const { token, user } = await userApi.login(body)
+    setAuthToken(token)
     setSessionUser({
-      id: 1,
-      email: form.mode === 'email' ? form.email.trim() : null,
-      phone: form.mode === 'phone' ? form.phone.trim() : null,
-      nickname: null,
+      id: user.id,
+      email: user.email ?? null,
+      phone: user.phone ?? null,
+      nickname: user.nickname ?? null,
     })
     ElMessage.success('登录成功')
     const redirect =
@@ -46,6 +51,8 @@ async function onSubmit() {
         ? route.query.redirect
         : '/'
     await router.push(redirect)
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : '登录失败')
   } finally {
     loading.value = false
   }

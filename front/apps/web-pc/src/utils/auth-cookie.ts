@@ -1,7 +1,6 @@
-/** 登录态 token（Cookie，开发阶段 mock，不请求后端） */
+/** 登录态 token（Cookie，值为后端 /users/login 返回的 token） */
 export const AUTH_TOKEN_COOKIE = 'atm_token'
 
-const MOCK_TOKEN = 'dev_local_session'
 const MAX_AGE_SEC = 60 * 60 * 24 * 30
 
 export function getAuthToken(): string | null {
@@ -12,7 +11,8 @@ export function getAuthToken(): string | null {
   return match ? decodeURIComponent(match[1]) : null
 }
 
-export function setAuthToken(value: string = MOCK_TOKEN): void {
+export function setAuthToken(value: string): void {
+  if (!value) return
   document.cookie = `${AUTH_TOKEN_COOKIE}=${encodeURIComponent(value)}; Path=/; Max-Age=${MAX_AGE_SEC}; SameSite=Lax`
 }
 

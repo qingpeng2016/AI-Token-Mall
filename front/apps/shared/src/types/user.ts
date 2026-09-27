@@ -5,6 +5,7 @@ export interface UserProfile {
   email?: string | null
   phone?: string | null
   nickname?: string | null
+  status?: string
   created_at?: string
 }
 
@@ -12,13 +13,18 @@ export interface RegisterRequest {
   email?: string
   phone?: string
   password: string
-  nickname?: string
+  confirm_password: string
 }
 
 export interface LoginRequest {
   email?: string
   phone?: string
   password: string
+}
+
+export interface LoginResponse {
+  token: string
+  user: UserProfile
 }
 
 /** 与 common/dederi/gin/response.ApiResp 一致 */

@@ -38,14 +38,18 @@ const activeTab = computed<MemberTab>(() => {
 
 const pageTitle = computed(() => memberNav.find((n) => n.id === activeTab.value)?.label ?? '会员中心')
 
-const displayName = computed(() => user.value?.nickname || '会员')
+const displayName = computed(() =>
+  user.value ? userAccountLabel(user.value) : '会员',
+)
 
 onMounted(() => {
-  if (!isLoggedIn()) {
+  const profile = getSessionUser()
+  if (!isLoggedIn() || !profile) {
+    clearSessionUser()
     router.replace({ path: '/login', query: { redirect: '/member' } })
     return
   }
-  user.value = getSessionUser()
+  user.value = profile
 })
 
 function usagePercent(used: number, limit: number) {

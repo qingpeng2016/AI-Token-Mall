@@ -2,31 +2,54 @@ package coreservice
 
 import (
 	"context"
+	"net/mail"
+	"regexp"
 	"strings"
 	"time"
 
+	"github.com/qingpeng2016/ai-token-mall/common/auth"
+	"github.com/qingpeng2016/ai-token-mall/common/errorx"
+	"github.com/qingpeng2016/ai-token-mall/conf"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/entity"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/repository"
 	"github.com/qingpeng2016/ai-token-mall/domain/rest/request"
 	"github.com/qingpeng2016/ai-token-mall/domain/rest/response"
-	"github.com/qingpeng2016/ai-token-mall/common/errorx"
 	"golang.org/x/crypto/bcrypt"
 )
 
+var cnPhonePattern = regexp.MustCompile(`^1\d{10}$`)
+
 type UserService struct {
-	users repository.UserRepo
+	users      repository.UserRepo
+	jwtSecret  string
+	tokenTTL   time.Duration
 }
 
-func NewUserService(users repository.UserRepo) *UserService {
-	return &UserService{users: users}
+func NewUserService(users repository.UserRepo, cfg *conf.Config) *UserService {
+	secret := "ai-token-mall-dev-secret"
+	ttl := 720 * time.Hour
+	if cfg != nil && cfg.AuthConf != nil {
+		if s := strings.TrimSpace(cfg.AuthConf.JWTSecret); s != "" {
+			secret = s
+		}
+		if cfg.AuthConf.JWTExpireHours > 0 {
+			ttl = time.Duration(cfg.AuthConf.JWTExpireHours) * time.Hour
+		}
+	}
+	return &UserService{users: users, jwtSecret: secret, tokenTTL: ttl}
 }
 
 func (s *UserService) Register(ctx context.Context, req *request.RegisterUserReq) (*response.UserProfileResp, error) {
+	if req.Password != req.ConfirmPassword {
+		return nil, errorx.ErrPasswordMismatch
+	}
+
 	email := strings.TrimSpace(req.Email)
 	phone := strings.TrimSpace(req.Phone)
-	if email == "" && phone == "" {
-		return nil, errorx.ErrParamsError
+	if err := validateLoginIdentity(email, phone); err != nil {
+		return nil, err
 	}
+
 	if email != "" {
 		ex, err := s.users.FindByEmail(ctx, email)
 		if err != nil {
@@ -63,20 +86,17 @@ func (s *UserService) Register(ctx context.Context, req *request.RegisterUserReq
 	if phone != "" {
 		u.Phone = &phone
 	}
-	if nick := strings.TrimSpace(req.Nickname); nick != "" {
-		u.Nickname = &nick
-	}
 	if err := s.users.Create(ctx, nil, u); err != nil {
 		return nil, errorx.ErrDbError
 	}
 	return toUserProfile(u), nil
 }
 
-func (s *UserService) Login(ctx context.Context, req *request.LoginUserReq) (*response.UserProfileResp, error) {
+func (s *UserService) Login(ctx context.Context, req *request.LoginUserReq) (*response.LoginUserResp, error) {
 	email := strings.TrimSpace(req.Email)
 	phone := strings.TrimSpace(req.Phone)
-	if email == "" && phone == "" {
-		return nil, errorx.ErrParamsError
+	if err := validateLoginIdentity(email, phone); err != nil {
+		return nil, err
 	}
 
 	var u *entity.User
@@ -99,7 +119,36 @@ func (s *UserService) Login(ctx context.Context, req *request.LoginUserReq) (*re
 		return nil, errorx.ErrWrongPassword
 	}
 	_ = s.users.UpdateLastLogin(ctx, u.ID)
-	return toUserProfile(u), nil
+
+	token, err := auth.IssueUserToken(u.ID, s.jwtSecret, s.tokenTTL)
+	if err != nil {
+		return nil, errorx.ErrUnknown
+	}
+
+	profile := toUserProfile(u)
+	return &response.LoginUserResp{
+		Token: token,
+		User:  *profile,
+	}, nil
+}
+
+func validateLoginIdentity(email, phone string) error {
+	if email == "" && phone == "" {
+		return errorx.ErrParamsError
+	}
+	if email != "" && phone != "" {
+		return errorx.ErrParamsError
+	}
+	if email != "" {
+		if _, err := mail.ParseAddress(email); err != nil {
+			return errorx.ErrInvalidCredential
+		}
+		return nil
+	}
+	if !cnPhonePattern.MatchString(phone) {
+		return errorx.ErrInvalidCredential
+	}
+	return nil
 }
 
 func toUserProfile(u *entity.User) *response.UserProfileResp {

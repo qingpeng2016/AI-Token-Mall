@@ -7,3 +7,8 @@ type UserProfileResp struct {
 	Nickname string `json:"nickname,omitempty"`
 	Status   string `json:"status"`
 }
+
+type LoginUserResp struct {
+	Token string          `json:"token"`
+	User  UserProfileResp `json:"user"`
+}
