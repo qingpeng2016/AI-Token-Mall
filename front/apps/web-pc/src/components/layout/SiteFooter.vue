@@ -29,7 +29,7 @@ const toolsLinks = [
   { label: 'Skills 库', href: '#' },
   { label: '价格中心', href: '#catalog' },
   { label: '价格说明', href: '#faq' },
-  { label: '教程资讯', href: '#' },
+  { label: '教程资讯', href: '/blog' },
 ]
 
 const aboutLinks = [

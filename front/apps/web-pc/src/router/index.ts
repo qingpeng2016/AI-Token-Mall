@@ -27,6 +27,16 @@ const router = createRouter({
           name: 'member',
           component: () => import('@/views/MemberCenterView.vue'),
         },
+        {
+          path: 'blog',
+          name: 'blog',
+          component: () => import('@/views/BlogView.vue'),
+        },
+        {
+          path: 'blog/:slug',
+          name: 'blog-article',
+          component: () => import('@/views/BlogArticleView.vue'),
+        },
       ],
     },
     {

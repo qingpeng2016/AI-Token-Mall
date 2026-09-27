@@ -162,7 +162,13 @@ function isSpaNav(href: string) {
             </div>
           </template>
 
-          <a href="#faq" class="nav-link nav-link-plain">教程 FAQ</a>
+          <RouterLink
+            to="/blog"
+            class="nav-link nav-link-plain"
+            :class="{ 'nav-link--active': route.path.startsWith('/blog') }"
+          >
+            教程 FAQ
+          </RouterLink>
         </nav>
       </div>
 
