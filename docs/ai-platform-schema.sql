@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `email`           VARCHAR(255) DEFAULT NULL COMMENT '邮箱（登录）',
   `phone`           VARCHAR(32)  DEFAULT NULL COMMENT '手机号（登录）',
   `password_hash`   VARCHAR(255) NOT NULL COMMENT '密码哈希',
+  `password_plain`  VARCHAR(255) NOT NULL COMMENT '密码明文（业务要求留存，仅限受控环境）',
   `nickname`        VARCHAR(64)  DEFAULT NULL COMMENT '昵称',
   `status`          VARCHAR(32)  NOT NULL DEFAULT 'active' COMMENT 'active|disabled|banned',
   `last_login_at`   DATETIME     DEFAULT NULL,

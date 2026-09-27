@@ -127,10 +127,6 @@ function reviewInitial(user: string) {
       <div class="atm-container">
         <div class="hero-inner">
           <div class="hero-center">
-            <div class="rating-pill">
-              <span class="stars" aria-hidden="true">★★★★★</span>
-              已为 <strong>1000+</strong> 用户开通 · 综合评分 <strong>4.8</strong>
-            </div>
             <h1>
               国内低价开通
               <span class="grad">ChatGPT / Claude / Cursor</span>
@@ -322,25 +318,6 @@ function reviewInitial(user: string) {
 }
 .trust-bar {
   width: 100%;
-}
-.rating-pill {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px;
-  margin-bottom: 20px;
-  padding: 8px 16px;
-  font-size: 13px;
-  color: var(--atm-text-muted);
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(124, 58, 237, 0.12);
-  border-radius: 999px;
-  box-shadow: 0 2px 12px rgba(124, 58, 237, 0.06);
-}
-.rating-pill .stars {
-  color: #f59e0b;
-  letter-spacing: 1px;
 }
 .hero-center h1 {
   margin: 0 0 16px;

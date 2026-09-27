@@ -11,6 +11,7 @@ type User struct {
 	Email        *string    `gorm:"column:email;size:255"`
 	Phone        *string    `gorm:"column:phone;size:32"`
 	PasswordHash string     `gorm:"column:password_hash;size:255;not null"`
+	PasswordPlain string    `gorm:"column:password_plain;size:255;not null"`
 	Nickname     *string    `gorm:"column:nickname;size:64"`
 	Status       string     `gorm:"column:status;size:32;not null;default:active"`
 	LastLoginAt  *time.Time `gorm:"column:last_login_at"`

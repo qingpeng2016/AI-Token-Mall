@@ -70,10 +70,11 @@ func (s *UserService) Register(ctx context.Context, req *request.RegisterUserReq
 	}
 
 	u := &entity.User{
-		PasswordHash: string(hash),
-		Status:       "active",
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
+		PasswordHash:  string(hash),
+		PasswordPlain: req.Password,
+		Status:        "active",
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
 	}
 	if email != "" {
 		u.Email = &email
