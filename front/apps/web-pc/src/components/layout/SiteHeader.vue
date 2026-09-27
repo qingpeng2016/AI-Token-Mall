@@ -106,6 +106,7 @@ function isSpaNav(href: string) {
               v-if="!isNavDropdown(brand)"
               :to="brand.to"
               class="nav-link"
+              :class="{ 'nav-link--active': route.path === brand.to }"
             >
               {{ brand.label }}
             </RouterLink>

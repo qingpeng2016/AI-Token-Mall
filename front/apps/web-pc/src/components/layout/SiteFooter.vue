@@ -35,7 +35,7 @@ const toolsLinks = [
 const aboutLinks = [
   { label: '关于我们', href: '#' },
   { label: '联系我们', href: '#' },
-  { label: '企业采购', href: '#faq' },
+  { label: '企业采购', href: '/enterprise' },
   { label: '分销合作', href: '#' },
   { label: '服务条款与隐私', href: '#' },
 ]

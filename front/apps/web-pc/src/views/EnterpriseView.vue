@@ -1,0 +1,867 @@
+<script setup lang="ts">
+import { reactive, ref } from 'vue'
+import { RouterLink } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import EnterpriseBenefitIcon from '@/components/enterprise/EnterpriseBenefitIcon.vue'
+import { SITE_NAME } from '@/constants/brand'
+import {
+  enterpriseBenefits,
+  enterpriseContact,
+  enterpriseFaqs,
+  enterpriseHero,
+  enterpriseInvoiceNotes,
+  enterprisePlans,
+  enterpriseStats,
+  enterpriseSteps,
+} from '@/mocks/enterprise'
+
+const submitting = ref(false)
+
+const form = reactive({
+  company: '',
+  contact: '',
+  phone: '',
+  email: '',
+  seats: '',
+  products: '',
+  needInvoice: true,
+  needContract: false,
+  message: '',
+})
+
+function scrollToContact() {
+  document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+async function onSubmit() {
+  if (!form.company.trim() || !form.contact.trim() || !form.phone.trim()) {
+    ElMessage.warning('请填写公司、联系人与手机号')
+    return
+  }
+  submitting.value = true
+  await new Promise((r) => setTimeout(r, 600))
+  submitting.value = false
+  ElMessage.success('已收到采购需求（演示），顾问将尽快联系您')
+  form.company = ''
+  form.contact = ''
+  form.phone = ''
+  form.email = ''
+  form.seats = ''
+  form.products = ''
+  form.message = ''
+}
+</script>
+
+<template>
+  <div class="enterprise-page">
+    <section class="ent-hero">
+      <div class="atm-container ent-hero-inner">
+        <div class="ent-hero-copy">
+          <span class="ent-eyebrow">{{ enterpriseHero.eyebrow }}</span>
+          <h1 class="ent-title">{{ enterpriseHero.title }}</h1>
+          <p class="ent-lead">{{ enterpriseHero.lead }}</p>
+          <div class="ent-hero-actions">
+            <button type="button" class="atm-btn-primary" @click="scrollToContact">
+              {{ enterpriseHero.primaryCta.label }}
+            </button>
+            <RouterLink :to="enterpriseHero.secondaryCta.to" class="atm-btn-ghost ent-ghost">
+              {{ enterpriseHero.secondaryCta.label }}
+            </RouterLink>
+          </div>
+        </div>
+        <div class="ent-hero-panel" aria-hidden="true">
+          <p class="ent-panel-label">{{ SITE_NAME }} · 企业通道</p>
+          <ul class="ent-panel-list">
+            <li>席位清单 · CSV / 表格导入</li>
+            <li>订单汇总 · 管理员会员中心</li>
+            <li>续费提醒 · 到期前 7 天</li>
+            <li>开票 6% · 会员中心提交抬头</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="ent-stats">
+      <div class="atm-container ent-stats-grid">
+        <div v-for="s in enterpriseStats" :key="s.label" class="ent-stat">
+          <strong class="ent-stat-value">{{ s.value }}</strong>
+          <span class="ent-stat-label">{{ s.label }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="ent-section">
+      <div class="atm-container">
+        <header class="ent-section-head">
+          <h2>为什么走企业采购</h2>
+          <p>把「个人代充」升级成可审计、可开票、可批量复制的团队流程。</p>
+        </header>
+        <div class="ent-benefits">
+          <article v-for="b in enterpriseBenefits" :key="b.title" class="ent-benefit">
+            <span class="ent-benefit-icon">
+              <EnterpriseBenefitIcon :name="b.icon" />
+            </span>
+            <h3>{{ b.title }}</h3>
+            <p>{{ b.desc }}</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="ent-section">
+      <div class="atm-container">
+        <header class="ent-section-head">
+          <h2>合作流程</h2>
+          <p>从需求到开通，通常 1–3 个工作日（对公以到账为准）。</p>
+        </header>
+        <ol class="ent-steps">
+          <li v-for="step in enterpriseSteps" :key="step.step" class="ent-step">
+            <span class="ent-step-num">{{ step.step }}</span>
+            <div>
+              <h3>{{ step.title }}</h3>
+              <p>{{ step.desc }}</p>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="ent-section">
+      <div class="atm-container">
+        <header class="ent-section-head">
+          <h2>方案参考</h2>
+          <p>以下为常见档位，实际价格以 SKU 目录与席位数量为准。</p>
+        </header>
+        <div class="ent-plans">
+          <article
+            v-for="plan in enterprisePlans"
+            :key="plan.id"
+            class="ent-plan"
+            :class="{ 'ent-plan--featured': plan.featured }"
+          >
+            <div class="ent-plan-top">
+              <h3>{{ plan.name }}</h3>
+              <span v-if="plan.badge" class="ent-plan-badge">{{ plan.badge }}</span>
+            </div>
+            <p class="ent-plan-price">{{ plan.priceHint }}</p>
+            <p class="ent-plan-seats">{{ plan.seats }}</p>
+            <ul>
+              <li v-for="f in plan.features" :key="f">{{ f }}</li>
+            </ul>
+            <p class="ent-plan-cta">{{ plan.cta }}</p>
+            <button type="button" class="ent-plan-btn" @click="scrollToContact">获取报价</button>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="invoice" class="ent-section">
+      <div class="atm-container ent-invoice-grid">
+        <div>
+          <header class="ent-section-head ent-section-head--left">
+            <h2>开票说明</h2>
+            <p>与个人下单规则一致，企业批量可集中由一人提交抬头。</p>
+          </header>
+          <ul class="ent-invoice-list">
+            <li v-for="(note, i) in enterpriseInvoiceNotes" :key="i">{{ note }}</li>
+          </ul>
+          <RouterLink to="/member?tab=invoices" class="ent-inline-link">会员中心 · 发票 →</RouterLink>
+        </div>
+        <aside class="ent-invoice-aside">
+          <h3>对公账户（示例）</h3>
+          <dl>
+            <div><dt>户名</dt><dd>{{ SITE_NAME }} 科技有限公司</dd></div>
+            <div><dt>开户行</dt><dd>某某银行某某支行</dd></div>
+            <div><dt>账号</dt><dd>6222 **** **** 1234</dd></div>
+            <div><dt>备注</dt><dd>AI-Plan-企业采购-公司简称</dd></div>
+          </dl>
+          <p class="ent-aside-note">正式账号以顾问邮件 / 报价单为准，切勿向私人账户转账。</p>
+        </aside>
+      </div>
+    </section>
+
+    <section id="contact" class="ent-section ent-contact">
+      <div class="atm-container ent-contact-grid">
+        <div class="ent-contact-info">
+          <header class="ent-section-head ent-section-head--left">
+            <h2>提交采购需求</h2>
+            <p>留下信息即可，无需先注册。已有账号可登录后在会员中心查看历史订单。</p>
+          </header>
+          <ul class="ent-contact-meta">
+            <li><strong>邮箱</strong> {{ enterpriseContact.email }}</li>
+            <li><strong>服务时间</strong> {{ enterpriseContact.hours }}</li>
+            <li>{{ enterpriseContact.wechatHint }}</li>
+          </ul>
+        </div>
+        <form class="ent-form" @submit.prevent="onSubmit">
+          <div class="ent-form-row">
+            <label>
+              <span>公司名称 *</span>
+              <input v-model="form.company" type="text" placeholder="与开票抬头一致" />
+            </label>
+            <label>
+              <span>联系人 *</span>
+              <input v-model="form.contact" type="text" placeholder="采购 / IT 负责人" />
+            </label>
+          </div>
+          <div class="ent-form-row">
+            <label>
+              <span>手机 *</span>
+              <input v-model="form.phone" type="tel" placeholder="用于顾问回电" />
+            </label>
+            <label>
+              <span>邮箱</span>
+              <input v-model="form.email" type="email" placeholder="接收报价单" />
+            </label>
+          </div>
+          <div class="ent-form-row">
+            <label>
+              <span>预计席位</span>
+              <input v-model="form.seats" type="text" placeholder="如 20 个 Plus" />
+            </label>
+            <label>
+              <span>目标产品</span>
+              <input v-model="form.products" type="text" placeholder="ChatGPT / Claude / Cursor…" />
+            </label>
+          </div>
+          <div class="ent-form-checks">
+            <label class="ent-check">
+              <input v-model="form.needInvoice" type="checkbox" />
+              需要增值税发票
+            </label>
+            <label class="ent-check">
+              <input v-model="form.needContract" type="checkbox" />
+              需要合同 / 报价单
+            </label>
+          </div>
+          <label class="ent-form-full">
+            <span>补充说明</span>
+            <textarea
+              v-model="form.message"
+              rows="4"
+              placeholder="期望开通时间、账号清单形式、票种等"
+            />
+          </label>
+          <button type="submit" class="atm-btn-primary ent-submit" :disabled="submitting">
+            {{ submitting ? '提交中…' : '提交需求' }}
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <section class="ent-section ent-faq-wrap">
+      <div class="atm-container ent-faq-inner">
+        <h2 class="ent-faq-title">常见问题</h2>
+        <dl class="ent-faq">
+          <div v-for="item in enterpriseFaqs" :key="item.q" class="ent-faq-item">
+            <dt>{{ item.q }}</dt>
+            <dd>{{ item.a }}</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+  </div>
+</template>
+
+<style scoped>
+.enterprise-page {
+  padding-bottom: 64px;
+  background: var(--atm-bg);
+}
+
+.ent-hero {
+  padding: 48px 0 56px;
+  background: linear-gradient(145deg, #1e1b4b 0%, #4c1d95 45%, #6d28d9 100%);
+  color: #fff;
+}
+
+.ent-hero-inner {
+  display: grid;
+  gap: 32px;
+  align-items: center;
+}
+
+@media (min-width: 960px) {
+  .ent-hero-inner {
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 40px;
+  }
+}
+
+.ent-eyebrow {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+
+.ent-title {
+  margin: 0 0 16px;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+}
+
+.ent-lead {
+  margin: 0 0 28px;
+  max-width: 36em;
+  font-size: 15px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.ent-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.ent-ghost {
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+.ent-ghost:hover {
+  border-color: rgba(255, 255, 255, 0.55) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+.ent-hero-panel {
+  padding: 24px 26px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 20px;
+  backdrop-filter: blur(8px);
+}
+
+.ent-panel-label {
+  margin: 0 0 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.ent-panel-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.ent-panel-list li {
+  position: relative;
+  padding-left: 18px;
+  margin-bottom: 10px;
+}
+
+.ent-panel-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #c4b5fd;
+}
+
+.ent-stats {
+  margin-top: -28px;
+  position: relative;
+  z-index: 2;
+  padding: 0 0 8px;
+}
+
+.ent-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 20px 24px;
+  background: #fff;
+  border-radius: 18px;
+  border: 1px solid rgba(124, 58, 237, 0.12);
+  box-shadow: 0 16px 48px rgba(30, 27, 75, 0.1);
+}
+
+@media (min-width: 640px) {
+  .ent-stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+}
+
+.ent-stat {
+  text-align: center;
+  padding: 8px 4px;
+}
+
+.ent-stat-value {
+  display: block;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--atm-primary-dark);
+}
+
+.ent-stat-label {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--atm-text-muted);
+}
+
+.ent-section {
+  padding: 56px 0;
+  background: transparent;
+}
+
+.ent-section-head {
+  text-align: center;
+  max-width: 36em;
+  margin: 0 auto 36px;
+}
+
+.ent-section-head--left {
+  text-align: left;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.ent-section-head h2 {
+  margin: 0 0 10px;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--atm-text);
+}
+
+.ent-section-head p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--atm-text-muted);
+}
+
+.ent-benefits {
+  display: grid;
+  gap: 18px;
+}
+
+@media (min-width: 640px) {
+  .ent-benefits {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 960px) {
+  .ent-benefits {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.ent-benefit {
+  padding: 22px 22px 20px;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(124, 58, 237, 0.1);
+  box-shadow: 0 6px 24px rgba(124, 58, 237, 0.05);
+}
+
+.ent-benefit-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 12px;
+  color: var(--atm-primary-dark);
+  background: var(--atm-primary-light);
+  border-radius: 12px;
+}
+
+.ent-benefit h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--atm-text);
+}
+
+.ent-benefit p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--atm-text-muted);
+}
+
+.ent-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .ent-steps {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .ent-steps {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.ent-step {
+  display: flex;
+  gap: 14px;
+  padding: 20px 18px;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #f1f5f9;
+}
+
+.ent-step-num {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--atm-primary);
+}
+
+.ent-step h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--atm-text);
+}
+
+.ent-step p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--atm-text-muted);
+}
+
+.ent-plans {
+  display: grid;
+  gap: 20px;
+}
+
+@media (min-width: 768px) {
+  .ent-plans {
+    grid-template-columns: repeat(3, 1fr);
+    align-items: stretch;
+  }
+}
+
+.ent-plan {
+  display: flex;
+  flex-direction: column;
+  padding: 24px 22px;
+  background: #fff;
+  border-radius: 18px;
+  border: 1px solid rgba(124, 58, 237, 0.12);
+}
+
+.ent-plan--featured {
+  border-color: var(--atm-primary);
+  box-shadow: 0 16px 40px rgba(124, 58, 237, 0.15);
+  transform: translateY(-4px);
+}
+
+.ent-plan-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.ent-plan-top h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.ent-plan-badge {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--atm-gradient);
+  border-radius: 999px;
+}
+
+.ent-plan-price {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--atm-primary-dark);
+}
+
+.ent-plan-seats {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--atm-text-muted);
+}
+
+.ent-plan ul {
+  flex: 1;
+  margin: 0 0 12px;
+  padding-left: 1.1em;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--atm-text-muted);
+}
+
+.ent-plan-cta {
+  margin: 0 0 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--atm-primary);
+}
+
+.ent-plan-btn {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--atm-primary-dark);
+  background: var(--atm-primary-light);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.ent-plan--featured .ent-plan-btn {
+  color: #fff;
+  background: var(--atm-gradient);
+}
+
+.ent-plan-btn:hover {
+  filter: brightness(1.03);
+}
+
+.ent-invoice-grid {
+  display: grid;
+  gap: 32px;
+}
+
+@media (min-width: 900px) {
+  .ent-invoice-grid {
+    grid-template-columns: 1.1fr 0.9fr;
+    align-items: start;
+  }
+}
+
+.ent-invoice-list {
+  margin: 0 0 16px;
+  padding-left: 1.2em;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--atm-text-muted);
+}
+
+.ent-inline-link {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--atm-primary);
+  text-decoration: none;
+}
+
+.ent-inline-link:hover {
+  color: var(--atm-primary-dark);
+}
+
+.ent-invoice-aside {
+  padding: 22px 24px;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+}
+
+.ent-invoice-aside h3 {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.ent-invoice-aside dl {
+  margin: 0;
+}
+
+.ent-invoice-aside div {
+  display: grid;
+  grid-template-columns: 4.5em 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.ent-invoice-aside dt {
+  color: var(--atm-text-muted);
+}
+
+.ent-invoice-aside dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--atm-text);
+}
+
+.ent-aside-note {
+  margin: 16px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #b45309;
+}
+
+.ent-contact-grid {
+  display: grid;
+  gap: 36px;
+}
+
+@media (min-width: 900px) {
+  .ent-contact-grid {
+    grid-template-columns: 0.95fr 1.05fr;
+    align-items: start;
+  }
+}
+
+.ent-contact-meta {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--atm-text-muted);
+}
+
+.ent-contact-meta li {
+  margin-bottom: 10px;
+}
+
+.ent-contact-meta strong {
+  color: var(--atm-text);
+  margin-right: 8px;
+}
+
+.ent-form {
+  padding: 28px 26px;
+  background: #fff;
+  border-radius: 20px;
+  border: 1px solid rgba(124, 58, 237, 0.12);
+  box-shadow: 0 12px 40px rgba(124, 58, 237, 0.08);
+}
+
+.ent-form-row {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+@media (min-width: 560px) {
+  .ent-form-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.ent-form label span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--atm-text);
+}
+
+.ent-form input,
+.ent-form textarea {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--atm-text);
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  transition: border-color 0.15s ease;
+}
+
+.ent-form input:focus,
+.ent-form textarea:focus {
+  outline: none;
+  border-color: var(--atm-primary);
+  background: #fff;
+}
+
+.ent-form-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  margin-bottom: 16px;
+}
+
+.ent-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--atm-text-muted);
+  cursor: pointer;
+}
+
+.ent-form-full {
+  display: block;
+  margin-bottom: 20px;
+}
+
+.ent-submit {
+  width: 100%;
+}
+
+.ent-faq-wrap {
+  padding-top: 24px;
+}
+
+.ent-faq-title {
+  margin: 0 0 24px;
+  text-align: center;
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.ent-faq {
+  margin: 0;
+  max-width: 720px;
+  margin-inline: auto;
+}
+
+.ent-faq-item {
+  padding: 18px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.ent-faq-item dt {
+  margin-bottom: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--atm-text);
+}
+
+.ent-faq-item dd {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--atm-text-muted);
+}
+</style>

@@ -130,18 +130,9 @@ export const navBrandDropdowns: NavMenuEntry[] = [
     })),
   },
   {
-    id: 'tools',
-    label: '工具',
-    items: [
-      { label: '工具中心', href: '#' },
-      { label: '价格中心', href: p.catalog },
-      { label: '使用说明', href: '#' },
-    ],
-  },
-  {
     id: 'enterprise',
     label: '企业采购',
     plainLink: true,
-    to: '/#faq',
+    to: '/enterprise',
   },
 ]

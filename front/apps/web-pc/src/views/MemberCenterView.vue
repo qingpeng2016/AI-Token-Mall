@@ -357,7 +357,7 @@ function mockAction(msg: string) {
             <div v-else-if="activeTab === 'invoices'" class="panel-body">
             <p class="panel-desc">
               下单时勾选「企业开票」的订单可在此申请与下载；也可在
-              <RouterLink to="/#faq">FAQ</RouterLink> 查看开票说明。
+              <RouterLink to="/enterprise#invoice">企业采购</RouterLink> 查看开票说明。
             </p>
             <div class="table-wrap">
               <table class="data-table">

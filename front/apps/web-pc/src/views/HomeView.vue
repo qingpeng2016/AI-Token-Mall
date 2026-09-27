@@ -138,12 +138,12 @@ function reviewInitial(user: string) {
             </h1>
             <p class="sub">
               <strong>支付宝 / 微信</strong>自助下单；团队批量与开票见
-              <a href="#faq">企业采购</a>。
+              <RouterLink to="/enterprise">企业采购</RouterLink>。
             </p>
             <div class="hero-actions">
               <a href="#catalog" class="atm-btn-primary">查看全部套餐 →</a>
               <RouterLink to="/login" class="atm-btn-ghost">已有账号 · 会员中心</RouterLink>
-              <a href="#faq" class="atm-btn-ghost">企业采购 / 开票</a>
+              <RouterLink to="/enterprise" class="atm-btn-ghost">企业采购 / 开票</RouterLink>
             </div>
             <div class="hero-links">
               <a href="#">工具中心</a>
