@@ -125,6 +125,9 @@ export type MockInviteRebatePolicy = {
   notes: string[]
 }
 
+/** 专属推广域名根地址（演示，接 API 后按用户下发） */
+export const mockPromoDomainBase = 'https://go.aiplan.com/i'
+
 /** 当前登录用户的返佣政策（演示） */
 export const mockInviteRebatePolicy: MockInviteRebatePolicy = {
   currentLevelLabel: '标准推广',

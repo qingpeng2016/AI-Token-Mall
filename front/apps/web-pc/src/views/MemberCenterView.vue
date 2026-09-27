@@ -22,6 +22,7 @@ import {
   mockInvoices,
   mockInviteRebatePolicy,
   mockInviteRebateRecords,
+  mockPromoDomainBase,
   mockMemberOverview,
   mockOrders,
   mockSubscriptions,
@@ -156,6 +157,11 @@ const teamInviteLink = computed(() => {
   return `${origin}/register?team_invite=${uid}`
 })
 
+const exclusivePromoDomain = computed(() => {
+  const uid = user.value?.id
+  return uid != null ? `${mockPromoDomainBase}/${uid}` : `${mockPromoDomainBase}/guest`
+})
+
 onBeforeMount(() => {
   const profile = getSessionUser()
   if (!isLoggedIn() || !profile) {
@@ -223,6 +229,10 @@ function openTeamInviteModal() {
 
 function copyTeamInviteLink() {
   void copyToClipboard(teamInviteLink.value, '已复制邀请链接')
+}
+
+function copyExclusivePromoDomain() {
+  void copyToClipboard(exclusivePromoDomain.value, '已复制推广域名')
 }
 
 function syncAssignSubKeyLimitFromPlan() {
@@ -868,30 +878,25 @@ function confirmAddTeamMember() {
             <!-- 邀请返利 -->
             <div v-else-if="activeTab === 'sub-accounts'" class="panel-body panel-body--segmented">
             <div v-if="inviteRebatePanelTab === 'details'" role="tabpanel">
-              <article class="rebate-rate-hero">
-                <div>
+              <article class="rebate-details-summary">
+                <div class="rebate-details-section">
+                  <span class="metric-label">专属推广域名</span>
+                  <div class="promo-domain-row">
+                    <code class="promo-domain-value">{{ exclusivePromoDomain }}</code>
+                    <button
+                      type="button"
+                      class="atm-btn-primary btn-xs"
+                      @click="copyExclusivePromoDomain"
+                    >
+                      复制
+                    </button>
+                  </div>
+                </div>
+                <div class="rebate-details-section">
                   <span class="metric-label">您当前的返佣比例</span>
                   <p class="rebate-rate-value">
                     {{ mockInviteRebatePolicy.currentRatePercent }}<span class="rebate-rate-unit">%</span>
                   </p>
-                  <p class="rebate-rate-meta">
-                    等级 {{ mockInviteRebatePolicy.currentLevelLabel }} · 有效邀请
-                    {{ mockInviteRebatePolicy.validInviteCount }} 人
-                  </p>
-                </div>
-                <div
-                  v-if="
-                    mockInviteRebatePolicy.nextLevelLabel &&
-                    mockInviteRebatePolicy.invitesToNextLevel != null
-                  "
-                  class="rebate-rate-next"
-                >
-                  <span class="metric-label">下一档</span>
-                  <strong>
-                    再邀请 {{ mockInviteRebatePolicy.invitesToNextLevel }} 人 →
-                    {{ mockInviteRebatePolicy.nextLevelLabel }}
-                    {{ mockInviteRebatePolicy.nextLevelRatePercent }}%
-                  </strong>
                 </div>
               </article>
 
@@ -1028,8 +1033,7 @@ function confirmAddTeamMember() {
               </div>
             </dl>
             <div class="settings-actions">
-              <RouterLink to="/#faq" class="atm-btn-ghost btn-xs">帮助与 FAQ</RouterLink>
-              <button type="button" class="btn-logout" @click="logout">退出登录</button>
+              <button type="button" class="atm-btn-primary btn-xs" @click="logout">退出登录</button>
             </div>
             </div>
           </section>
@@ -1522,6 +1526,43 @@ function confirmAddTeamMember() {
   border-radius: 16px;
 }
 
+.rebate-details-summary {
+  margin-bottom: 8px;
+  padding: 20px 22px;
+  background: linear-gradient(135deg, #f5f3ff 0%, #faf5ff 55%, #fff 100%);
+  border: 1px solid rgba(124, 58, 237, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.06);
+}
+
+.rebate-details-section + .rebate-details-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(124, 58, 237, 0.1);
+}
+
+.promo-domain-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  margin-top: 8px;
+}
+
+.promo-domain-value {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: var(--atm-primary-dark);
+  word-break: break-all;
+  background: transparent;
+  border: none;
+}
+
 .rebate-rate-value {
   margin: 6px 0 0;
   font-size: 40px;
@@ -1749,6 +1790,12 @@ function confirmAddTeamMember() {
   font-weight: 700;
 }
 
+.plan-card-head .tag {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .sku {
   font-size: 12px;
   color: var(--atm-text-muted);
@@ -1914,21 +1961,15 @@ function confirmAddTeamMember() {
   color: var(--atm-text);
 }
 
+.settings-list .link-btn {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .settings-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-}
-
-.btn-logout {
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #b91c1c;
-  cursor: pointer;
-  background: #fff;
-  border: 1px solid #fecaca;
-  border-radius: 999px;
 }
 
 .empty {
