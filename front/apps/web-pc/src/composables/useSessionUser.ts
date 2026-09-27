@@ -4,19 +4,24 @@ import { clearAuthToken, getAuthToken, hasAuthToken } from '@/utils/auth-cookie'
 const STORAGE_KEY = 'atm_user'
 export const PENDING_BUY_KEY = 'atm_pending_buy'
 
-export function getSessionUser(): UserProfile | null {
-  if (!hasAuthToken()) return null
+function readStoredProfile(): UserProfile | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return null
-    return JSON.parse(raw) as UserProfile
+    const profile = JSON.parse(raw) as UserProfile
+    return profile?.id ? profile : null
   } catch {
     return null
   }
 }
 
+export function getSessionUser(): UserProfile | null {
+  // atm_token 可能为 HttpOnly，JS 读不到 Cookie 时仍以本地资料恢复登录态
+  return readStoredProfile()
+}
+
 export function isLoggedIn(): boolean {
-  return hasAuthToken()
+  return hasAuthToken() || readStoredProfile() != null
 }
 
 export function setSessionUser(profile: UserProfile): void {

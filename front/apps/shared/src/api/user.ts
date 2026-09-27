@@ -3,7 +3,6 @@ import type {
   LoginRequest,
   LoginResponse,
   RegisterRequest,
-  UserProfile,
 } from '../types/user'
 import { createHttpClient, type HttpClientOptions } from './http'
 

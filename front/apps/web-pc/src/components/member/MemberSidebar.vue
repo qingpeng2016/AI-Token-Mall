@@ -36,7 +36,6 @@ const emit = defineEmits<{
         :class="{ active: active === item.id }"
       >
         <span class="member-nav-label">{{ item.label }}</span>
-        <span class="member-nav-desc">{{ item.desc || ' ' }}</span>
       </RouterLink>
     </nav>
 
@@ -117,16 +116,14 @@ const emit = defineEmits<{
 .member-nav {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
   padding: 4px 0;
 }
 
 .member-nav-item {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  min-height: 52px;
+  align-items: center;
+  min-height: 44px;
   padding: 10px 14px 10px 11px;
   font-size: 14px;
   font-weight: 500;
@@ -155,19 +152,6 @@ const emit = defineEmits<{
 
 .member-nav-label {
   font-size: 14px;
-}
-
-.member-nav-desc {
-  min-height: 1.25em;
-  font-size: 11px;
-  font-weight: 400;
-  line-height: 1.25;
-  color: #94a3b8;
-}
-
-.member-nav-item.active .member-nav-desc {
-  color: #7c3aed;
-  opacity: 0.75;
 }
 
 .member-buy-link {

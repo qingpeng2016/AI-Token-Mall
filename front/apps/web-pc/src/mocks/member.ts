@@ -3,21 +3,21 @@
 export type MemberTab =
   | 'overview'
   | 'plans'
+  | 'api-keys'
   | 'orders'
   | 'account'
-  | 'api-keys'
   | 'invoices'
   | 'sub-accounts'
   | 'settings'
 
-export const memberNav: { id: MemberTab; label: string; desc?: string }[] = [
+export const memberNav: { id: MemberTab; label: string }[] = [
   { id: 'overview', label: '概览' },
-  { id: 'plans', label: '我的套餐', desc: '额度与有效期' },
+  { id: 'plans', label: '我的套餐' },
+  { id: 'api-keys', label: 'API Key' },
+  { id: 'sub-accounts', label: '邀请返利' },
   { id: 'orders', label: '我的订单' },
-  { id: 'account', label: '资金流水', desc: '收支明细' },
-  { id: 'api-keys', label: 'API 密钥' },
+  { id: 'account', label: '资金流水' },
   { id: 'invoices', label: '发票管理' },
-  { id: 'sub-accounts', label: '子账号' },
   { id: 'settings', label: '账户设置' },
 ]
 
@@ -30,6 +30,10 @@ export type MockSubscription = {
   usedTokens: number
   expiresAt: string
   periodEnd: string
+  /** 该套餐专属 API Key（展示用脱敏；复制为演示完整值） */
+  apiKeyMasked: string
+  apiKeyCopyValue: string
+  apiKeyLastUsedAt: string | null
 }
 
 export type MockOrder = {
@@ -50,15 +54,6 @@ export type MockWalletTx = {
   createdAt: string
 }
 
-export type MockApiKey = {
-  id: number
-  name: string
-  prefix: string
-  subscriptionName: string
-  createdAt: string
-  lastUsedAt: string | null
-}
-
 export type MockInvoice = {
   id: number
   orderNo: string
@@ -77,11 +72,113 @@ export type MockSubAccount = {
   status: 'active' | 'disabled'
 }
 
+/** 分配给团队成员的子 Key（从主套餐 Key 派生，单独计费到该成员） */
+export type MockTeamSubKey = {
+  id: number
+  subscriptionId: number
+  subscriptionName: string
+  memberId: number
+  memberNickname: string
+  memberEmail: string
+  apiKeyMasked: string
+  apiKeyCopyValue: string
+  /** 本周期已用 tokens */
+  usedTokens: number
+  /** 子 Key 用量上限，默认与关联主 Key 套餐总量一致 */
+  limitTokens: number
+  status: 'active' | 'revoked'
+  createdAt: string
+}
+
+export type MockInviteRebateRecord = {
+  id: number
+  inviteeNickname: string
+  inviteeEmail: string
+  orderNo: string
+  productName: string
+  orderAmountCents: number
+  /** 返利金额，已计入佣金 */
+  rebateCents: number
+  createdAt: string
+}
+
 export const mockMemberOverview = {
   balanceCents: 12800,
-  activePlans: 2,
-  pendingOrders: 1,
+  /** 邀请返利累计佣金（可提现 / 抵扣，演示） */
+  commissionCents: 3560,
 }
+
+export type MockInviteRebateTier = {
+  levelLabel: string
+  minInvites: number
+  ratePercent: number
+}
+
+export type MockInviteRebatePolicy = {
+  currentLevelLabel: string
+  currentRatePercent: number
+  validInviteCount: number
+  nextLevelLabel: string | null
+  nextLevelRatePercent: number | null
+  invitesToNextLevel: number | null
+  tiers: MockInviteRebateTier[]
+  notes: string[]
+}
+
+/** 当前登录用户的返佣政策（演示） */
+export const mockInviteRebatePolicy: MockInviteRebatePolicy = {
+  currentLevelLabel: '标准推广',
+  currentRatePercent: 5,
+  validInviteCount: 3,
+  nextLevelLabel: '高级推广',
+  nextLevelRatePercent: 8,
+  invitesToNextLevel: 2,
+  tiers: [
+    { levelLabel: '入门推广', minInvites: 0, ratePercent: 3 },
+    { levelLabel: '标准推广', minInvites: 3, ratePercent: 5 },
+    { levelLabel: '高级推广', minInvites: 5, ratePercent: 8 },
+    { levelLabel: '合伙人', minInvites: 20, ratePercent: 12 },
+  ],
+  notes: [
+    '返佣比例按「有效邀请人数」自动升级，有效邀请指通过您的链接注册并完成首单的用户。',
+    '受邀用户每笔已支付订单，按实付金额 × 当前返佣比例计算返利，支付成功后即时计入「佣金」。',
+    '佣金可用于抵扣套餐或提现（提现规则以平台公告为准）；退款订单对应返利将扣回。',
+    '企业采购、对公订单不参与个人邀请返利。',
+  ],
+}
+
+export const mockInviteRebateRecords: MockInviteRebateRecord[] = [
+  {
+    id: 1,
+    inviteeNickname: '同事 A',
+    inviteeEmail: 'teama@example.com',
+    orderNo: 'AP202603270001',
+    productName: 'ChatGPT Plus 月卡',
+    orderAmountCents: 17800,
+    rebateCents: 890,
+    createdAt: '2026-03-27 14:25',
+  },
+  {
+    id: 2,
+    inviteeNickname: '新用户 B',
+    inviteeEmail: 'userb@example.com',
+    orderNo: 'AP202603200015',
+    productName: 'GPT Go 月卡',
+    orderAmountCents: 8900,
+    rebateCents: 445,
+    createdAt: '2026-03-20 11:02',
+  },
+  {
+    id: 3,
+    inviteeNickname: '新用户 B',
+    inviteeEmail: 'userb@example.com',
+    orderNo: 'AP202603150032',
+    productName: 'Claude Pro 月卡',
+    orderAmountCents: 21900,
+    rebateCents: 1095,
+    createdAt: '2026-03-15 09:12',
+  },
+]
 
 export const mockSubscriptions: MockSubscription[] = [
   {
@@ -93,6 +190,9 @@ export const mockSubscriptions: MockSubscription[] = [
     usedTokens: 3_240_000,
     expiresAt: '2026-04-26',
     periodEnd: '2026-04-01',
+    apiKeyMasked: 'ap_live_8f2a••••••7k9m',
+    apiKeyCopyValue: 'ap_live_8f2a9b3c7d4e5f6g7h9m',
+    apiKeyLastUsedAt: '2026-03-28 09:12',
   },
   {
     id: 2,
@@ -103,6 +203,9 @@ export const mockSubscriptions: MockSubscription[] = [
     usedTokens: 1_100_000,
     expiresAt: '2026-04-10',
     periodEnd: '2026-04-01',
+    apiKeyMasked: 'ap_live_3c9b••••••2p4q',
+    apiKeyCopyValue: 'ap_live_3c9b1a2b3c4d5e6f2p4q',
+    apiKeyLastUsedAt: '2026-03-27 18:40',
   },
 ]
 
@@ -160,17 +263,6 @@ export const mockWalletTx: MockWalletTx[] = [
   },
 ]
 
-export const mockApiKeys: MockApiKey[] = [
-  {
-    id: 1,
-    name: '默认密钥',
-    prefix: 'ap_live_8f2a…',
-    subscriptionName: 'ChatGPT Plus 月卡',
-    createdAt: '2026-03-27',
-    lastUsedAt: '2026-03-28 09:12',
-  },
-]
-
 export const mockInvoices: MockInvoice[] = [
   {
     id: 1,
@@ -182,7 +274,37 @@ export const mockInvoices: MockInvoice[] = [
   },
 ]
 
-export const mockSubAccounts: MockSubAccount[] = [
+/** 通过邀请链接完成注册的用户（可加入 API 团队） */
+export type MockInvitedUser = {
+  id: number
+  nickname: string
+  email: string
+  registeredAt: string
+}
+
+export const mockInvitedUsers: MockInvitedUser[] = [
+  {
+    id: 101,
+    nickname: '同事 A',
+    email: 'teama@example.com',
+    registeredAt: '2026-03-20',
+  },
+  {
+    id: 102,
+    nickname: '新用户 B',
+    email: 'userb@example.com',
+    registeredAt: '2026-03-18',
+  },
+  {
+    id: 103,
+    nickname: '待加入 C',
+    email: 'userc@example.com',
+    registeredAt: '2026-03-29',
+  },
+]
+
+/** API Key 团队初始成员（演示） */
+export const mockApiTeamMembers: MockSubAccount[] = [
   {
     id: 101,
     nickname: '同事 A',
@@ -190,6 +312,26 @@ export const mockSubAccounts: MockSubAccount[] = [
     usedTokens: 420_000,
     limitTokens: 2_000_000,
     status: 'active',
+  },
+]
+
+/** @deprecated 演示兼容，请用 mockInvitedUsers / mockApiTeamMembers */
+export const mockSubAccounts: MockSubAccount[] = mockApiTeamMembers
+
+export const mockTeamSubKeys: MockTeamSubKey[] = [
+  {
+    id: 1,
+    subscriptionId: 1,
+    subscriptionName: 'ChatGPT Plus 月卡',
+    memberId: 101,
+    memberNickname: '同事 A',
+    memberEmail: 'teama@example.com',
+    apiKeyMasked: 'ap_sub_7k2m••••••x8p1',
+    apiKeyCopyValue: 'ap_sub_7k2m4n5p6q7r8s9tx8p1',
+    usedTokens: 420_000,
+    limitTokens: 8_000_000,
+    status: 'active',
+    createdAt: '2026-03-28',
   },
 ]
 
