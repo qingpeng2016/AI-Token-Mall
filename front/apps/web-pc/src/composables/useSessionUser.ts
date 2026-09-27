@@ -23,9 +23,10 @@ export function setSessionUser(profile: UserProfile): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(profile))
 }
 
+/** 退出登录：清空 Cookie 中的 atm_token，并移除本地用户信息 */
 export function clearSessionUser(): void {
-  localStorage.removeItem(STORAGE_KEY)
   clearAuthToken()
+  localStorage.removeItem(STORAGE_KEY)
 }
 
 export function userAccountLabel(user: UserProfile): string {

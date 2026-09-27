@@ -39,6 +39,7 @@ func (r *Router) setupRouters() *gin.Engine {
 	{
 		api.POST("/users/register", r.userHandler.Register)
 		api.POST("/users/login", r.userHandler.Login)
+		api.POST("/users/logout", r.userHandler.Logout)
 	}
 
 	return engine

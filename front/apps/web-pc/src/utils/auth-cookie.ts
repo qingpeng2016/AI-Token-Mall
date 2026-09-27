@@ -1,4 +1,4 @@
-/** 登录态 token（Cookie，值为后端 /users/login 返回的 token） */
+/** 登录态 token（Cookie `atm_token`，由后端 /users/login Set-Cookie 写入） */
 export const AUTH_TOKEN_COOKIE = 'atm_token'
 
 const MAX_AGE_SEC = 60 * 60 * 24 * 30
@@ -16,6 +16,7 @@ export function setAuthToken(value: string): void {
   document.cookie = `${AUTH_TOKEN_COOKIE}=${encodeURIComponent(value)}; Path=/; Max-Age=${MAX_AGE_SEC}; SameSite=Lax`
 }
 
+/** 退出登录：删除 Cookie 中的 token */
 export function clearAuthToken(): void {
   document.cookie = `${AUTH_TOKEN_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`
 }

@@ -22,6 +22,7 @@ export function createHttpClient(options: HttpClientOptions) {
     const res = await fetch(`${baseURL}${path}`, {
       ...init,
       headers,
+      credentials: 'include',
       body: init.json !== undefined ? JSON.stringify(init.json) : init.body,
     })
 

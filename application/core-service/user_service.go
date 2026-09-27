@@ -9,7 +9,6 @@ import (
 
 	"github.com/qingpeng2016/ai-token-mall/common/auth"
 	"github.com/qingpeng2016/ai-token-mall/common/errorx"
-	"github.com/qingpeng2016/ai-token-mall/conf"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/entity"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/repository"
 	"github.com/qingpeng2016/ai-token-mall/domain/rest/request"
@@ -19,24 +18,17 @@ import (
 
 var cnPhonePattern = regexp.MustCompile(`^1\d{10}$`)
 
+const (
+	sessionTokenSecret = "ai-token-mall-session-signing-key"
+	sessionTokenTTL    = 720 * time.Hour
+)
+
 type UserService struct {
-	users      repository.UserRepo
-	jwtSecret  string
-	tokenTTL   time.Duration
+	users repository.UserRepo
 }
 
-func NewUserService(users repository.UserRepo, cfg *conf.Config) *UserService {
-	secret := "ai-token-mall-dev-secret"
-	ttl := 720 * time.Hour
-	if cfg != nil && cfg.AuthConf != nil {
-		if s := strings.TrimSpace(cfg.AuthConf.JWTSecret); s != "" {
-			secret = s
-		}
-		if cfg.AuthConf.JWTExpireHours > 0 {
-			ttl = time.Duration(cfg.AuthConf.JWTExpireHours) * time.Hour
-		}
-	}
-	return &UserService{users: users, jwtSecret: secret, tokenTTL: ttl}
+func NewUserService(users repository.UserRepo) *UserService {
+	return &UserService{users: users}
 }
 
 func (s *UserService) Register(ctx context.Context, req *request.RegisterUserReq) (*response.UserProfileResp, error) {
@@ -120,7 +112,7 @@ func (s *UserService) Login(ctx context.Context, req *request.LoginUserReq) (*re
 	}
 	_ = s.users.UpdateLastLogin(ctx, u.ID)
 
-	token, err := auth.IssueUserToken(u.ID, s.jwtSecret, s.tokenTTL)
+	token, err := auth.IssueUserToken(u.ID, sessionTokenSecret, sessionTokenTTL)
 	if err != nil {
 		return nil, errorx.ErrUnknown
 	}

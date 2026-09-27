@@ -28,12 +28,6 @@ type Config struct {
 	RedisConf        *Redis        `mapstructure:"redis"`
 	NotificationConf *Notification `mapstructure:"notification"`
 	AlipayConf       *Alipay       `mapstructure:"alipay"`
-	AuthConf         *Auth         `mapstructure:"auth"`
-}
-
-type Auth struct {
-	JWTSecret      string `mapstructure:"jwt_secret"`
-	JWTExpireHours int    `mapstructure:"jwt_expire_hours"`
 }
 
 type Server struct {
@@ -211,9 +205,3 @@ func GetAlipayConf() *Alipay {
 	return GlobalConf.AlipayConf
 }
 
-func GetAuthConf() *Auth {
-	if GlobalConf == nil {
-		return nil
-	}
-	return GlobalConf.AuthConf
-}

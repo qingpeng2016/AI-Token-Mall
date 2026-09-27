@@ -1,7 +1,3 @@
-auth:
-  jwt_secret: "ai-token-mall-test-secret"
-  jwt_expire_hours: 720
-
 server:
   service_name: "mojo_strategy_liquidation"
   run_mode: ""

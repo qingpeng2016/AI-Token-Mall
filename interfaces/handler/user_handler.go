@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"net/http"
+
 	coreservice "github.com/qingpeng2016/ai-token-mall/application/core-service"
+	"github.com/qingpeng2016/ai-token-mall/common/constants"
 	"github.com/qingpeng2016/ai-token-mall/common/dederi/gin/response"
 	"github.com/qingpeng2016/ai-token-mall/domain/rest/request"
 	"github.com/gin-gonic/gin"
@@ -42,5 +45,22 @@ func (h *UserHandler) Login(c *gin.Context) {
 		response.ResponseErr(c, err)
 		return
 	}
-	response.ResponseSuccess(c, data)
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie(
+		constants.AuthTokenCookie,
+		data.Token,
+		constants.AuthTokenMaxAge,
+		"/",
+		"",
+		false,
+		false,
+	)
+	response.ResponseSuccess(c, gin.H{"user": data.User})
+}
+
+// Logout 退出登录：清空 atm_token Cookie
+func (h *UserHandler) Logout(c *gin.Context) {
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie(constants.AuthTokenCookie, "", -1, "/", "", false, false)
+	response.ResponseSuccess(c, nil)
 }

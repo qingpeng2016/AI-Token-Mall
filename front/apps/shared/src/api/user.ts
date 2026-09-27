@@ -23,5 +23,8 @@ export function createUserApi(options: HttpClientOptions) {
       const res = await http.post<ApiEnvelope<LoginResponse>>('/api/v1/users/login', body)
       return unwrap(res)
     },
+    async logout(): Promise<void> {
+      await http.post<ApiEnvelope<null>>('/api/v1/users/logout', {})
+    },
   }
 }

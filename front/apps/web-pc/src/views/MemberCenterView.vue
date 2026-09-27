@@ -10,6 +10,7 @@ import {
   isLoggedIn,
   userAccountLabel,
 } from '@/composables/useSessionUser'
+import { userApi } from '@/api'
 import {
   formatTokens,
   memberNav,
@@ -58,6 +59,7 @@ function usagePercent(used: number, limit: number) {
 
 function logout() {
   clearSessionUser()
+  void userApi.logout()
   ElMessage.success('已退出登录')
   router.push('/')
 }
