@@ -100,23 +100,29 @@ function mockAction(msg: string) {
             <!-- 概览 -->
             <div v-if="activeTab === 'overview'" class="panel-body">
             <div class="stat-row">
-              <article class="stat-card">
-                <span class="stat-label">账户余额</span>
-                <strong class="stat-value">{{
-                  formatCnyFromCents(mockMemberOverview.balanceCents)
-                }}</strong>
+              <article class="stat-card stat-card--balance">
+                <div class="stat-main">
+                  <span class="stat-label">账户余额</span>
+                  <strong class="stat-value">{{
+                    formatCnyFromCents(mockMemberOverview.balanceCents)
+                  }}</strong>
+                </div>
                 <button type="button" class="stat-link" @click="mockRecharge">去充值</button>
               </article>
               <article class="stat-card">
-                <span class="stat-label">生效中套餐</span>
-                <strong class="stat-value">{{ mockMemberOverview.activePlans }}</strong>
+                <div class="stat-main">
+                  <span class="stat-label">生效中套餐</span>
+                  <strong class="stat-value">{{ mockMemberOverview.activePlans }}</strong>
+                </div>
                 <RouterLink :to="{ path: '/member', query: { tab: 'plans' } }" class="stat-link"
                   >查看</RouterLink
                 >
               </article>
               <article class="stat-card">
-                <span class="stat-label">待支付订单</span>
-                <strong class="stat-value">{{ mockMemberOverview.pendingOrders }}</strong>
+                <div class="stat-main">
+                  <span class="stat-label">待支付订单</span>
+                  <strong class="stat-value">{{ mockMemberOverview.pendingOrders }}</strong>
+                </div>
                 <RouterLink :to="{ path: '/member', query: { tab: 'orders' } }" class="stat-link"
                   >查看</RouterLink
                 >
@@ -637,84 +643,92 @@ function mockAction(msg: string) {
 
 .stat-row {
   display: grid;
-  gap: 18px;
+  gap: 16px;
+  padding: 4px 0;
 }
 
 @media (min-width: 640px) {
   .stat-row {
     grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
   }
 }
 
 .stat-card {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-height: 128px;
-  padding: 20px 22px 18px;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 112px;
+  padding: 18px 22px 16px;
   background: #fff;
+  border: 1px solid rgba(124, 58, 237, 0.1);
   border-radius: 16px;
-  border: 1px solid #e8e4f7;
-  box-shadow:
-    0 1px 2px rgba(30, 27, 75, 0.04),
-    0 10px 28px rgba(124, 58, 237, 0.08);
+  box-shadow: 0 6px 24px rgba(124, 58, 237, 0.06);
   transition:
-    box-shadow 0.2s ease,
-    border-color 0.2s ease,
-    transform 0.2s ease;
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.stat-card--balance {
+  background: linear-gradient(160deg, #faf5ff 0%, #fff 70%);
 }
 
 .stat-card:hover {
-  border-color: #ddd6fe;
-  box-shadow:
-    0 2px 4px rgba(30, 27, 75, 0.05),
-    0 14px 36px rgba(124, 58, 237, 0.12);
-  transform: translateY(-1px);
+  background: #fdfcff;
+  box-shadow: 0 10px 28px rgba(124, 58, 237, 0.1);
 }
 
-.stat-card:first-child {
-  background: linear-gradient(165deg, #f5f3ff 0%, #fff 52%);
-  border-color: #ddd6fe;
+.stat-card--balance:hover {
+  background: linear-gradient(160deg, #f3ebff 0%, #fff 70%);
+}
+
+.stat-main {
+  min-width: 0;
 }
 
 .stat-label {
   display: block;
   font-size: 13px;
-  font-weight: 600;
-  color: #64748b;
+  font-weight: 500;
+  color: var(--atm-text-muted);
 }
 
 .stat-value {
   display: block;
-  flex: 1;
-  margin: 8px 0 10px;
-  font-size: 30px;
+  margin-top: 6px;
+  font-size: 28px;
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
   letter-spacing: -0.03em;
   line-height: 1.15;
-  color: #1e1b4b;
+  color: var(--atm-text);
 }
 
-.stat-card:first-child .stat-value {
-  color: #6d28d9;
+.stat-card--balance .stat-value {
+  color: var(--atm-primary-dark);
 }
 
 .stat-link {
   align-self: flex-start;
-  margin-top: auto;
-  padding: 0;
-  font-size: 13px;
+  padding: 6px 14px;
+  font-size: 12px;
   font-weight: 600;
-  color: var(--atm-primary);
-  background: none;
+  line-height: 1.2;
+  color: var(--atm-primary-dark);
+  background: var(--atm-primary-light);
   border: none;
+  border-radius: 999px;
   cursor: pointer;
   text-decoration: none;
-  transition: color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .stat-link:hover {
-  color: #5b21b6;
+  color: #fff;
+  background: var(--atm-primary);
 }
 
 .plan-mini-list {
