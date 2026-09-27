@@ -1,41 +1,29 @@
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
+import { RouterView } from 'vue-router'
+import FloatingCustomerService from '@/components/layout/FloatingCustomerService.vue'
+import SiteFooter from '@/components/layout/SiteFooter.vue'
+import SiteHeader from '@/components/layout/SiteHeader.vue'
 </script>
 
 <template>
-  <el-container class="layout">
-    <el-header height="56px" class="header">
-      <RouterLink to="/" class="brand">AI Token Mall</RouterLink>
-      <nav>
-        <RouterLink to="/login">登录</RouterLink>
-        <RouterLink to="/register">注册</RouterLink>
-      </nav>
-    </el-header>
-    <el-main>
+  <div class="layout">
+    <SiteHeader />
+    <main class="main">
       <RouterView />
-    </el-main>
-  </el-container>
+    </main>
+    <SiteFooter />
+    <FloatingCustomerService />
+  </div>
 </template>
 
 <style scoped>
 .layout {
   min-height: 100vh;
-}
-.header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--el-border-color);
+  flex-direction: column;
 }
-.brand {
-  font-weight: 600;
-  font-size: 18px;
-  color: inherit;
-  text-decoration: none;
-}
-nav a {
-  margin-left: 16px;
-  color: var(--el-color-primary);
-  text-decoration: none;
+.main {
+  flex: 1;
+  background: var(--atm-bg);
 }
 </style>

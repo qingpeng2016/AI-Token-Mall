@@ -60,7 +60,7 @@ async function onSubmit() {
 
 <style scoped>
 .card {
-  max-width: 420px;
+  max-width: 378px;
   margin: 48px auto;
 }
 </style>
