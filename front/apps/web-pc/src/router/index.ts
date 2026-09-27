@@ -2,7 +2,10 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  scrollBehavior(to) {
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) return savedPosition
+    // 会员中心等同一路径只改 ?tab= 时不滚回顶部，避免侧栏/整页上下跳
+    if (from.path && to.path === from.path) return false
     if (to.hash) {
       return { el: to.hash, top: 80, behavior: 'smooth' }
     }
