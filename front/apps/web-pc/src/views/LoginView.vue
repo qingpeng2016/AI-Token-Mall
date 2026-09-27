@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import AuthShell from '@/components/auth/AuthShell.vue'
-import { userApi } from '@/api'
+import { setSessionUser } from '@/composables/useSessionUser'
+import { setAuthToken } from '@/utils/auth-cookie'
 
 const router = useRouter()
+const route = useRoute()
 const loading = ref(false)
 const form = reactive({
   email: '',
@@ -15,18 +17,35 @@ const form = reactive({
 })
 
 async function onSubmit() {
+  if (form.mode === 'email' && !form.email.trim()) {
+    ElMessage.warning('请输入邮箱')
+    return
+  }
+  if (form.mode === 'phone' && !form.phone.trim()) {
+    ElMessage.warning('请输入手机号')
+    return
+  }
+  if (!form.password.trim()) {
+    ElMessage.warning('请输入密码')
+    return
+  }
+
   loading.value = true
   try {
-    const body =
-      form.mode === 'email'
-        ? { email: form.email, password: form.password }
-        : { phone: form.phone, password: form.password }
-    const res = await userApi.login(body)
-    localStorage.setItem('atm_user', JSON.stringify(res.data))
+    await new Promise((r) => setTimeout(r, 200))
+    setAuthToken()
+    setSessionUser({
+      id: 1,
+      email: form.mode === 'email' ? form.email.trim() : null,
+      phone: form.mode === 'phone' ? form.phone.trim() : null,
+      nickname: null,
+    })
     ElMessage.success('登录成功')
-    router.push('/')
-  } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : '登录失败')
+    const redirect =
+      typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/')
+        ? route.query.redirect
+        : '/'
+    await router.push(redirect)
   } finally {
     loading.value = false
   }
@@ -34,7 +53,7 @@ async function onSubmit() {
 </script>
 
 <template>
-  <AuthShell title="欢迎回来" subtitle="登录会员中心，查看套餐、额度与订单。">
+  <AuthShell title="欢迎回来">
     <div class="auth-mode-pills">
       <button
         type="button"

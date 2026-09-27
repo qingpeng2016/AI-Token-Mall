@@ -1,7 +1,13 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { computed, onMounted, ref, watch } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import PurchaseModal from '@/components/checkout/PurchaseModal.vue'
+import {
+  getSessionUser,
+  isLoggedIn,
+  PENDING_BUY_KEY,
+} from '@/composables/useSessionUser'
 import type { UpstreamName } from '@ai-token-mall/shared'
 import CompareRowIcon from '@/components/home/CompareRowIcon.vue'
 import ProductCard from '@/components/home/ProductCard.vue'
@@ -17,11 +23,17 @@ import {
   heroChecklist,
   type CatalogProduct,
 } from '@/mocks/home'
+import { productDetailPath } from '@/mocks/productRoutes'
 
 type FilterKey = 'all' | UpstreamName | 'cursor'
 
+const router = useRouter()
+const route = useRoute()
 const filter = ref<FilterKey>('all')
 const selectedProductId = ref<number | null>(null)
+const purchaseOpen = ref(false)
+const purchaseProduct = ref<CatalogProduct | null>(null)
+const sessionUser = ref(getSessionUser())
 
 const activePillStyle = computed(() => {
   const pill = catalogFilterPills.find((p) => p.value === filter.value)
@@ -52,14 +64,57 @@ watch(
   { immediate: true },
 )
 
-function onSelectProduct(p: CatalogProduct) {
+function onOpenProduct(p: CatalogProduct) {
   selectedProductId.value = p.id
+  router.push(productDetailPath(p.sku_code))
+}
+
+function openPurchase(p: CatalogProduct) {
+  purchaseProduct.value = p
+  purchaseOpen.value = true
 }
 
 function onBuy(p: CatalogProduct) {
   selectedProductId.value = p.id
-  ElMessage.success(`「${p.card_title}」— 购买流程 UI 待接订单 / 支付`)
+  sessionUser.value = getSessionUser()
+  if (!isLoggedIn()) {
+    sessionStorage.setItem(PENDING_BUY_KEY, String(p.id))
+    ElMessage.warning('请先登录后再购买')
+    router.push({ path: '/login', query: { redirect: '/' } })
+    return
+  }
+  openPurchase(p)
 }
+
+function resumePendingPurchase() {
+  if (route.path !== '/') return
+  const raw = sessionStorage.getItem(PENDING_BUY_KEY)
+  if (!raw || !isLoggedIn()) return
+  sessionStorage.removeItem(PENDING_BUY_KEY)
+  const id = Number(raw)
+  const p = mockProducts.find((item) => item.id === id)
+  if (p) {
+    selectedProductId.value = p.id
+    openPurchase(p)
+  }
+}
+
+onMounted(() => {
+  sessionUser.value = getSessionUser()
+  resumePendingPurchase()
+})
+
+watch(
+  () => route.fullPath,
+  () => {
+    sessionUser.value = getSessionUser()
+    resumePendingPurchase()
+  },
+)
+
+watch(purchaseOpen, (open) => {
+  if (open) sessionUser.value = getSessionUser()
+})
 
 function reviewInitial(user: string) {
   return user.charAt(0)
@@ -74,7 +129,7 @@ function reviewInitial(user: string) {
           <div class="hero-center">
             <div class="rating-pill">
               <span class="stars" aria-hidden="true">★★★★★</span>
-              已为 <strong>1000+</strong> 开发者开通 · 综合评分 <strong>4.8</strong>
+              已为 <strong>1000+</strong> 用户开通 · 综合评分 <strong>4.8</strong>
             </div>
             <h1>
               国内低价开通
@@ -135,7 +190,7 @@ function reviewInitial(user: string) {
           :key="p.id"
           :product="p"
           :selected="selectedProductId === p.id"
-          @select="onSelectProduct"
+          @open="onOpenProduct"
           @buy="onBuy"
         />
       </div>
@@ -239,6 +294,11 @@ function reviewInitial(user: string) {
       </div>
     </section>
 
+    <PurchaseModal
+      v-model:open="purchaseOpen"
+      :product="purchaseProduct"
+      :user="sessionUser"
+    />
   </div>
 </template>
 

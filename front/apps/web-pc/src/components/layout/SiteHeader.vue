@@ -1,21 +1,26 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { onMounted, ref, watch } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
+import SiteLogo from '@/components/brand/SiteLogo.vue'
+import { isLoggedIn } from '@/composables/useSessionUser'
 import { isNavDropdown, navBrandDropdowns, navMegaMenu } from '@/mocks/nav'
+
+const route = useRoute()
+const loggedIn = ref(isLoggedIn())
+
+function syncAuthState() {
+  loggedIn.value = isLoggedIn()
+}
+
+onMounted(syncAuthState)
+watch(() => route.fullPath, syncAuthState)
 
 const megaOpen = ref(false)
 const openDrop = ref<string | null>(null)
-const megaTriggerRef = ref<HTMLElement | null>(null)
-const megaArrowLeft = ref(46)
 
 function openMega() {
   megaOpen.value = true
   openDrop.value = null
-  nextTick(() => {
-    if (megaTriggerRef.value) {
-      megaArrowLeft.value = megaTriggerRef.value.offsetWidth / 2
-    }
-  })
 }
 
 function closeAll() {
@@ -27,21 +32,21 @@ function openBrandDrop(id: string) {
   openDrop.value = id
   megaOpen.value = false
 }
+
+function isSpaNav(href: string) {
+  return href.startsWith('/p/') || href.startsWith('/#')
+}
 </script>
 
 <template>
   <header class="site-header">
     <div class="atm-container header-row">
-      <RouterLink to="/" class="logo">
-        <span class="logo-mark">AI</span>
-        <span class="logo-text">Token Mall</span>
-      </RouterLink>
+      <SiteLogo variant="header" />
 
       <div class="nav-shell" @mouseleave="closeAll">
         <nav class="main-nav" aria-label="主导航">
           <div class="nav-item nav-item--mega" @mouseenter="openMega">
             <a
-              ref="megaTriggerRef"
               href="#catalog"
               class="nav-link nav-link--mega"
               :class="{ 'nav-link--active': megaOpen }"
@@ -55,32 +60,44 @@ function openBrandDrop(id: string) {
               class="mega-popover"
               @mouseenter="openMega"
             >
-              <div
-                class="mega-popover-arrow"
-                aria-hidden="true"
-                :style="{ left: `${megaArrowLeft}px` }"
-              />
-              <div class="mega-grid">
-                <div v-for="col in navMegaMenu" :key="col.title" class="mega-col">
-                  <h3 class="mega-col-title">{{ col.title }}</h3>
-                  <ul class="mega-list">
-                    <li v-for="item in col.items" :key="item.label">
-                      <a
-                        :href="item.href"
-                        class="mega-link"
-                        :class="{ 'mega-link--featured': item.featured }"
-                      >
-                        <span class="mega-link-label">
-                          {{ item.label }}
-                          <span v-if="item.featured" class="mega-hot">热门</span>
-                        </span>
-                        <span class="mega-link-price">{{ item.price }}</span>
-                      </a>
-                    </li>
-                  </ul>
+              <div class="mega-popover-inner">
+                <div class="mega-grid">
+                  <div v-for="col in navMegaMenu" :key="col.title" class="mega-col">
+                    <h3 class="mega-col-title">{{ col.title }}</h3>
+                    <ul class="mega-list">
+                      <li v-for="item in col.items" :key="item.label">
+                        <RouterLink
+                          v-if="isSpaNav(item.href)"
+                          :to="item.href"
+                          class="mega-link"
+                          :class="{ 'mega-link--featured': item.featured }"
+                          @click="closeAll"
+                        >
+                          <span class="mega-link-label">
+                            {{ item.label }}
+                            <span v-if="item.featured" class="mega-hot">热门</span>
+                          </span>
+                          <span class="mega-link-price">{{ item.price }}</span>
+                        </RouterLink>
+                        <a
+                          v-else
+                          :href="item.href"
+                          class="mega-link"
+                          :class="{ 'mega-link--featured': item.featured }"
+                          @click="closeAll"
+                        >
+                          <span class="mega-link-label">
+                            {{ item.label }}
+                            <span v-if="item.featured" class="mega-hot">热门</span>
+                          </span>
+                          <span class="mega-link-price">{{ item.price }}</span>
+                        </a>
+                      </li>
+                    </ul>
+                  </div>
                 </div>
+                <a href="#catalog" class="mega-footer">全部套餐</a>
               </div>
-              <a href="#catalog" class="mega-footer">全部套餐</a>
             </div>
           </div>
 
@@ -106,20 +123,41 @@ function openBrandDrop(id: string) {
                 <span v-if="brand.hotSale" class="nav-hot-tag">热销</span>
                 <span class="nav-chevron" aria-hidden="true">▾</span>
               </button>
-              <div v-show="openDrop === brand.id" class="nav-drop-panel">
-                <a
-                  v-for="item in brand.items"
-                  :key="item.label"
-                  :href="item.href"
-                  class="nav-drop-link"
-                  :class="{ 'nav-drop-link--featured': item.featured }"
-                >
-                  <span class="nav-drop-label">
-                    {{ item.label }}
-                    <span v-if="item.featured" class="nav-drop-hot">热门</span>
-                  </span>
-                  <span v-if="item.price" class="nav-drop-price">{{ item.price }}</span>
-                </a>
+              <div
+                v-show="openDrop === brand.id"
+                class="nav-drop-panel"
+                @mouseenter="openBrandDrop(brand.id)"
+              >
+                <div class="nav-drop-panel-inner">
+                  <template v-for="item in brand.items" :key="item.label">
+                    <RouterLink
+                      v-if="isSpaNav(item.href)"
+                      :to="item.href"
+                      class="nav-drop-link"
+                      :class="{ 'nav-drop-link--featured': item.featured }"
+                      @click="closeAll"
+                    >
+                      <span class="nav-drop-label">
+                        {{ item.label }}
+                        <span v-if="item.featured" class="nav-drop-hot">热门</span>
+                      </span>
+                      <span v-if="item.price" class="nav-drop-price">{{ item.price }}</span>
+                    </RouterLink>
+                    <a
+                      v-else
+                      :href="item.href"
+                      class="nav-drop-link"
+                      :class="{ 'nav-drop-link--featured': item.featured }"
+                      @click="closeAll"
+                    >
+                      <span class="nav-drop-label">
+                        {{ item.label }}
+                        <span v-if="item.featured" class="nav-drop-hot">热门</span>
+                      </span>
+                      <span v-if="item.price" class="nav-drop-price">{{ item.price }}</span>
+                    </a>
+                  </template>
+                </div>
               </div>
             </div>
           </template>
@@ -129,8 +167,13 @@ function openBrandDrop(id: string) {
       </div>
 
       <div class="actions">
-        <RouterLink to="/login" class="link-muted">登录</RouterLink>
-        <RouterLink to="/register" class="atm-btn-primary btn-sm">注册</RouterLink>
+        <template v-if="loggedIn">
+          <RouterLink to="/member" class="atm-btn-primary btn-sm">会员中心</RouterLink>
+        </template>
+        <template v-else>
+          <RouterLink to="/login" class="link-muted">登录</RouterLink>
+          <RouterLink to="/register" class="atm-btn-primary btn-sm">注册</RouterLink>
+        </template>
       </div>
     </div>
   </header>
@@ -150,33 +193,6 @@ function openBrandDrop(id: string) {
   align-items: center;
   gap: 16px;
   height: 56px;
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  text-decoration: none;
-  flex-shrink: 0;
-}
-
-.logo-mark {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 800;
-  color: #fff;
-  background: var(--atm-gradient);
-  border-radius: 8px;
-}
-
-.logo-text {
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--atm-text);
 }
 
 .nav-shell {
@@ -257,10 +273,18 @@ function openBrandDrop(id: string) {
 
 .nav-drop-panel {
   position: absolute;
-  top: calc(100% + 8px);
+  top: 100%;
   left: 50%;
   transform: translateX(-50%);
   min-width: 240px;
+  padding-top: 10px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  z-index: 210;
+}
+
+.nav-drop-panel-inner {
   padding: 6px;
   background: #fff;
   border: 1px solid #e8eaf0;
@@ -268,20 +292,6 @@ function openBrandDrop(id: string) {
   box-shadow:
     0 4px 6px rgba(30, 27, 75, 0.04),
     0 20px 48px rgba(30, 27, 75, 0.14);
-  z-index: 210;
-}
-
-.nav-drop-panel::before {
-  content: '';
-  position: absolute;
-  top: -6px;
-  left: 50%;
-  transform: translateX(-50%) rotate(45deg);
-  width: 10px;
-  height: 10px;
-  background: #fff;
-  border-left: 1px solid #e8eaf0;
-  border-top: 1px solid #e8eaf0;
 }
 
 .nav-drop-link {
@@ -338,12 +348,20 @@ function openBrandDrop(id: string) {
   color: rgba(255, 255, 255, 0.95);
 }
 
-/* 浮层弹窗：锚定在「套餐购买」下，箭头对准触发按钮 */
+/* 浮层：顶部透明 padding 过桥，避免鼠标从菜单项滑向面板时误触发 mouseleave */
 .mega-popover {
   position: absolute;
-  top: calc(100% + 10px);
+  top: 100%;
   left: 0;
   width: min(1064px, calc(100vw - 40px));
+  padding-top: 10px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  z-index: 210;
+}
+
+.mega-popover-inner {
   padding: 22px 26px 18px;
   background: #fff;
   border: 1px solid #e8eaf0;
@@ -351,27 +369,6 @@ function openBrandDrop(id: string) {
   box-shadow:
     0 4px 8px rgba(30, 27, 75, 0.04),
     0 24px 64px rgba(30, 27, 75, 0.16);
-  z-index: 210;
-}
-
-.mega-popover::before {
-  content: '';
-  position: absolute;
-  top: -18px;
-  left: 0;
-  right: 0;
-  height: 18px;
-}
-
-.mega-popover-arrow {
-  position: absolute;
-  top: -6px;
-  width: 12px;
-  height: 12px;
-  background: #fff;
-  border-left: 1px solid #e8eaf0;
-  border-top: 1px solid #e8eaf0;
-  transform: translateX(-50%) rotate(45deg);
 }
 
 .mega-grid {

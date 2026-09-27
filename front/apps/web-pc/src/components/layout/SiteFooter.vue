@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
+import SiteLogo from '@/components/brand/SiteLogo.vue'
+import { SITE_NAME } from '@/constants/brand'
 
 const chatgptLinks = [
   { label: 'GPT Go', href: '#catalog' },
@@ -44,7 +45,7 @@ const aboutLinks = [
   <footer class="site-footer">
     <div class="atm-container footer-grid">
       <div class="footer-brand">
-        <RouterLink to="/" class="footer-logo">AI Token Mall</RouterLink>
+        <SiteLogo variant="footer" class="footer-logo" />
       </div>
 
       <div v-for="(col, idx) in [
@@ -65,7 +66,7 @@ const aboutLinks = [
     <div class="footer-legal">
       <div class="atm-container footer-legal-inner">
         <p>
-          © 2026 AI Token Mall · 独立第三方 AI 服务平台，与 OpenAI 等商标持有人无隶属或授权关系
+          © 2026 {{ SITE_NAME }} · 独立第三方 AI 服务平台，与 OpenAI 等商标持有人无隶属或授权关系
         </p>
         <p class="footer-legal-muted">
           ChatGPT、OpenAI 为 OpenAI, Inc. 商标；名称仅作描述性（nominative）说明用途。
@@ -109,13 +110,8 @@ const aboutLinks = [
 }
 
 .footer-logo {
-  display: inline-block;
+  display: inline-flex;
   margin-bottom: 12px;
-  font-size: 20px;
-  font-weight: 700;
-  color: #f8fafc;
-  text-decoration: none;
-  letter-spacing: -0.02em;
 }
 
 .footer-col-title {

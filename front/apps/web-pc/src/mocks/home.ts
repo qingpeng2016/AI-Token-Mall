@@ -51,7 +51,7 @@ export const heroChecklist = [
 
 export const compareSection = {
   title: '我们的能力',
-  mallName: 'AI Token Mall',
+  mallName: 'AI Plan',
   diyName: '官网直购',
   mallCta: '支付宝 / 微信 · 低价开通',
   diyCta: '查看全部套餐 →',

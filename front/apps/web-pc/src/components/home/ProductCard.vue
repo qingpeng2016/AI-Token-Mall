@@ -10,7 +10,7 @@ defineProps<{
 
 const emit = defineEmits<{
   buy: [product: CatalogProduct]
-  select: [product: CatalogProduct]
+  open: [product: CatalogProduct]
 }>()
 </script>
 
@@ -20,9 +20,9 @@ const emit = defineEmits<{
     :class="{ 'sku-card--selected': selected }"
     role="button"
     tabindex="0"
-    @click="emit('select', product)"
-    @keydown.enter.prevent="emit('select', product)"
-    @keydown.space.prevent="emit('select', product)"
+    @click="emit('open', product)"
+    @keydown.enter.prevent="emit('open', product)"
+    @keydown.space.prevent="emit('open', product)"
   >
     <span v-if="product.flagship" class="sku-badge sku-badge--flag">旗舰</span>
     <span v-else-if="product.featured" class="sku-badge sku-badge--rec">推荐</span>

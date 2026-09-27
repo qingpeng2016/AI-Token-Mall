@@ -1,8 +1,9 @@
 import { createUserApi } from '@ai-token-mall/shared'
+import { getAuthToken } from '@/utils/auth-cookie'
 
 const baseURL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 export const userApi = createUserApi({
   baseURL,
-  getToken: () => localStorage.getItem('atm_token'),
+  getToken: () => getAuthToken(),
 })

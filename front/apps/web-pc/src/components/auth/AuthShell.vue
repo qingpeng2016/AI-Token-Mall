@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
+import SiteLogo from '@/components/brand/SiteLogo.vue'
+import { SITE_NAME } from '@/constants/brand'
 
 defineProps<{
   title: string
@@ -16,10 +18,7 @@ defineProps<{
         <span class="grid-lines" />
       </div>
       <div class="auth-brand-inner">
-        <RouterLink to="/" class="auth-brand-logo">
-          <span class="auth-brand-mark">AI</span>
-          <span class="auth-brand-name">AI 惠购</span>
-        </RouterLink>
+        <SiteLogo variant="auth" class="auth-brand-logo" />
 
         <p class="auth-brand-eyebrow">ChatGPT · Claude · Cursor</p>
         <h2 class="auth-brand-headline">国内低价<br />自助开通 AI 套餐</h2>
@@ -38,21 +37,9 @@ defineProps<{
           </li>
           <li>
             <span class="check" aria-hidden="true">✓</span>
-            1000+ 开发者 · 综合评分 4.8
+            1000+ 用户已开通
           </li>
         </ul>
-
-        <div class="auth-brand-stats">
-          <div class="stat">
-            <strong>1000+</strong>
-            <span>已开通</span>
-          </div>
-          <div class="stat-div" aria-hidden="true" />
-          <div class="stat">
-            <strong>4.8</strong>
-            <span>用户评分</span>
-          </div>
-        </div>
 
         <RouterLink to="/" class="auth-brand-back">← 返回首页选购套餐</RouterLink>
       </div>
@@ -70,7 +57,7 @@ defineProps<{
       </div>
 
       <footer class="auth-main-foot">
-        <span>© AI 惠购</span>
+        <span>© {{ SITE_NAME }}</span>
         <span class="dot" aria-hidden="true">·</span>
         <a href="/#faq">帮助与 FAQ</a>
       </footer>
@@ -168,45 +155,19 @@ defineProps<{
   }
 
   .auth-brand-list,
-  .auth-brand-stats,
   .auth-brand-back {
     display: none;
   }
 }
 
 .auth-brand-logo {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
   margin-bottom: 40px;
-  text-decoration: none;
 }
 
 @media (max-width: 960px) {
   .auth-brand-logo {
     margin-bottom: 20px;
   }
-}
-
-.auth-brand-mark {
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 800;
-  color: #4c1d95;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-}
-
-.auth-brand-name {
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: #fff;
 }
 
 .auth-brand-eyebrow {
@@ -264,42 +225,6 @@ defineProps<{
   color: #4c1d95;
   background: rgba(255, 255, 255, 0.95);
   border-radius: 50%;
-}
-
-.auth-brand-stats {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 20px 24px;
-  margin-bottom: 32px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 16px;
-  backdrop-filter: blur(8px);
-}
-
-.stat {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.stat strong {
-  font-size: 28px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1;
-}
-
-.stat span {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.75);
-}
-
-.stat-div {
-  width: 1px;
-  height: 40px;
-  background: rgba(255, 255, 255, 0.25);
 }
 
 .auth-brand-back {
