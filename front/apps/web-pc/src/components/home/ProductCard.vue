@@ -33,7 +33,7 @@ const emit = defineEmits<{
     <ul class="sku-features">
       <li v-for="(f, i) in product.card_features" :key="i">
         <span class="check" aria-hidden="true">✓</span>
-        {{ f }}
+        <span class="feature-text">{{ f }}</span>
       </li>
     </ul>
     <button type="button" class="sku-buy" @click.stop="emit('buy', product)">立即购买</button>
@@ -121,15 +121,20 @@ const emit = defineEmits<{
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  margin-bottom: 8px;
-  font-size: 13px;
-  color: #64748b;
-  line-height: 1.45;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+.sku-features .feature-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--atm-text);
 }
 .check {
   flex-shrink: 0;
+  margin-top: 1px;
+  font-size: 14px;
   color: #22c55e;
-  font-weight: 700;
+  font-weight: 800;
 }
 .sku-buy {
   width: 100%;

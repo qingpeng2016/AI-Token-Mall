@@ -3,14 +3,12 @@ export const enterpriseHero = {
   title: '企业采购与团队开通',
   lead:
     '为多账号、多部门统一采购 ChatGPT、Claude、Cursor 等 AI 订阅。支持对公转账、增值税发票、合同与专属客服，开通到员工自有账号，权限清晰可审计。',
-  primaryCta: { label: '提交采购需求', hash: '#contact' },
-  secondaryCta: { label: '查看套餐目录', to: '/#catalog' },
 }
 
 export const enterpriseStats = [
   { value: '500+', label: '服务企业 / 团队' },
-  { value: '48h', label: '典型对公到账周期' },
-  { value: '6%', label: '开票服务费（可选）' },
+  { value: '9 折起', label: '10 席以上批量优惠' },
+  { value: '阶梯价', label: '席位越多单价越低' },
   { value: '1 对 1', label: '企业顾问跟进' },
 ]
 

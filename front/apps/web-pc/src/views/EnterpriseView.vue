@@ -6,7 +6,6 @@ import EnterpriseBenefitIcon from '@/components/enterprise/EnterpriseBenefitIcon
 import { SITE_NAME } from '@/constants/brand'
 import {
   enterpriseBenefits,
-  enterpriseContact,
   enterpriseFaqs,
   enterpriseHero,
   enterpriseInvoiceNotes,
@@ -17,16 +16,17 @@ import {
 
 const submitting = ref(false)
 
+const selectedPlanId = ref(enterprisePlans[0]?.id ?? '')
+
+function selectPlan(planId: string) {
+  selectedPlanId.value = planId
+}
+
 const form = reactive({
   company: '',
   contact: '',
   phone: '',
   email: '',
-  seats: '',
-  products: '',
-  needInvoice: true,
-  needContract: false,
-  message: '',
 })
 
 function scrollToContact() {
@@ -46,9 +46,6 @@ async function onSubmit() {
   form.contact = ''
   form.phone = ''
   form.email = ''
-  form.seats = ''
-  form.products = ''
-  form.message = ''
 }
 </script>
 
@@ -60,24 +57,32 @@ async function onSubmit() {
           <span class="ent-eyebrow">{{ enterpriseHero.eyebrow }}</span>
           <h1 class="ent-title">{{ enterpriseHero.title }}</h1>
           <p class="ent-lead">{{ enterpriseHero.lead }}</p>
-          <div class="ent-hero-actions">
-            <button type="button" class="atm-btn-primary" @click="scrollToContact">
-              {{ enterpriseHero.primaryCta.label }}
-            </button>
-            <RouterLink :to="enterpriseHero.secondaryCta.to" class="atm-btn-ghost ent-ghost">
-              {{ enterpriseHero.secondaryCta.label }}
-            </RouterLink>
+        </div>
+        <form id="contact" class="ent-form ent-hero-form" @submit.prevent="onSubmit">
+          <div class="ent-form-row">
+            <label>
+              <span>公司名称 *</span>
+              <input v-model="form.company" type="text" placeholder="与开票抬头一致" />
+            </label>
+            <label>
+              <span>联系人 *</span>
+              <input v-model="form.contact" type="text" placeholder="采购 / IT 负责人" />
+            </label>
           </div>
-        </div>
-        <div class="ent-hero-panel" aria-hidden="true">
-          <p class="ent-panel-label">{{ SITE_NAME }} · 企业通道</p>
-          <ul class="ent-panel-list">
-            <li>席位清单 · CSV / 表格导入</li>
-            <li>订单汇总 · 管理员会员中心</li>
-            <li>续费提醒 · 到期前 7 天</li>
-            <li>开票 6% · 会员中心提交抬头</li>
-          </ul>
-        </div>
+          <div class="ent-form-row">
+            <label>
+              <span>手机 *</span>
+              <input v-model="form.phone" type="tel" placeholder="用于顾问回电" />
+            </label>
+            <label>
+              <span>邮箱</span>
+              <input v-model="form.email" type="email" placeholder="接收报价单" />
+            </label>
+          </div>
+          <button type="submit" class="atm-btn-primary ent-submit" :disabled="submitting">
+            {{ submitting ? '提交中…' : '提交需求' }}
+          </button>
+        </form>
       </div>
     </section>
 
@@ -86,6 +91,46 @@ async function onSubmit() {
         <div v-for="s in enterpriseStats" :key="s.label" class="ent-stat">
           <strong class="ent-stat-value">{{ s.value }}</strong>
           <span class="ent-stat-label">{{ s.label }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="plans" class="ent-section">
+      <div class="atm-container">
+        <header class="ent-section-head">
+          <h2>方案参考</h2>
+          <p>以下为常见档位，实际价格以 SKU 目录与席位数量为准。</p>
+        </header>
+        <div class="ent-plans">
+          <article
+            v-for="plan in enterprisePlans"
+            :key="plan.id"
+            class="ent-plan"
+            :class="{ 'ent-plan--featured': selectedPlanId === plan.id }"
+            role="button"
+            tabindex="0"
+            @click="selectPlan(plan.id)"
+            @keydown.enter.prevent="selectPlan(plan.id)"
+            @keydown.space.prevent="selectPlan(plan.id)"
+          >
+            <div class="ent-plan-top">
+              <h3>{{ plan.name }}</h3>
+              <span v-if="plan.badge" class="ent-plan-badge">{{ plan.badge }}</span>
+            </div>
+            <p class="ent-plan-price">{{ plan.priceHint }}</p>
+            <p class="ent-plan-seats">{{ plan.seats }}</p>
+            <ul>
+              <li v-for="f in plan.features" :key="f">{{ f }}</li>
+            </ul>
+            <p class="ent-plan-cta">{{ plan.cta }}</p>
+            <button
+              type="button"
+              class="ent-plan-btn"
+              @click.stop="scrollToContact"
+            >
+              获取报价
+            </button>
+          </article>
         </div>
       </div>
     </section>
@@ -126,35 +171,6 @@ async function onSubmit() {
       </div>
     </section>
 
-    <section class="ent-section">
-      <div class="atm-container">
-        <header class="ent-section-head">
-          <h2>方案参考</h2>
-          <p>以下为常见档位，实际价格以 SKU 目录与席位数量为准。</p>
-        </header>
-        <div class="ent-plans">
-          <article
-            v-for="plan in enterprisePlans"
-            :key="plan.id"
-            class="ent-plan"
-            :class="{ 'ent-plan--featured': plan.featured }"
-          >
-            <div class="ent-plan-top">
-              <h3>{{ plan.name }}</h3>
-              <span v-if="plan.badge" class="ent-plan-badge">{{ plan.badge }}</span>
-            </div>
-            <p class="ent-plan-price">{{ plan.priceHint }}</p>
-            <p class="ent-plan-seats">{{ plan.seats }}</p>
-            <ul>
-              <li v-for="f in plan.features" :key="f">{{ f }}</li>
-            </ul>
-            <p class="ent-plan-cta">{{ plan.cta }}</p>
-            <button type="button" class="ent-plan-btn" @click="scrollToContact">获取报价</button>
-          </article>
-        </div>
-      </div>
-    </section>
-
     <section id="invoice" class="ent-section">
       <div class="atm-container ent-invoice-grid">
         <div>
@@ -177,75 +193,6 @@ async function onSubmit() {
           </dl>
           <p class="ent-aside-note">正式账号以顾问邮件 / 报价单为准，切勿向私人账户转账。</p>
         </aside>
-      </div>
-    </section>
-
-    <section id="contact" class="ent-section ent-contact">
-      <div class="atm-container ent-contact-grid">
-        <div class="ent-contact-info">
-          <header class="ent-section-head ent-section-head--left">
-            <h2>提交采购需求</h2>
-            <p>留下信息即可，无需先注册。已有账号可登录后在会员中心查看历史订单。</p>
-          </header>
-          <ul class="ent-contact-meta">
-            <li><strong>邮箱</strong> {{ enterpriseContact.email }}</li>
-            <li><strong>服务时间</strong> {{ enterpriseContact.hours }}</li>
-            <li>{{ enterpriseContact.wechatHint }}</li>
-          </ul>
-        </div>
-        <form class="ent-form" @submit.prevent="onSubmit">
-          <div class="ent-form-row">
-            <label>
-              <span>公司名称 *</span>
-              <input v-model="form.company" type="text" placeholder="与开票抬头一致" />
-            </label>
-            <label>
-              <span>联系人 *</span>
-              <input v-model="form.contact" type="text" placeholder="采购 / IT 负责人" />
-            </label>
-          </div>
-          <div class="ent-form-row">
-            <label>
-              <span>手机 *</span>
-              <input v-model="form.phone" type="tel" placeholder="用于顾问回电" />
-            </label>
-            <label>
-              <span>邮箱</span>
-              <input v-model="form.email" type="email" placeholder="接收报价单" />
-            </label>
-          </div>
-          <div class="ent-form-row">
-            <label>
-              <span>预计席位</span>
-              <input v-model="form.seats" type="text" placeholder="如 20 个 Plus" />
-            </label>
-            <label>
-              <span>目标产品</span>
-              <input v-model="form.products" type="text" placeholder="ChatGPT / Claude / Cursor…" />
-            </label>
-          </div>
-          <div class="ent-form-checks">
-            <label class="ent-check">
-              <input v-model="form.needInvoice" type="checkbox" />
-              需要增值税发票
-            </label>
-            <label class="ent-check">
-              <input v-model="form.needContract" type="checkbox" />
-              需要合同 / 报价单
-            </label>
-          </div>
-          <label class="ent-form-full">
-            <span>补充说明</span>
-            <textarea
-              v-model="form.message"
-              rows="4"
-              placeholder="期望开通时间、账号清单形式、票种等"
-            />
-          </label>
-          <button type="submit" class="atm-btn-primary ent-submit" :disabled="submitting">
-            {{ submitting ? '提交中…' : '提交需求' }}
-          </button>
-        </form>
       </div>
     </section>
 
@@ -278,12 +225,12 @@ async function onSubmit() {
 .ent-hero-inner {
   display: grid;
   gap: 32px;
-  align-items: center;
+  align-items: start;
 }
 
 @media (min-width: 960px) {
   .ent-hero-inner {
-    grid-template-columns: 1.15fr 0.85fr;
+    grid-template-columns: 1.05fr 0.95fr;
     gap: 40px;
   }
 }
@@ -316,62 +263,40 @@ async function onSubmit() {
   color: rgba(255, 255, 255, 0.88);
 }
 
-.ent-hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.ent-ghost {
-  color: #fff !important;
-  border-color: rgba(255, 255, 255, 0.35) !important;
-  background: rgba(255, 255, 255, 0.06) !important;
-}
-
-.ent-ghost:hover {
-  border-color: rgba(255, 255, 255, 0.55) !important;
-  background: rgba(255, 255, 255, 0.12) !important;
-}
-
-.ent-hero-panel {
-  padding: 24px 26px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 20px;
-  backdrop-filter: blur(8px);
-}
-
-.ent-panel-label {
-  margin: 0 0 16px;
-  font-size: 13px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.75);
-}
-
-.ent-panel-list {
+.ent-hero-form {
   margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 14px;
-  line-height: 1.65;
-  color: rgba(255, 255, 255, 0.92);
+  padding: 22px 20px;
+  box-shadow: 0 20px 50px rgba(15, 10, 40, 0.35);
 }
 
-.ent-panel-list li {
-  position: relative;
-  padding-left: 18px;
-  margin-bottom: 10px;
+.ent-hero-form .ent-submit {
+  margin-top: 20px;
 }
 
-.ent-panel-list li::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0.55em;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #c4b5fd;
+@media (min-width: 960px) {
+  .ent-hero-form {
+    padding: 24px 22px;
+  }
+
+  .ent-hero-form .ent-form-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .ent-hero-form .ent-form-checks {
+    margin-bottom: 12px;
+  }
+
+  .ent-hero-form .ent-form-full {
+    margin-bottom: 16px;
+  }
+}
+
+@media (min-width: 1100px) {
+  .ent-hero-form .ent-form-row {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .ent-stats {
@@ -571,6 +496,11 @@ async function onSubmit() {
   background: #fff;
   border-radius: 18px;
   border: 1px solid rgba(124, 58, 237, 0.12);
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 
 .ent-plan--featured {
@@ -726,36 +656,6 @@ async function onSubmit() {
   color: #b45309;
 }
 
-.ent-contact-grid {
-  display: grid;
-  gap: 36px;
-}
-
-@media (min-width: 900px) {
-  .ent-contact-grid {
-    grid-template-columns: 0.95fr 1.05fr;
-    align-items: start;
-  }
-}
-
-.ent-contact-meta {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 14px;
-  line-height: 1.75;
-  color: var(--atm-text-muted);
-}
-
-.ent-contact-meta li {
-  margin-bottom: 10px;
-}
-
-.ent-contact-meta strong {
-  color: var(--atm-text);
-  margin-right: 8px;
-}
-
 .ent-form {
   padding: 28px 26px;
   background: #fff;
@@ -835,7 +735,7 @@ async function onSubmit() {
 
 .ent-faq-title {
   margin: 0 0 24px;
-  text-align: center;
+  text-align: left;
   font-size: 1.35rem;
   font-weight: 800;
 }
@@ -843,7 +743,6 @@ async function onSubmit() {
 .ent-faq {
   margin: 0;
   max-width: 720px;
-  margin-inline: auto;
 }
 
 .ent-faq-item {

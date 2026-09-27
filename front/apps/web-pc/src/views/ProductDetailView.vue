@@ -60,10 +60,12 @@ const openFaqs = ref<string[]>([])
           <ul class="hero-bullets">
             <li v-for="(b, i) in detail.heroBullets" :key="i">
               <span class="check" aria-hidden="true">✓</span>
-              {{ b }}
+              <span class="feature-text">{{ b }}</span>
             </li>
           </ul>
-          <a href="#buy-card" class="atm-btn-primary hero-scroll">查看套餐与价格</a>
+          <button type="button" class="atm-btn-primary hero-scroll" @click="onBuy(product)">
+            立即购买
+          </button>
           <div class="hero-tags">
             <span v-for="(t, i) in detail.heroTags" :key="i">{{ t }}</span>
           </div>
@@ -74,9 +76,9 @@ const openFaqs = ref<string[]>([])
           <p class="buy-card-price">{{ formatCnyFromCents(product.price_cents) }}</p>
           <p class="buy-card-desc">{{ product.card_subtitle }}</p>
           <ul class="buy-card-features">
-            <li v-for="(f, i) in product.card_features.slice(0, 3)" :key="i">
+            <li v-for="(f, i) in product.card_features" :key="i">
               <span class="check" aria-hidden="true">✓</span>
-              {{ f }}
+              <span class="feature-text">{{ f }}</span>
             </li>
           </ul>
           <button type="button" class="buy-card-cta" @click="onBuy(product)">立即购买</button>
@@ -94,13 +96,13 @@ const openFaqs = ref<string[]>([])
         </div>
       </section>
 
-      <section class="section">
+      <section v-if="detail.compareTitle && detail.compareBody" class="section">
         <h2 class="section-title">{{ detail.compareTitle }}</h2>
         <p class="compare-body">{{ detail.compareBody }}</p>
       </section>
 
       <section class="section">
-        <h2 class="section-title">国内怎么开通（三步）</h2>
+        <h2 class="section-title">怎么开通</h2>
         <ol class="steps">
           <li v-for="(s, i) in detail.steps" :key="i">
             <span class="step-num">{{ i + 1 }}</span>
@@ -110,17 +112,6 @@ const openFaqs = ref<string[]>([])
             </div>
           </li>
         </ol>
-      </section>
-
-      <section class="cta-band">
-        <h2>{{ detail.ctaTitle }}</h2>
-        <p>{{ detail.ctaSubtitle }}</p>
-        <div class="cta-actions">
-          <button type="button" class="cta-btn cta-btn--light" @click="onBuy(product)">
-            立即购买
-          </button>
-          <RouterLink to="/#catalog" class="cta-btn cta-btn--ghost">看全部套餐</RouterLink>
-        </div>
       </section>
 
       <section class="section">
@@ -216,17 +207,24 @@ const openFaqs = ref<string[]>([])
 
 .hero-bullets li {
   display: flex;
+  align-items: flex-start;
   gap: 10px;
-  margin-bottom: 10px;
-  font-size: 14px;
-  line-height: 1.5;
-  color: #475569;
+  margin-bottom: 12px;
+  line-height: 1.45;
+}
+
+.hero-bullets .feature-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--atm-text);
 }
 
 .check {
   flex-shrink: 0;
+  margin-top: 2px;
+  font-size: 15px;
   color: #22c55e;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .hero-scroll {
@@ -279,16 +277,29 @@ const openFaqs = ref<string[]>([])
 
 .buy-card-features {
   margin: 0 0 20px;
-  padding: 0;
+  padding: 12px 14px;
   list-style: none;
-  font-size: 13px;
-  color: #64748b;
+  background: #f8f7ff;
+  border-radius: 12px;
+  border: 1px solid #ede9fe;
 }
 
 .buy-card-features li {
   display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.buy-card-features li:last-child {
+  margin-bottom: 0;
+}
+
+.buy-card-features .feature-text {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--atm-text);
 }
 
 .buy-card-cta {
@@ -413,59 +424,6 @@ const openFaqs = ref<string[]>([])
   font-size: 14px;
   line-height: 1.5;
   color: var(--atm-text-muted);
-}
-
-.cta-band {
-  margin-bottom: 40px;
-  padding: 36px 28px;
-  text-align: center;
-  color: #fff;
-  background: linear-gradient(135deg, #1e1b4b 0%, #4c1d95 55%, #6366f1 100%);
-  border-radius: 20px;
-}
-
-.cta-band h2 {
-  margin: 0 0 10px;
-  font-size: 24px;
-  font-weight: 800;
-}
-
-.cta-band p {
-  margin: 0 0 24px;
-  font-size: 14px;
-  line-height: 1.6;
-  color: rgba(255, 255, 255, 0.85);
-}
-
-.cta-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 12px;
-}
-
-.cta-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px 24px;
-  font-size: 15px;
-  font-weight: 600;
-  text-decoration: none;
-  border-radius: 999px;
-  cursor: pointer;
-  border: none;
-}
-
-.cta-btn--light {
-  color: var(--atm-primary);
-  background: #fff;
-}
-
-.cta-btn--ghost {
-  color: #fff;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.45);
 }
 
 .faq-collapse {

@@ -21,6 +21,7 @@ import {
   reviews,
   trustStats,
   heroChecklist,
+  SUB_KEY_HERO_LINE,
   type CatalogProduct,
 } from '@/mocks/home'
 import { productDetailPath } from '@/mocks/productRoutes'
@@ -132,18 +133,14 @@ function reviewInitial(user: string) {
               <span class="grad">ChatGPT / Claude / Cursor</span>
               等 AI 服务
             </h1>
+            <p class="hero-highlight">{{ SUB_KEY_HERO_LINE }}</p>
             <p class="sub">
               <strong>支付宝 / 微信</strong>自助下单；团队批量与开票见
               <RouterLink to="/enterprise">企业采购</RouterLink>。
             </p>
             <div class="hero-actions">
               <a href="#catalog" class="atm-btn-primary">查看全部套餐 →</a>
-              <RouterLink to="/login" class="atm-btn-ghost">已有账号 · 会员中心</RouterLink>
               <RouterLink to="/enterprise" class="atm-btn-ghost">企业采购 / 开票</RouterLink>
-            </div>
-            <div class="hero-links">
-              <a href="#">工具中心</a>
-              <a href="#">使用说明</a>
             </div>
             <ul class="hero-checks">
               <li v-for="(item, i) in heroChecklist" :key="i">{{ item }}</li>
@@ -333,6 +330,17 @@ function reviewInitial(user: string) {
   background-clip: text;
   color: transparent;
 }
+.hero-highlight {
+  margin: 0 auto 14px;
+  max-width: 640px;
+  font-size: clamp(18px, 2.4vw, 20px);
+  font-weight: 600;
+  line-height: 1.65;
+  background: var(--atm-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
 .sub {
   max-width: 593px;
   margin: 0 auto 24px;
@@ -354,21 +362,6 @@ function reviewInitial(user: string) {
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 16px;
-}
-.hero-links {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-  margin-bottom: 20px;
-  font-size: 14px;
-}
-.hero-links a {
-  color: var(--atm-primary);
-  text-decoration: none;
-  font-weight: 500;
-}
-.hero-links a:hover {
-  text-decoration: underline;
 }
 .hero-checks {
   display: flex;

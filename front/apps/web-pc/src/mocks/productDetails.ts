@@ -1,4 +1,11 @@
 import type { CatalogProduct } from '@/mocks/home'
+import { subKeyShareFeature } from '@/mocks/home'
+
+function appendShareBullet(bullets: string[], seats: number): string[] {
+  const line = subKeyShareFeature(seats)
+  if (bullets.some((f) => f.includes('人共用'))) return bullets
+  return [...bullets, line]
+}
 
 export type ProductDetailContent = {
   eyebrow: string
@@ -7,8 +14,8 @@ export type ProductDetailContent = {
   heroBullets: string[]
   heroTags: string[]
   audiences: { title: string; desc: string }[]
-  compareTitle: string
-  compareBody: string
+  compareTitle?: string
+  compareBody?: string
   steps: { title: string; desc: string }[]
   ctaTitle: string
   ctaSubtitle: string
@@ -79,8 +86,6 @@ export function getProductDetail(slug: string, product: CatalogProduct): Product
       { title: '开发者', desc: '需要稳定额度与明确套餐边界。' },
       { title: '小团队', desc: '可先单账号试用，批量走企业采购。' },
     ],
-    compareTitle: '怎么选档位？',
-    compareBody: `当前页为「${product.marketing_tier}」。若用量更大，可在首页对比更高档位；轻度使用可选更低档套餐。`,
     steps: [
       { title: '选择套餐', desc: '确认本页套餐与价格，点击立即购买。' },
       { title: '登录并支付', desc: '使用支付宝或微信完成付款。' },
@@ -110,5 +115,14 @@ export function getProductDetail(slug: string, product: CatalogProduct): Product
   }
 
   const patch = OVERRIDES[slug]
-  return patch ? { ...base, ...patch, audiences: patch.audiences ?? base.audiences } : base
+  const merged = patch
+    ? { ...base, ...patch, audiences: patch.audiences ?? base.audiences }
+    : base
+  return {
+    ...merged,
+    heroBullets: appendShareBullet(
+      merged.heroBullets ?? base.heroBullets,
+      product.share_seats,
+    ),
+  }
 }
