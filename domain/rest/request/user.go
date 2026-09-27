@@ -3,8 +3,8 @@ package request
 type RegisterUserReq struct {
 	Email           string `json:"email"`
 	Phone           string `json:"phone"`
-	Password        string `json:"password" binding:"required,min=8"`
-	ConfirmPassword string `json:"confirm_password" binding:"required,min=8"`
+	Password        string `json:"password" binding:"required,min=6"`
+	ConfirmPassword string `json:"confirm_password" binding:"required,min=6"`
 }
 
 type LoginUserReq struct {

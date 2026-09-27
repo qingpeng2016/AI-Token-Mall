@@ -23,7 +23,7 @@ defineProps<{
         <p class="auth-brand-eyebrow">ChatGPT · Claude · Cursor</p>
         <h2 class="auth-brand-headline">国内低价<br />自助开通 AI 套餐</h2>
         <p class="auth-brand-lead">
-          注册会员后可在线下单，额度与订单在会员中心一目了然。
+          注册会员后可在线下单，额度与订单在会员中心
         </p>
 
         <ul class="auth-brand-list">

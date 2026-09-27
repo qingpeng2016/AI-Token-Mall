@@ -2,10 +2,13 @@ package coreservice
 
 import (
 	"context"
+	"errors"
 	"net/mail"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/go-sql-driver/mysql"
 
 	"github.com/qingpeng2016/ai-token-mall/common/auth"
 	"github.com/qingpeng2016/ai-token-mall/common/errorx"
@@ -79,6 +82,10 @@ func (s *UserService) Register(ctx context.Context, req *request.RegisterUserReq
 		u.Phone = &phone
 	}
 	if err := s.users.Create(ctx, nil, u); err != nil {
+		var mysqlErr *mysql.MySQLError
+		if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
+			return nil, errorx.ErrUserExists
+		}
 		return nil, errorx.ErrDbError
 	}
 	return toUserProfile(u), nil

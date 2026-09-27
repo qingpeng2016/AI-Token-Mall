@@ -22,7 +22,7 @@ func NewUserHandler(userSvc *coreservice.UserService) *UserHandler {
 func (h *UserHandler) Register(c *gin.Context) {
 	var req request.RegisterUserReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ResponseErr(c, err)
+		response.ResponseBindErr(c, err)
 		return
 	}
 	data, err := h.userSvc.Register(c.Request.Context(), &req)
@@ -37,7 +37,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 func (h *UserHandler) Login(c *gin.Context) {
 	var req request.LoginUserReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ResponseErr(c, err)
+		response.ResponseBindErr(c, err)
 		return
 	}
 	data, err := h.userSvc.Login(c.Request.Context(), &req)

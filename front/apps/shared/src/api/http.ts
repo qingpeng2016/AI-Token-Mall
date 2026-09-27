@@ -34,12 +34,16 @@ export function createHttpClient(options: HttpClientOptions) {
       throw new Error(`Invalid JSON: ${text.slice(0, 200)}`)
     }
 
-    const envelope = parsed as { code?: number; message?: string }
+    const envelope = parsed as { code?: number | string; message?: string }
     if (!res.ok) {
       throw new Error(envelope.message ?? res.statusText)
     }
-    if (typeof envelope.code === 'number' && envelope.code !== 200) {
-      throw new Error(envelope.message ?? `业务错误 ${envelope.code}`)
+    const bizCode =
+      envelope.code === undefined || envelope.code === null
+        ? 200
+        : Number(envelope.code)
+    if (!Number.isNaN(bizCode) && bizCode !== 200) {
+      throw new Error(envelope.message ?? `业务错误 ${bizCode}`)
     }
     return parsed as T
   }

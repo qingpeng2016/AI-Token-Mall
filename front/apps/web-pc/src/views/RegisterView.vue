@@ -24,8 +24,8 @@ async function onSubmit() {
     ElMessage.warning('请输入手机号')
     return
   }
-  if (form.password.length < 8) {
-    ElMessage.warning('密码至少 8 位')
+  if (form.password.length < 6) {
+    ElMessage.warning('密码至少 6 位')
     return
   }
   if (form.password !== form.confirmPassword) {
@@ -106,7 +106,7 @@ async function onSubmit() {
           v-model="form.password"
           type="password"
           autocomplete="new-password"
-          placeholder="至少 8 位"
+          placeholder="至少 6 位"
           show-password
           size="large"
         />
