@@ -6,8 +6,12 @@ const router = createRouter({
     {
       path: '/',
       component: () => import('@/layouts/DefaultLayout.vue'),
+      children: [{ path: '', name: 'home', component: () => import('@/views/HomeView.vue') }],
+    },
+    {
+      path: '/',
+      component: () => import('@/layouts/AuthLayout.vue'),
       children: [
-        { path: '', name: 'home', component: () => import('@/views/HomeView.vue') },
         { path: 'login', name: 'login', component: () => import('@/views/LoginView.vue') },
         { path: 'register', name: 'register', component: () => import('@/views/RegisterView.vue') },
       ],

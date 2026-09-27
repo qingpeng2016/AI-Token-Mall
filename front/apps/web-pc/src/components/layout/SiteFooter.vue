@@ -45,11 +45,6 @@ const aboutLinks = [
     <div class="atm-container footer-grid">
       <div class="footer-brand">
         <RouterLink to="/" class="footer-logo">AI Token Mall</RouterLink>
-        <p class="footer-tagline">
-          低价 AI 套餐 · ChatGPT / Claude / Cursor 等；支付宝 / 微信自助购买，团队对公走
-          <a href="#faq">企业采购</a>。
-        </p>
-        <button type="button" class="footer-support">在线客服</button>
       </div>
 
       <div v-for="(col, idx) in [
@@ -121,39 +116,6 @@ const aboutLinks = [
   color: #f8fafc;
   text-decoration: none;
   letter-spacing: -0.02em;
-}
-
-.footer-tagline {
-  margin: 0 0 16px;
-  color: #94a3b8;
-  line-height: 1.65;
-}
-
-.footer-tagline a {
-  color: #cbd5e1;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.footer-tagline a:hover {
-  color: #fff;
-}
-
-.footer-support {
-  padding: 10px 20px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #e2e8f0;
-  cursor: pointer;
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 999px;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.footer-support:hover {
-  background: #334155;
-  border-color: #475569;
 }
 
 .footer-col-title {

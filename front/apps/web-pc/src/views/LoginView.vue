@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import AuthShell from '@/components/auth/AuthShell.vue'
 import { userApi } from '@/api'
 
 const router = useRouter()
@@ -33,31 +34,67 @@ async function onSubmit() {
 </script>
 
 <template>
-  <el-card class="card" header="登录">
-    <el-radio-group v-model="form.mode" style="margin-bottom: 16px">
-      <el-radio-button value="email">邮箱</el-radio-button>
-      <el-radio-button value="phone">手机</el-radio-button>
-    </el-radio-group>
-    <el-form label-width="80px" @submit.prevent="onSubmit">
-      <el-form-item v-if="form.mode === 'email'" label="邮箱">
-        <el-input v-model="form.email" type="email" autocomplete="username" />
-      </el-form-item>
-      <el-form-item v-else label="手机">
-        <el-input v-model="form.phone" autocomplete="tel" />
-      </el-form-item>
-      <el-form-item label="密码">
-        <el-input v-model="form.password" type="password" autocomplete="current-password" show-password />
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" native-type="submit" :loading="loading">登录</el-button>
-      </el-form-item>
-    </el-form>
-  </el-card>
-</template>
+  <AuthShell title="欢迎回来" subtitle="登录会员中心，查看套餐、额度与订单。">
+    <div class="auth-mode-pills">
+      <button
+        type="button"
+        class="auth-mode-pill"
+        :class="{ active: form.mode === 'email' }"
+        @click="form.mode = 'email'"
+      >
+        邮箱登录
+      </button>
+      <button
+        type="button"
+        class="auth-mode-pill"
+        :class="{ active: form.mode === 'phone' }"
+        @click="form.mode = 'phone'"
+      >
+        手机登录
+      </button>
+    </div>
 
-<style scoped>
-.card {
-  max-width: 378px;
-  margin: 48px auto;
-}
-</style>
+    <form class="auth-form" @submit.prevent="onSubmit">
+      <label v-if="form.mode === 'email'" class="auth-field">
+        <span class="auth-field-label">邮箱</span>
+        <el-input
+          v-model="form.email"
+          type="email"
+          autocomplete="username"
+          placeholder="you@example.com"
+          size="large"
+        />
+      </label>
+      <label v-else class="auth-field">
+        <span class="auth-field-label">手机号</span>
+        <el-input
+          v-model="form.phone"
+          autocomplete="tel"
+          placeholder="11 位手机号"
+          size="large"
+        />
+      </label>
+
+      <label class="auth-field">
+        <span class="auth-field-label">密码</span>
+        <el-input
+          v-model="form.password"
+          type="password"
+          autocomplete="current-password"
+          placeholder="请输入密码"
+          show-password
+          size="large"
+        />
+      </label>
+
+      <button type="submit" class="auth-submit" :disabled="loading">
+        {{ loading ? '登录中…' : '登录' }}
+      </button>
+    </form>
+
+    <p class="auth-foot">
+      还没有账号？
+      <RouterLink to="/register">免费注册</RouterLink>
+    </p>
+  </AuthShell>
+</template>
