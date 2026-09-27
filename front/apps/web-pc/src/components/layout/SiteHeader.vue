@@ -168,7 +168,7 @@ function isSpaNav(href: string) {
             class="nav-link nav-link-plain"
             :class="{ 'nav-link--active': route.path.startsWith('/blog') }"
           >
-            教程 FAQ
+            <span class="nav-link-plain-text">教程 FAQ</span>
           </RouterLink>
         </nav>
       </div>
@@ -254,7 +254,14 @@ function isSpaNav(href: string) {
 }
 
 .nav-link-plain {
-  color: var(--atm-text-muted);
+  font-weight: 600;
+}
+
+.nav-link-plain-text {
+  background: var(--atm-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .nav-link:hover,
