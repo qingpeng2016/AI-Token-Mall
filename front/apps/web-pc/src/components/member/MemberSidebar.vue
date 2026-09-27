@@ -9,6 +9,10 @@ defineProps<{
   active: MemberTab
   user: UserProfile
 }>()
+
+const emit = defineEmits<{
+  pickPlan: []
+}>()
 </script>
 
 <template>
@@ -36,7 +40,9 @@ defineProps<{
       </RouterLink>
     </nav>
 
-    <RouterLink to="/#catalog" class="member-buy-link">选购套餐 →</RouterLink>
+    <button type="button" class="member-buy-link" @click="emit('pickPlan')">
+      选购套餐 →
+    </button>
   </aside>
 </template>
 
@@ -165,16 +171,21 @@ defineProps<{
 }
 
 .member-buy-link {
+  display: block;
+  width: 100%;
   margin-top: 8px;
   padding: 14px;
   font-size: 14px;
   font-weight: 600;
+  font-family: inherit;
   color: #fff;
   text-align: center;
   text-decoration: none;
   background: var(--atm-gradient);
+  border: none;
   border-radius: 12px;
   box-shadow: 0 4px 16px rgba(124, 58, 237, 0.3);
+  cursor: pointer;
 }
 
 .member-buy-link:hover {

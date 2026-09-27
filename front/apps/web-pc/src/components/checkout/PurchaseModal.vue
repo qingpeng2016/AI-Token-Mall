@@ -237,7 +237,7 @@ async function submitPay(channel: 'alipay' | 'paypal') {
 .purchase-overlay {
   position: fixed;
   inset: 0;
-  z-index: 500;
+  z-index: 2100;
   display: flex;
   align-items: center;
   justify-content: center;

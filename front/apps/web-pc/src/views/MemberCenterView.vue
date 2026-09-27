@@ -3,7 +3,10 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { formatCnyFromCents } from '@ai-token-mall/shared'
+import CatalogPickerModal from '@/components/catalog/CatalogPickerModal.vue'
+import PurchaseModal from '@/components/checkout/PurchaseModal.vue'
 import MemberSidebar from '@/components/member/MemberSidebar.vue'
+import type { CatalogProduct } from '@/mocks/home'
 import {
   clearSessionUser,
   getSessionUser,
@@ -28,6 +31,9 @@ import {
 const router = useRouter()
 const route = useRoute()
 const user = ref(getSessionUser())
+const catalogOpen = ref(false)
+const purchaseOpen = ref(false)
+const purchaseProduct = ref<CatalogProduct | null>(null)
 
 const validTabs = new Set(memberNav.map((n) => n.id))
 
@@ -68,6 +74,15 @@ function mockRecharge() {
   ElMessage.info('余额充值接口对接中，可先使用支付宝 / 微信直接购套餐')
 }
 
+function openCatalogPicker() {
+  catalogOpen.value = true
+}
+
+function onCatalogBuy(p: CatalogProduct) {
+  purchaseProduct.value = p
+  purchaseOpen.value = true
+}
+
 function mockAction(msg: string) {
   ElMessage.info(msg)
 }
@@ -86,7 +101,9 @@ function mockAction(msg: string) {
           </h1>
         </div>
         <div class="member-hero-actions">
-          <RouterLink to="/#catalog" class="hero-btn hero-btn--light">选购套餐</RouterLink>
+          <button type="button" class="hero-btn hero-btn--light" @click="openCatalogPicker">
+            选购套餐
+          </button>
           <button type="button" class="hero-btn hero-btn--ghost" @click="mockRecharge">
             余额充值
           </button>
@@ -97,7 +114,7 @@ function mockAction(msg: string) {
     <div class="atm-container member-body">
       <div class="member-grid">
         <div class="member-sidebar-wrap">
-          <MemberSidebar :active="activeTab" :user="user" />
+          <MemberSidebar :active="activeTab" :user="user" @pick-plan="openCatalogPicker" />
         </div>
 
         <main class="member-main">
@@ -281,24 +298,8 @@ function mockAction(msg: string) {
             </div>
             </div>
 
-            <!-- 账户余额 -->
+            <!-- 资金流水 -->
             <div v-else-if="activeTab === 'account'" class="panel-body">
-            <article class="balance-card">
-              <div>
-                <span class="stat-label">可用余额</span>
-                <p class="balance-amount">
-                  {{ formatCnyFromCents(mockMemberOverview.balanceCents) }}
-                </p>
-                <p class="panel-desc">
-                  余额可用于快速下单部分套餐；也可直接使用支付宝 / 微信支付。
-                </p>
-              </div>
-              <button type="button" class="hero-btn hero-btn--light" @click="mockRecharge">
-                充值
-              </button>
-            </article>
-
-            <h2 class="panel-subtitle">余额流水</h2>
             <div class="table-wrap">
               <table class="data-table">
                 <thead>
@@ -465,6 +466,13 @@ function mockAction(msg: string) {
         </main>
       </div>
     </div>
+
+    <CatalogPickerModal v-model:open="catalogOpen" @buy="onCatalogBuy" />
+    <PurchaseModal
+      v-model:open="purchaseOpen"
+      :product="purchaseProduct"
+      :user="user"
+    />
   </div>
 </template>
 
@@ -682,11 +690,12 @@ function mockAction(msg: string) {
 
 .stat-card {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  min-height: 112px;
-  padding: 18px 22px 16px;
+  gap: 12px;
+  min-height: 0;
+  padding: 16px 18px;
   background: #fff;
   border: 1px solid rgba(124, 58, 237, 0.1);
   border-radius: 16px;
@@ -710,6 +719,7 @@ function mockAction(msg: string) {
 }
 
 .stat-main {
+  flex: 1;
   min-width: 0;
 }
 
@@ -736,7 +746,7 @@ function mockAction(msg: string) {
 }
 
 .stat-link {
-  align-self: flex-start;
+  flex-shrink: 0;
   padding: 6px 14px;
   font-size: 12px;
   font-weight: 600;
@@ -940,33 +950,6 @@ function mockAction(msg: string) {
 .tag--cancelled {
   background: #fee2e2;
   color: #b91c1c;
-}
-
-.balance-card {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 32px 28px;
-  margin-bottom: 12px;
-  background: linear-gradient(125deg, #4c1d95 0%, #7c3aed 55%, #6366f1 100%);
-  border-radius: 18px;
-  color: #fff;
-  box-shadow: 0 16px 40px rgba(124, 58, 237, 0.35);
-}
-
-.balance-card .stat-label,
-.balance-card .panel-desc {
-  color: rgba(255, 255, 255, 0.78);
-}
-
-.balance-amount {
-  margin: 10px 0 12px;
-  font-size: 40px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: #fff;
 }
 
 .amount-plus {

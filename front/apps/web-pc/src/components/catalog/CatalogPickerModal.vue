@@ -1,0 +1,292 @@
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import ProductCard from '@/components/home/ProductCard.vue'
+import {
+  catalogFilterPills,
+  mockProducts,
+  type CatalogProduct,
+} from '@/mocks/home'
+import { productDetailPath } from '@/mocks/productRoutes'
+import type { UpstreamName } from '@ai-token-mall/shared'
+
+type FilterKey = 'all' | UpstreamName | 'cursor'
+
+const props = defineProps<{
+  open: boolean
+}>()
+
+const emit = defineEmits<{
+  'update:open': [value: boolean]
+  buy: [product: CatalogProduct]
+}>()
+
+const router = useRouter()
+const filter = ref<FilterKey>('all')
+const selectedProductId = ref<number | null>(null)
+
+const activePillStyle = computed(() => {
+  const pill = catalogFilterPills.find((p) => p.value === filter.value)
+  if (!pill?.activeBg || filter.value === 'all') {
+    return { background: 'var(--atm-gradient)', color: '#fff' }
+  }
+  return { background: pill.activeBg, color: '#fff' }
+})
+
+const filteredProducts = computed(() => {
+  let list = [...mockProducts]
+  if (filter.value === 'cursor') {
+    list = list.filter((p) => p.sku_code.startsWith('CUR'))
+  } else if (filter.value !== 'all') {
+    list = list.filter(
+      (p) => p.upstream_name === filter.value && !p.sku_code.startsWith('CUR'),
+    )
+  }
+  list.sort((a, b) => a.sort_order - b.sort_order)
+  return list
+})
+
+watch(
+  filteredProducts,
+  (list) => {
+    selectedProductId.value = list[0]?.id ?? null
+  },
+  { immediate: true },
+)
+
+watch(
+  () => props.open,
+  (visible) => {
+    if (visible) {
+      filter.value = 'all'
+    }
+  },
+)
+
+function close() {
+  emit('update:open', false)
+}
+
+function onOpenProduct(p: CatalogProduct) {
+  selectedProductId.value = p.id
+  emit('update:open', false)
+  router.push(productDetailPath(p.sku_code))
+}
+
+function onBuy(p: CatalogProduct) {
+  selectedProductId.value = p.id
+  emit('buy', p)
+}
+
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && props.open) close()
+}
+</script>
+
+<template>
+  <Teleport to="body">
+    <Transition name="catalog-modal-fade">
+      <div
+        v-if="open"
+        class="catalog-modal-backdrop"
+        aria-hidden="false"
+        @click.self="close"
+        @keydown="onKeydown"
+      >
+        <div
+          class="catalog-modal-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="catalog-picker-title"
+        >
+          <header class="catalog-modal-head">
+            <h2 id="catalog-picker-title">全部套餐</h2>
+            <button type="button" class="catalog-modal-close" aria-label="关闭" @click="close">
+              ×
+            </button>
+          </header>
+
+          <div class="catalog-pills">
+            <button
+              v-for="pill in catalogFilterPills"
+              :key="pill.label"
+              type="button"
+              class="catalog-pill"
+              :class="{ active: filter === pill.value }"
+              :style="filter === pill.value ? activePillStyle : undefined"
+              @click="filter = pill.value"
+            >
+              <span
+                v-if="pill.dot && filter !== pill.value"
+                class="pill-dot"
+                :style="{ background: pill.dot }"
+              />
+              {{ pill.label }}
+            </button>
+          </div>
+
+          <div class="catalog-modal-body">
+            <div class="catalog-grid">
+              <ProductCard
+                v-for="p in filteredProducts"
+                :key="p.id"
+                :product="p"
+                :selected="selectedProductId === p.id"
+                @open="onOpenProduct"
+                @buy="onBuy"
+              />
+            </div>
+            <p v-if="!filteredProducts.length" class="catalog-empty">该品牌暂无套餐</p>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+</template>
+
+<style scoped>
+.catalog-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 16px;
+  overflow-y: auto;
+  background: rgba(15, 10, 40, 0.52);
+  backdrop-filter: blur(4px);
+}
+
+.catalog-modal-panel {
+  width: 100%;
+  max-width: 920px;
+  padding: 18px 20px 22px;
+  background: var(--atm-bg, #f5f3ff);
+  border-radius: 18px;
+  box-shadow: 0 24px 64px rgba(30, 27, 75, 0.22);
+}
+
+.catalog-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.catalog-modal-head h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--atm-text);
+}
+
+.catalog-modal-close {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--atm-text-muted);
+  background: #fff;
+  border: 1px solid rgba(124, 58, 237, 0.12);
+  border-radius: 12px;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.catalog-modal-close:hover {
+  color: var(--atm-primary-dark);
+  border-color: rgba(124, 58, 237, 0.28);
+}
+
+.catalog-pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 8px 10px;
+  background: #fff;
+  border-radius: 999px;
+  box-shadow: 0 4px 24px rgba(30, 27, 75, 0.06);
+}
+
+.catalog-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--atm-text);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.catalog-pill.active {
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.catalog-modal-body {
+  max-height: min(62vh, 580px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.catalog-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  .catalog-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 860px) {
+  .catalog-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.catalog-empty {
+  text-align: center;
+  color: var(--atm-text-muted);
+  padding: 48px 16px;
+}
+
+.catalog-modal-fade-enter-active,
+.catalog-modal-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.catalog-modal-fade-enter-active .catalog-modal-panel,
+.catalog-modal-fade-leave-active .catalog-modal-panel {
+  transition: transform 0.2s ease;
+}
+
+.catalog-modal-fade-enter-from,
+.catalog-modal-fade-leave-to {
+  opacity: 0;
+}
+
+.catalog-modal-fade-enter-from .catalog-modal-panel,
+.catalog-modal-fade-leave-to .catalog-modal-panel {
+  transform: translateY(12px);
+}
+</style>

@@ -14,7 +14,7 @@ export const memberNav: { id: MemberTab; label: string; desc?: string }[] = [
   { id: 'overview', label: '概览' },
   { id: 'plans', label: '我的套餐', desc: '额度与有效期' },
   { id: 'orders', label: '我的订单' },
-  { id: 'account', label: '账户余额', desc: '充值与流水' },
+  { id: 'account', label: '资金流水', desc: '收支明细' },
   { id: 'api-keys', label: 'API 密钥' },
   { id: 'invoices', label: '发票管理' },
   { id: 'sub-accounts', label: '子账号' },
