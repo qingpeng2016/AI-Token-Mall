@@ -26,8 +26,6 @@ export interface BlogPost {
 
 export const blogPageMeta = {
   title: 'AI Plan 教程与资讯',
-  subtitle:
-    '充值与支付、功能用法、额度与限速、账号注册——持续更新的实用攻略。',
 }
 
 export const blogCategories: BlogCategory[] = [

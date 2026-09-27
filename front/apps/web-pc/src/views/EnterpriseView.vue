@@ -104,7 +104,6 @@ async function onSubmit() {
       <div class="atm-container">
         <header class="ent-section-head">
           <h2>方案参考</h2>
-          <p>以下为常见档位，实际价格以 SKU 目录与席位数量为准。</p>
         </header>
         <div class="ent-plans">
           <article
@@ -144,7 +143,6 @@ async function onSubmit() {
       <div class="atm-container">
         <header class="ent-section-head">
           <h2>为什么走企业采购</h2>
-          <p>把「个人代充」升级成可审计、可开票、可批量复制的团队流程。</p>
         </header>
         <div class="ent-benefits">
           <article v-for="b in enterpriseBenefits" :key="b.title" class="ent-benefit">
@@ -162,7 +160,6 @@ async function onSubmit() {
       <div class="atm-container">
         <header class="ent-section-head">
           <h2>合作流程</h2>
-          <p>从需求到开通，通常 1–3 个工作日（对公以到账为准）。</p>
         </header>
         <ol class="ent-steps">
           <li v-for="step in enterpriseSteps" :key="step.step" class="ent-step">

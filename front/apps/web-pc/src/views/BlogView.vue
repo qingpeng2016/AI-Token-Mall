@@ -8,8 +8,6 @@ import {
   type BlogCategoryId,
 } from '@/mocks/blog'
 
-const PAGE_SIZE = 12
-
 const route = useRoute()
 const router = useRouter()
 
@@ -19,13 +17,11 @@ function parseCategory(q: unknown): BlogCategoryId {
 }
 
 const activeCategory = ref<BlogCategoryId>(parseCategory(route.query.cat))
-const visibleCount = ref(PAGE_SIZE)
 
 watch(
   () => route.query.cat,
   (cat) => {
     activeCategory.value = parseCategory(cat)
-    visibleCount.value = PAGE_SIZE
   },
 )
 
@@ -34,21 +30,10 @@ const filteredPosts = computed(() => {
   return blogPosts.filter((p) => p.category === activeCategory.value)
 })
 
-const visiblePosts = computed(() => filteredPosts.value.slice(0, visibleCount.value))
-
-const remaining = computed(() =>
-  Math.max(0, filteredPosts.value.length - visibleCount.value),
-)
-
 function setCategory(id: BlogCategoryId) {
   activeCategory.value = id
-  visibleCount.value = PAGE_SIZE
   const query = id === 'all' ? {} : { cat: id }
   router.replace({ path: '/blog', query })
-}
-
-function loadMore() {
-  visibleCount.value += PAGE_SIZE
 }
 </script>
 
@@ -63,7 +48,6 @@ function loadMore() {
 
       <header class="blog-hero">
         <h1 class="blog-title">{{ blogPageMeta.title }}</h1>
-        <p class="blog-subtitle">{{ blogPageMeta.subtitle }}</p>
       </header>
 
       <div class="blog-filters" role="tablist" aria-label="文章分类">
@@ -81,9 +65,9 @@ function loadMore() {
         </button>
       </div>
 
-      <div v-if="visiblePosts.length" class="blog-grid">
+      <div v-if="filteredPosts.length" class="blog-grid">
         <RouterLink
-          v-for="post in visiblePosts"
+          v-for="post in filteredPosts"
           :key="post.slug"
           :to="{ name: 'blog-article', params: { slug: post.slug } }"
           class="blog-card"
@@ -98,12 +82,6 @@ function loadMore() {
       </div>
 
       <p v-else class="blog-empty">该分类暂无文章，试试「全部」。</p>
-
-      <div v-if="remaining > 0" class="blog-load-wrap">
-        <button type="button" class="blog-load-more" @click="loadMore">
-          加载更多（剩余 {{ remaining }} 篇）
-        </button>
-      </div>
     </div>
   </div>
 </template>
@@ -156,14 +134,6 @@ function loadMore() {
   letter-spacing: -0.03em;
   line-height: 1.2;
   color: var(--atm-primary-dark);
-}
-
-.blog-subtitle {
-  margin: 0 auto;
-  max-width: 36em;
-  font-size: 15px;
-  line-height: 1.65;
-  color: var(--atm-text-muted);
 }
 
 .blog-filters {
@@ -285,31 +255,5 @@ function loadMore() {
   text-align: center;
   padding: 48px 16px;
   color: var(--atm-text-muted);
-}
-
-.blog-load-wrap {
-  display: flex;
-  justify-content: center;
-  margin-top: 40px;
-}
-
-.blog-load-more {
-  min-width: min(100%, 320px);
-  padding: 14px 28px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--atm-text);
-  background: #fff;
-  border: 1px solid #d1d5db;
-  border-radius: 12px;
-  cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
-}
-
-.blog-load-more:hover {
-  border-color: rgba(124, 58, 237, 0.35);
-  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.08);
 }
 </style>
