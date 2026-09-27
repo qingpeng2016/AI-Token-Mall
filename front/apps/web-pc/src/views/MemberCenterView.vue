@@ -80,7 +80,10 @@ function mockAction(msg: string) {
       <div class="atm-container member-hero-inner">
         <div class="member-hero-copy">
           <span class="member-hero-badge">AI Plan · 会员中心</span>
-          <h1 class="member-hero-title">你好，{{ displayName }}</h1>
+          <h1 class="member-hero-title">
+            <span class="member-hero-greeting">你好，</span>
+            <span class="member-hero-account">{{ displayName }}</span>
+          </h1>
         </div>
         <div class="member-hero-actions">
           <RouterLink to="/#catalog" class="hero-btn hero-btn--light">选购套餐</RouterLink>
@@ -520,10 +523,27 @@ function mockAction(msg: string) {
 
 .member-hero-title {
   margin: 0 0 10px;
-  font-size: clamp(28px, 4vw, 36px);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.member-hero-greeting {
+  display: block;
+  font-size: clamp(18px, 2.2vw, 22px);
+  letter-spacing: -0.02em;
+}
+
+.member-hero-account {
+  display: block;
+  margin-top: 4px;
+  max-width: min(100%, 520px);
+  font-size: clamp(14px, 1.6vw, 16px);
+  font-weight: 600;
+  letter-spacing: 0;
+  opacity: 0.92;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .member-hero-actions {
