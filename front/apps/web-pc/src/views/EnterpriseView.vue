@@ -7,6 +7,7 @@ import { SITE_NAME } from '@/constants/brand'
 import {
   enterpriseBenefits,
   enterpriseFaqs,
+  enterpriseChannelHighlights,
   enterpriseHero,
   enterpriseInvoiceNotes,
   enterprisePlans,
@@ -56,7 +57,11 @@ async function onSubmit() {
         <div class="ent-hero-copy">
           <span class="ent-eyebrow">{{ enterpriseHero.eyebrow }}</span>
           <h1 class="ent-title">{{ enterpriseHero.title }}</h1>
-          <p class="ent-lead">{{ enterpriseHero.lead }}</p>
+          <div class="ent-hero-highlights">
+            <ul class="ent-highlight-list">
+              <li v-for="item in enterpriseChannelHighlights" :key="item">{{ item }}</li>
+            </ul>
+          </div>
         </div>
         <form id="contact" class="ent-form ent-hero-form" @submit.prevent="onSubmit">
           <div class="ent-form-row">
@@ -255,12 +260,39 @@ async function onSubmit() {
   letter-spacing: -0.03em;
 }
 
-.ent-lead {
-  margin: 0 0 28px;
-  max-width: 36em;
-  font-size: 15px;
-  line-height: 1.7;
-  color: rgba(255, 255, 255, 0.88);
+.ent-hero-highlights {
+  margin-top: 8px;
+  max-width: 28em;
+}
+
+.ent-highlight-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.ent-highlight-list li {
+  position: relative;
+  padding-left: 18px;
+  margin-bottom: 10px;
+}
+
+.ent-highlight-list li:last-child {
+  margin-bottom: 0;
+}
+
+.ent-highlight-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #c4b5fd;
 }
 
 .ent-hero-form {

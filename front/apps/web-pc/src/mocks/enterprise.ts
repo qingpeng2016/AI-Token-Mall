@@ -1,9 +1,15 @@
 export const enterpriseHero = {
   eyebrow: '团队 · 对公 · 开票',
   title: '企业采购与团队开通',
-  lead:
-    '为多账号、多部门统一采购 ChatGPT、Claude、Cursor 等 AI 订阅。支持对公转账、增值税发票、合同与专属客服，开通到员工自有账号，权限清晰可审计。',
 }
+
+/** Hero 左侧企业通道要点 */
+export const enterpriseChannelHighlights = [
+  '席位清单 · CSV / 表格导入',
+  '订单汇总 · 管理员会员中心',
+  '续费提醒 · 到期前 7 天',
+  '专属 1V1 · SVIP 客服对接群',
+]
 
 export const enterpriseStats = [
   { value: '500+', label: '服务企业 / 团队' },
