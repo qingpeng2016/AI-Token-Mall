@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeMount, reactive, ref, watch } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { computed, nextTick, onBeforeMount, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { formatCnyFromCents } from '@ai-token-mall/shared'
 import CatalogPickerModal from '@/components/catalog/CatalogPickerModal.vue'
@@ -28,10 +28,14 @@ import {
   mockSubscriptions,
   mockTeamSubKeys,
   mockWalletTx,
+  mockWithdrawalRecords,
   orderStatusLabel,
+  withdrawalChannelLabel,
+  withdrawalStatusLabel,
   type MemberTab,
   type MockSubAccount,
   type MockTeamSubKey,
+  type MockWithdrawalRecord,
 } from '@/mocks/member'
 
 const router = useRouter()
@@ -45,7 +49,18 @@ const apiKeyPanelTab = ref<'mine' | 'team' | 'group'>('mine')
 const teamMembers = ref<MockSubAccount[]>([...mockApiTeamMembers])
 const addTeamMemberOpen = ref(false)
 const addTeamMemberInvitedId = ref<number | null>(null)
-const inviteRebatePanelTab = ref<'details' | 'members' | 'rebates'>('details')
+const inviteRebatePanelTab = ref<'details' | 'members' | 'rebates' | 'withdrawals'>('details')
+const commissionAvailableCents = ref(mockMemberOverview.commissionCents)
+const withdrawalRecords = ref<MockWithdrawalRecord[]>([...mockWithdrawalRecords])
+const payoutQr = reactive({ alipay: '', wechat: '' })
+const payoutQrSetupOpen = ref(false)
+const payoutQrSetupChannel = ref<'alipay' | 'wechat'>('alipay')
+const payoutQrSetupValue = ref('')
+const withdrawOpen = ref(false)
+const withdrawForm = reactive({
+  channel: 'alipay' as 'alipay' | 'wechat',
+  amountYuan: '',
+})
 const teamSubKeys = ref<MockTeamSubKey[]>([...mockTeamSubKeys])
 const assignSubKeyOpen = ref(false)
 const assignSubKeyForm = reactive({
@@ -192,9 +207,16 @@ function goInviteRebateTab() {
   void router.push({ path: '/member', query: { tab: 'sub-accounts' } })
 }
 
-function goInviteRebateRecords() {
-  inviteRebatePanelTab.value = 'rebates'
-  void router.push({ path: '/member', query: { tab: 'sub-accounts' } })
+function goCommissionWithdrawFromOverview() {
+  inviteRebatePanelTab.value = 'withdrawals'
+  const open = () => {
+    void nextTick(() => openWithdrawModal())
+  }
+  if (route.path === '/member' && route.query.tab === 'sub-accounts') {
+    open()
+    return
+  }
+  void router.push({ path: '/member', query: { tab: 'sub-accounts' } }).then(open)
 }
 
 function openCatalogPicker() {
@@ -234,6 +256,70 @@ function copyTeamInviteLink() {
 function copyExclusivePromoDomain() {
   void copyToClipboard(exclusivePromoDomain.value, '已复制推广域名')
 }
+
+function openPayoutQrModal(channel: 'alipay' | 'wechat') {
+  payoutQrSetupChannel.value = channel
+  payoutQrSetupValue.value = channel === 'alipay' ? payoutQr.alipay : payoutQr.wechat
+  payoutQrSetupOpen.value = true
+}
+
+function confirmPayoutQrSetup() {
+  const url = payoutQrSetupValue.value.trim()
+  if (!url) {
+    ElMessage.warning('请填写收款码图片地址或上传后粘贴链接（演示）')
+    return
+  }
+  if (payoutQrSetupChannel.value === 'alipay') payoutQr.alipay = url
+  else payoutQr.wechat = url
+  payoutQrSetupOpen.value = false
+  ElMessage.success('收款码已保存')
+}
+
+function openWithdrawModal() {
+  if (!payoutQr.alipay && !payoutQr.wechat) {
+    ElMessage.warning('请先设置支付宝或微信收款码')
+    return
+  }
+  withdrawForm.channel = payoutQr.alipay ? 'alipay' : 'wechat'
+  withdrawForm.amountYuan = ''
+  withdrawOpen.value = true
+}
+
+function confirmWithdraw() {
+  const yuan = Number(withdrawForm.amountYuan)
+  if (!Number.isFinite(yuan) || yuan <= 0) {
+    ElMessage.warning('请输入有效的提现金额')
+    return
+  }
+  const amountCents = Math.round(yuan * 100)
+  if (amountCents > commissionAvailableCents.value) {
+    ElMessage.warning('提现金额不能超过可提现佣金')
+    return
+  }
+  const channel = withdrawForm.channel
+  if (channel === 'alipay' && !payoutQr.alipay) {
+    ElMessage.warning('请先设置支付宝收款码')
+    return
+  }
+  if (channel === 'wechat' && !payoutQr.wechat) {
+    ElMessage.warning('请先设置微信收款码')
+    return
+  }
+  withdrawalRecords.value.unshift({
+    id: Date.now(),
+    amountCents,
+    channel,
+    status: 'pending',
+    createdAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
+  })
+  commissionAvailableCents.value -= amountCents
+  withdrawOpen.value = false
+  ElMessage.success('提现申请已提交')
+}
+
+const payoutQrSetupTitle = computed(() =>
+  payoutQrSetupChannel.value === 'alipay' ? '设置支付宝收款码' : '设置微信收款码',
+)
 
 function syncAssignSubKeyLimitFromPlan() {
   const sub = mockSubscriptions.find((s) => s.id === assignSubKeyForm.subscriptionId)
@@ -376,7 +462,7 @@ function confirmAddTeamMember() {
         <div class="member-hero-copy">
           <span class="member-hero-badge">AI Plan · 会员中心</span>
           <h1 class="member-hero-title">
-            <span class="member-hero-greeting">你好，</span>
+            <span class="member-hero-greeting">你好</span>
             <span class="member-hero-account">{{ displayName }}</span>
           </h1>
         </div>
@@ -432,6 +518,16 @@ function confirmAddTeamMember() {
                   @click="inviteRebatePanelTab = 'details'"
                 >
                   返佣详情
+                </button>
+                <button
+                  type="button"
+                  class="api-key-tab"
+                  :class="{ 'api-key-tab--active': inviteRebatePanelTab === 'withdrawals' }"
+                  role="tab"
+                  :aria-selected="inviteRebatePanelTab === 'withdrawals'"
+                  @click="inviteRebatePanelTab = 'withdrawals'"
+                >
+                  我的佣金
                 </button>
                 <button
                   type="button"
@@ -498,22 +594,22 @@ function confirmAddTeamMember() {
             <div class="stat-row">
               <article class="stat-card stat-card--balance">
                 <div class="stat-main">
-                  <span class="stat-label">账户余额</span>
+                  <span class="stat-label">余额</span>
                   <strong class="stat-value">{{
                     formatCnyFromCents(mockMemberOverview.balanceCents)
                   }}</strong>
                 </div>
-                <button type="button" class="stat-link" @click="mockRecharge">去充值</button>
+                <button type="button" class="stat-link" @click="mockRecharge">充值</button>
               </article>
               <article class="stat-card stat-card--commission">
                 <div class="stat-main">
                   <span class="stat-label">佣金</span>
                   <strong class="stat-value">{{
-                    formatCnyFromCents(mockMemberOverview.commissionCents)
+                    formatCnyFromCents(commissionAvailableCents)
                   }}</strong>
                 </div>
-                <button type="button" class="stat-link" @click="goInviteRebateRecords">
-                  查看
+                <button type="button" class="stat-link" @click="goCommissionWithdrawFromOverview">
+                  提现
                 </button>
               </article>
             </div>
@@ -979,7 +1075,7 @@ function confirmAddTeamMember() {
 
             <div v-else-if="inviteRebatePanelTab === 'rebates'" role="tabpanel">
               <p class="rebate-lead muted">
-                受邀用户完成支付后，返利将自动计入概览中的「佣金」。
+                受邀用户完成支付后，返利将自动加到「佣金」。
               </p>
               <div v-if="mockInviteRebateRecords.length" class="table-wrap">
                 <table class="data-table">
@@ -1009,6 +1105,85 @@ function confirmAddTeamMember() {
                 </table>
               </div>
               <p v-else class="empty">暂无返利记录。</p>
+            </div>
+
+            <div v-else-if="inviteRebatePanelTab === 'withdrawals'" role="tabpanel">
+              <section class="withdraw-section-box">
+                <h3 class="withdraw-section-title">佣金提现</h3>
+                <div class="withdraw-toolbar">
+                  <span class="withdraw-balance">
+                    可提现佣金
+                    <strong>{{ formatCnyFromCents(commissionAvailableCents) }}</strong>
+                  </span>
+                  <button type="button" class="atm-btn-primary btn-xs" @click="openWithdrawModal">
+                    提现
+                  </button>
+                </div>
+
+                <h3 class="withdraw-section-title withdraw-section-title--sub">收款方式</h3>
+                <div class="withdraw-payout-list">
+                  <article class="withdraw-payout-row">
+                    <strong class="withdraw-payout-name">支付宝</strong>
+                    <p class="withdraw-payout-status muted">
+                      {{ payoutQr.alipay ? '收款码已配置' : '未设置收款码' }}
+                    </p>
+                    <button
+                      type="button"
+                      class="atm-btn-primary btn-xs withdraw-payout-btn"
+                      @click="openPayoutQrModal('alipay')"
+                    >
+                      {{ payoutQr.alipay ? '更换收款码' : '设置收款码' }}
+                    </button>
+                  </article>
+                  <article class="withdraw-payout-row">
+                    <strong class="withdraw-payout-name">微信</strong>
+                    <p class="withdraw-payout-status muted">
+                      {{ payoutQr.wechat ? '收款码已配置' : '未设置收款码' }}
+                    </p>
+                    <button
+                      type="button"
+                      class="atm-btn-primary btn-xs withdraw-payout-btn"
+                      @click="openPayoutQrModal('wechat')"
+                    >
+                      {{ payoutQr.wechat ? '更换收款码' : '设置收款码' }}
+                    </button>
+                  </article>
+                </div>
+              </section>
+
+              <h3 class="panel-subtitle">提现记录</h3>
+              <div v-if="withdrawalRecords.length" class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>金额</th>
+                      <th>到账方式</th>
+                      <th>状态</th>
+                      <th>时间</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="w in withdrawalRecords" :key="w.id">
+                      <td>{{ formatCnyFromCents(w.amountCents) }}</td>
+                      <td>{{ withdrawalChannelLabel[w.channel] }}</td>
+                      <td>
+                        <span
+                          class="tag"
+                          :class="{
+                            'tag--active': w.status === 'completed',
+                            'tag--pending_payment': w.status === 'pending',
+                            'tag--failed': w.status === 'failed',
+                          }"
+                        >
+                          {{ withdrawalStatusLabel[w.status] }}
+                        </span>
+                      </td>
+                      <td class="muted">{{ w.createdAt }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p v-else class="empty">暂无提现记录。</p>
             </div>
             </div>
 
@@ -1113,6 +1288,90 @@ function confirmAddTeamMember() {
             </button>
             <button type="button" class="atm-btn-primary btn-xs" @click="confirmAddTeamMember">
               确认添加
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-if="payoutQrSetupOpen"
+        class="team-invite-backdrop"
+        @click.self="payoutQrSetupOpen = false"
+      >
+        <div class="team-invite-panel" role="dialog" :aria-labelledby="'payout-qr-title'">
+          <header class="team-invite-head">
+            <h3 :id="'payout-qr-title'">{{ payoutQrSetupTitle }}</h3>
+            <button
+              type="button"
+              class="team-invite-close"
+              aria-label="关闭"
+              @click="payoutQrSetupOpen = false"
+            >
+              ×
+            </button>
+          </header>
+          <p class="team-invite-lead">
+            上传收款码后，将图片链接粘贴到下方（演示环境；正式版支持本地上传）。
+          </p>
+          <label class="team-invite-field">
+            <span class="metric-label">收款码图片 URL</span>
+            <input v-model="payoutQrSetupValue" type="url" class="team-invite-input" placeholder="https://..." />
+          </label>
+          <div class="assign-subkey-actions">
+            <button type="button" class="atm-btn-ghost btn-xs" @click="payoutQrSetupOpen = false">
+              取消
+            </button>
+            <button type="button" class="atm-btn-primary btn-xs" @click="confirmPayoutQrSetup">
+              保存
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-if="withdrawOpen"
+        class="team-invite-backdrop"
+        @click.self="withdrawOpen = false"
+      >
+        <div class="team-invite-panel" role="dialog" aria-labelledby="withdraw-title">
+          <header class="team-invite-head">
+            <h3 id="withdraw-title">提现</h3>
+            <button
+              type="button"
+              class="team-invite-close"
+              aria-label="关闭"
+              @click="withdrawOpen = false"
+            >
+              ×
+            </button>
+          </header>
+          <p class="team-invite-lead">
+            可提现 {{ formatCnyFromCents(commissionAvailableCents) }}，提现将打款至所选渠道的收款码。
+          </p>
+          <label class="team-invite-field">
+            <span class="metric-label">到账方式</span>
+            <select v-model="withdrawForm.channel" class="member-select">
+              <option v-if="payoutQr.alipay" value="alipay">支付宝</option>
+              <option v-if="payoutQr.wechat" value="wechat">微信</option>
+            </select>
+          </label>
+          <label class="team-invite-field">
+            <span class="metric-label">提现金额（元）</span>
+            <input
+              v-model="withdrawForm.amountYuan"
+              type="number"
+              min="0.01"
+              step="0.01"
+              class="team-invite-input"
+              placeholder="例如 20.00"
+            />
+          </label>
+          <div class="assign-subkey-actions">
+            <button type="button" class="atm-btn-ghost btn-xs" @click="withdrawOpen = false">
+              取消
+            </button>
+            <button type="button" class="atm-btn-primary btn-xs" @click="confirmWithdraw">
+              确认提现
             </button>
           </div>
         </div>
@@ -1383,14 +1642,10 @@ function confirmAddTeamMember() {
   align-items: stretch;
   gap: 16px;
   margin: 0 0 24px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #f1f5f9;
 }
 
 .panel-head--segmented {
   margin-bottom: 0;
-  padding-bottom: 0;
-  border-bottom: none;
   gap: 12px;
 }
 
@@ -1463,6 +1718,106 @@ function confirmAddTeamMember() {
   margin-top: 0;
 }
 
+.panel-subtitle--tight {
+  margin-top: 0;
+}
+
+.withdraw-section-box {
+  margin-bottom: 20px;
+  padding: 20px 22px;
+  background: linear-gradient(135deg, #f5f3ff 0%, #faf5ff 55%, #fff 100%);
+  border: 1px solid rgba(124, 58, 237, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.06);
+}
+
+.withdraw-section-title {
+  margin: 0 0 14px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--atm-text);
+}
+
+.withdraw-section-title--sub {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(124, 58, 237, 0.1);
+}
+
+.withdraw-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+}
+
+.withdraw-balance {
+  font-size: 14px;
+  color: var(--atm-text-muted);
+}
+
+.withdraw-balance strong {
+  margin-left: 6px;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--atm-text);
+}
+
+.withdraw-payout-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.withdraw-payout-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+}
+
+.withdraw-payout-name {
+  flex-shrink: 0;
+  min-width: 56px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--atm-text);
+}
+
+.withdraw-payout-status {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.withdraw-payout-btn {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.withdraw-qr-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.withdraw-qr-preview img {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+
 .stat-row {
   display: grid;
   gap: 16px;
@@ -1493,12 +1848,9 @@ function confirmAddTeamMember() {
     box-shadow 0.15s ease;
 }
 
-.stat-card--balance {
-  background: linear-gradient(160deg, #faf5ff 0%, #fff 70%);
-}
-
+.stat-card--balance,
 .stat-card--commission {
-  background: linear-gradient(160deg, #f0fdf4 0%, #fff 70%);
+  background: linear-gradient(160deg, #faf5ff 0%, #fff 70%);
 }
 
 .panel-tab-toolbar {
@@ -1626,7 +1978,8 @@ function confirmAddTeamMember() {
   box-shadow: 0 10px 28px rgba(124, 58, 237, 0.1);
 }
 
-.stat-card--balance:hover {
+.stat-card--balance:hover,
+.stat-card--commission:hover {
   background: linear-gradient(160deg, #f3ebff 0%, #fff 70%);
 }
 
@@ -1653,14 +2006,15 @@ function confirmAddTeamMember() {
   color: var(--atm-text);
 }
 
-.stat-card--balance .stat-value {
+.stat-card--balance .stat-value,
+.stat-card--commission .stat-value {
   color: var(--atm-primary-dark);
 }
 
 .stat-link {
   flex-shrink: 0;
-  padding: 6px 14px;
-  font-size: 12px;
+  padding: 7px 15px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1.2;
   color: var(--atm-primary-dark);

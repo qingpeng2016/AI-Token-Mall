@@ -108,6 +108,35 @@ export const mockMemberOverview = {
   commissionCents: 3560,
 }
 
+export type MockWithdrawalRecord = {
+  id: number
+  amountCents: number
+  channel: 'alipay' | 'wechat'
+  status: 'pending' | 'completed' | 'failed'
+  createdAt: string
+}
+
+export const mockWithdrawalRecords: MockWithdrawalRecord[] = [
+  {
+    id: 1,
+    amountCents: 2000,
+    channel: 'alipay',
+    status: 'completed',
+    createdAt: '2026-03-20 16:08',
+  },
+]
+
+export const withdrawalStatusLabel: Record<MockWithdrawalRecord['status'], string> = {
+  pending: '处理中',
+  completed: '已到账',
+  failed: '失败',
+}
+
+export const withdrawalChannelLabel: Record<MockWithdrawalRecord['channel'], string> = {
+  alipay: '支付宝',
+  wechat: '微信',
+}
+
 export type MockInviteRebateTier = {
   levelLabel: string
   minInvites: number
