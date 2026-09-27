@@ -592,10 +592,12 @@ function confirmAddTeamMember() {
                 />
               </div>
               <div class="plan-actions">
-                <RouterLink to="/#catalog" class="atm-btn-ghost btn-xs">续费 / 升档</RouterLink>
+                <button type="button" class="atm-btn-primary btn-xs" @click="openCatalogPicker">
+                  续费 / 升档
+                </button>
                 <button
                   type="button"
-                  class="atm-btn-ghost btn-xs"
+                  class="atm-btn-primary btn-xs"
                   @click="mockAction('加购 token 包即将上线')"
                 >
                   加购额度
