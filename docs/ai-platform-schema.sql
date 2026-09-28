@@ -157,6 +157,11 @@ CREATE TABLE IF NOT EXISTS `user_orders` (
   `total_amount_cents` BIGINT    NOT NULL COMMENT '应付总额（分），一般=unit_price_cents*quantity',
   `currency`        CHAR(3)      NOT NULL DEFAULT 'CNY',
   `enterprise_invoice` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否企业开票',
+  `pay_channel`     VARCHAR(32)  DEFAULT NULL COMMENT 'alipay|wechat|stripe|paypal',
+  `out_trade_no`    VARCHAR(64)  DEFAULT NULL COMMENT '平台支付单号',
+  `third_trade_no`  VARCHAR(128) DEFAULT NULL COMMENT '渠道流水号',
+  `raw_request_json`  JSON       DEFAULT NULL,
+  `raw_notify_json`   JSON       DEFAULT NULL,
   `paid_at`         DATETIME     DEFAULT NULL,
   `expire_at`       DATETIME     NOT NULL COMMENT '待支付关单时间',
   `closed_at`       DATETIME     DEFAULT NULL,
@@ -165,30 +170,13 @@ CREATE TABLE IF NOT EXISTS `user_orders` (
   `updated_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_user_orders_order_no` (`order_no`),
+  UNIQUE KEY `uk_user_orders_out_trade_no` (`out_trade_no`),
   KEY `idx_user_orders_user_status` (`user_id`, `status`),
   KEY `idx_user_orders_expire` (`expire_at`),
   KEY `idx_user_orders_product` (`product_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户订单（MVP：一单对应一个 product）';
 
-CREATE TABLE IF NOT EXISTS `user_payments` (
-  `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `order_id`        BIGINT UNSIGNED NOT NULL,
-  `channel`         VARCHAR(32)  NOT NULL COMMENT 'alipay|wechat|stripe|paypal',
-  `out_trade_no`    VARCHAR(64)  NOT NULL COMMENT '平台支付单号',
-  `third_trade_no`  VARCHAR(128) DEFAULT NULL COMMENT '渠道流水号',
-  `amount_cents`    BIGINT       NOT NULL,
-  `status`          VARCHAR(32)  NOT NULL COMMENT 'pending|success|failed|closed',
-  `paid_at`         DATETIME     DEFAULT NULL,
-  `raw_request_json`  JSON       DEFAULT NULL,
-  `raw_notify_json`   JSON       DEFAULT NULL,
-  `created_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_user_payments_out_trade_no` (`out_trade_no`),
-  KEY `idx_user_payments_order` (`order_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户支付记录';
-
-CREATE TABLE IF NOT EXISTS `user_payment_callbacks` (
+CREATE TABLE IF NOT EXISTS `payment_callbacks` (
   `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `channel`         VARCHAR(32)  NOT NULL,
   `idempotency_key` VARCHAR(128) NOT NULL COMMENT '幂等键',
@@ -197,13 +185,28 @@ CREATE TABLE IF NOT EXISTS `user_payment_callbacks` (
   `process_result`  VARCHAR(32)  NOT NULL COMMENT 'success|ignored|failed',
   `processed_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_user_payment_callbacks_idem` (`channel`, `idempotency_key`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户支付回调幂等与对账';
+  UNIQUE KEY `uk_payment_callbacks_idem` (`channel`, `idempotency_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='支付回调幂等与对账';
+
+CREATE TABLE IF NOT EXISTS `user_wallet_flows` (
+  `id`                  BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`             BIGINT UNSIGNED NOT NULL,
+  `type`                VARCHAR(32)  NOT NULL COMMENT 'recharge|pay|refund|commission|withdraw',
+  `amount_cents`        BIGINT       NOT NULL COMMENT '正入负出（分）',
+  `balance_after_cents` BIGINT       DEFAULT NULL COMMENT '变动后账户余额，渠道直付可为 NULL',
+  `currency`            CHAR(3)      NOT NULL DEFAULT 'CNY',
+  `ref_type`            VARCHAR(32)  DEFAULT NULL COMMENT 'order|refund|withdraw|recharge',
+  `ref_id`              BIGINT UNSIGNED DEFAULT NULL,
+  `remark`              VARCHAR(512) DEFAULT NULL,
+  `created_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_wallet_flows_ref` (`type`, `ref_type`, `ref_id`),
+  KEY `idx_user_wallet_flows_user_time` (`user_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户资金流水';
 
 CREATE TABLE IF NOT EXISTS `user_refunds` (
   `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `order_id`        BIGINT UNSIGNED NOT NULL,
-  `payment_id`      BIGINT UNSIGNED DEFAULT NULL,
   `refund_no`       VARCHAR(64)  NOT NULL,
   `amount_cents`    BIGINT       NOT NULL,
   `reason`          VARCHAR(512) DEFAULT NULL,

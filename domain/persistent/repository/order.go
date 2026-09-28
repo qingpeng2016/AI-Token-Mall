@@ -15,8 +15,8 @@ type PaymentNotifyInput struct {
 }
 
 type OrderRepo interface {
-	CreateOrderWithPayment(ctx context.Context, order *entity.UserOrder, payment *entity.UserPayment) error
-	FindPaymentByOutTradeNo(ctx context.Context, outTradeNo string) (*entity.UserPayment, error)
+	CreateOrder(ctx context.Context, order *entity.UserOrder) error
+	FindOrderByOutTradeNo(ctx context.Context, outTradeNo string) (*entity.UserOrder, error)
 	FindOrderByID(ctx context.Context, id uint) (*entity.UserOrder, error)
 	ApplyPaymentNotifySuccess(ctx context.Context, in PaymentNotifyInput) error
 }

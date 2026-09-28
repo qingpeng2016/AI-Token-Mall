@@ -70,17 +70,11 @@ func (s *OrderService) CreateMockOrder(ctx context.Context, userID uint, req *re
 		"channel":            channel,
 		"enterprise_invoice": req.EnterpriseInvoice,
 	})
-	payment := &entity.UserPayment{
-		Channel:        channel,
-		OutTradeNo:     outTradeNo,
-		AmountCents:    total,
-		Status:         "pending",
-		RawRequestJSON: datatypes.JSON(rawReq),
-		CreatedAt:      now,
-		UpdatedAt:      now,
-	}
+	order.PayChannel = channel
+	order.OutTradeNo = outTradeNo
+	order.RawRequestJSON = datatypes.JSON(rawReq)
 
-	if err := s.orders.CreateOrderWithPayment(ctx, order, payment); err != nil {
+	if err := s.orders.CreateOrder(ctx, order); err != nil {
 		return nil, errorx.ErrDbError
 	}
 
@@ -88,7 +82,6 @@ func (s *OrderService) CreateMockOrder(ctx context.Context, userID uint, req *re
 		OrderNo:          orderNo,
 		OutTradeNo:       outTradeNo,
 		OrderID:          order.ID,
-		PaymentID:        payment.ID,
 		Channel:          channel,
 		Status:           order.Status,
 		TotalAmountCents: total,
@@ -106,14 +99,14 @@ func (s *OrderService) HandlePaymentNotify(ctx context.Context, channel string, 
 		return errorx.ErrParamsError
 	}
 
-	payment, err := s.orders.FindPaymentByOutTradeNo(ctx, req.OutTradeNo)
+	order, err := s.orders.FindOrderByOutTradeNo(ctx, req.OutTradeNo)
 	if err != nil {
 		return errorx.ErrDbError
 	}
-	if payment == nil {
+	if order == nil {
 		return errorx.ErrPaymentNotFound
 	}
-	if payment.Channel != channel {
+	if order.PayChannel != channel {
 		return errorx.ErrParamsError
 	}
 

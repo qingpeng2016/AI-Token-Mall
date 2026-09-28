@@ -22,18 +22,12 @@ func NewOrderImpl(db *gorm.DB) repository.OrderRepo {
 	return &OrderImpl{db: db}
 }
 
-func (r *OrderImpl) CreateOrderWithPayment(ctx context.Context, order *entity.UserOrder, payment *entity.UserPayment) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(order).Error; err != nil {
-			return err
-		}
-		payment.OrderID = order.ID
-		return tx.Create(payment).Error
-	})
+func (r *OrderImpl) CreateOrder(ctx context.Context, order *entity.UserOrder) error {
+	return r.db.WithContext(ctx).Create(order).Error
 }
 
-func (r *OrderImpl) FindPaymentByOutTradeNo(ctx context.Context, outTradeNo string) (*entity.UserPayment, error) {
-	var row entity.UserPayment
+func (r *OrderImpl) FindOrderByOutTradeNo(ctx context.Context, outTradeNo string) (*entity.UserOrder, error) {
+	var row entity.UserOrder
 	err := r.db.WithContext(ctx).Where("out_trade_no = ?", outTradeNo).First(&row).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
@@ -58,7 +52,7 @@ func (r *OrderImpl) FindOrderByID(ctx context.Context, id uint) (*entity.UserOrd
 
 func (r *OrderImpl) ApplyPaymentNotifySuccess(ctx context.Context, in repository.PaymentNotifyInput) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var existed entity.UserPaymentCallback
+		var existed entity.PaymentCallback
 		err := tx.Where("channel = ? AND idempotency_key = ?", in.Channel, in.IdempotencyKey).
 			First(&existed).Error
 		if err == nil {
@@ -68,20 +62,14 @@ func (r *OrderImpl) ApplyPaymentNotifySuccess(ctx context.Context, in repository
 			return err
 		}
 
-		var payment entity.UserPayment
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("out_trade_no = ?", in.OutTradeNo).First(&payment).Error; err != nil {
-			return err
-		}
-		if payment.Status == "success" {
-			_ = r.insertCallback(tx, in, 1, "ignored")
-			return nil
-		}
-
 		var order entity.UserOrder
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			First(&order, payment.OrderID).Error; err != nil {
+			Where("out_trade_no = ?", in.OutTradeNo).First(&order).Error; err != nil {
 			return err
+		}
+		if order.Status == "completed" {
+			_ = r.insertCallback(tx, in, 1, "ignored")
+			return nil
 		}
 		if order.Status != "pending_payment" {
 			return fmt.Errorf("order %s status %s not payable", order.OrderNo, order.Status)
@@ -99,25 +87,21 @@ func (r *OrderImpl) ApplyPaymentNotifySuccess(ctx context.Context, in repository
 		}
 
 		third := in.ThirdTradeNo
-		if err := tx.Model(&payment).Updates(map[string]interface{}{
-			"status":           "success",
-			"paid_at":          now,
-			"third_trade_no":   third,
-			"raw_notify_json":  notifyRaw,
-			"updated_at":       now,
-		}).Error; err != nil {
-			return err
-		}
-
 		if err := tx.Model(&order).Updates(map[string]interface{}{
-			"status":     "completed",
-			"paid_at":    now,
-			"updated_at": now,
+			"status":          "completed",
+			"paid_at":         now,
+			"third_trade_no":  third,
+			"raw_notify_json": notifyRaw,
+			"updated_at":      now,
 		}).Error; err != nil {
 			return err
 		}
 
 		if err := upsertSubscription(tx, &order, &product, now); err != nil {
+			return err
+		}
+
+		if err := insertOrderPayWalletFlow(tx, &order, &product, in.Channel, now); err != nil {
 			return err
 		}
 
@@ -141,12 +125,28 @@ func (r *OrderImpl) ApplyPaymentNotifySuccess(ctx context.Context, in repository
 	})
 }
 
+func insertOrderPayWalletFlow(tx *gorm.DB, order *entity.UserOrder, product *entity.Product, channel string, now time.Time) error {
+	refType := "order"
+	remark := fmt.Sprintf("订单 %s · %s · %s", order.OrderNo, product.CardTitle, channel)
+	row := entity.UserWalletFlow{
+		UserID:      order.UserID,
+		Type:        "pay",
+		AmountCents: -order.TotalAmountCents,
+		Currency:    order.Currency,
+		RefType:     &refType,
+		RefID:       &order.ID,
+		Remark:      &remark,
+		CreatedAt:   now,
+	}
+	return tx.Create(&row).Error
+}
+
 func (r *OrderImpl) insertCallback(tx *gorm.DB, in repository.PaymentNotifyInput, sigOK int, result string) error {
 	payload := in.PayloadJSON
 	if len(payload) == 0 {
 		payload = []byte("{}")
 	}
-	row := entity.UserPaymentCallback{
+	row := entity.PaymentCallback{
 		Channel:        in.Channel,
 		IdempotencyKey: in.IdempotencyKey,
 		PayloadJSON:    datatypes.JSON(payload),
@@ -201,16 +201,16 @@ func upsertSubscription(tx *gorm.DB, order *entity.UserOrder, product *entity.Pr
 	}
 
 	return tx.Model(&sub).Updates(map[string]interface{}{
-		"orders":              datatypes.JSON(ordersJSON),
-		"base_limit_tokens":   tokenGrant,
-		"limit_tokens":        tokenGrant,
-		"used_tokens":         0,
-		"expires_at":          newExpires,
-		"period_start":        now,
-		"period_end":          addBillingPeriod(now, product.BillingPeriod),
+		"orders":                 datatypes.JSON(ordersJSON),
+		"base_limit_tokens":      tokenGrant,
+		"limit_tokens":           tokenGrant,
+		"used_tokens":            0,
+		"expires_at":             newExpires,
+		"period_start":           now,
+		"period_end":             addBillingPeriod(now, product.BillingPeriod),
 		"products_category_name": product.ProductsCategoryName,
 		"sku_product_name":       product.SKUProductName,
-		"updated_at":          now,
+		"updated_at":             now,
 	}).Error
 }
 

@@ -1,4 +1,4 @@
--- 平台支付通道配置（与 user_payments 用户支付流水区分）
+-- 平台支付通道配置（与 user_orders 支付字段区分）
 
 CREATE TABLE IF NOT EXISTS `payments` (
   `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,

@@ -12,7 +12,6 @@ export type CreateOrderResult = {
   order_no: string
   out_trade_no: string
   order_id: number
-  payment_id: number
   channel: string
   status: string
   total_amount_cents: number

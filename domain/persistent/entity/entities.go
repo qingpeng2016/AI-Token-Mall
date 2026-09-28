@@ -129,8 +129,13 @@ type UserOrder struct {
 	Status            string     `gorm:"column:status;size:32;not null"`
 	TotalAmountCents  int64      `gorm:"column:total_amount_cents;not null"`
 	Currency          string     `gorm:"column:currency;size:3;not null;default:CNY"`
-	EnterpriseInvoice int        `gorm:"column:enterprise_invoice;not null;default:0"`
-	PaidAt            *time.Time `gorm:"column:paid_at"`
+	EnterpriseInvoice int            `gorm:"column:enterprise_invoice;not null;default:0"`
+	PayChannel        string         `gorm:"column:pay_channel;size:32"`
+	OutTradeNo        string         `gorm:"column:out_trade_no;size:64"`
+	ThirdTradeNo      *string        `gorm:"column:third_trade_no;size:128"`
+	RawRequestJSON    datatypes.JSON `gorm:"column:raw_request_json;type:json"`
+	RawNotifyJSON     datatypes.JSON `gorm:"column:raw_notify_json;type:json"`
+	PaidAt            *time.Time     `gorm:"column:paid_at"`
 	ExpireAt          time.Time  `gorm:"column:expire_at;not null"`
 	ClosedAt          *time.Time `gorm:"column:closed_at"`
 	FailReason        *string    `gorm:"column:fail_reason;size:512"`
@@ -140,24 +145,7 @@ type UserOrder struct {
 
 func (UserOrder) TableName() string { return "user_orders" }
 
-type UserPayment struct {
-	ID             uint           `gorm:"primaryKey;column:id"`
-	OrderID        uint           `gorm:"column:order_id;not null"`
-	Channel        string         `gorm:"column:channel;size:32;not null"`
-	OutTradeNo     string         `gorm:"column:out_trade_no;size:64;not null"`
-	ThirdTradeNo   *string        `gorm:"column:third_trade_no;size:128"`
-	AmountCents    int64          `gorm:"column:amount_cents;not null"`
-	Status         string         `gorm:"column:status;size:32;not null"`
-	PaidAt         *time.Time     `gorm:"column:paid_at"`
-	RawRequestJSON datatypes.JSON `gorm:"column:raw_request_json;type:json"`
-	RawNotifyJSON  datatypes.JSON `gorm:"column:raw_notify_json;type:json"`
-	CreatedAt      time.Time      `gorm:"column:created_at"`
-	UpdatedAt      time.Time      `gorm:"column:updated_at"`
-}
-
-func (UserPayment) TableName() string { return "user_payments" }
-
-type UserPaymentCallback struct {
+type PaymentCallback struct {
 	ID             uint           `gorm:"primaryKey;column:id"`
 	Channel        string         `gorm:"column:channel;size:32;not null"`
 	IdempotencyKey string         `gorm:"column:idempotency_key;size:128;not null"`
@@ -167,12 +155,26 @@ type UserPaymentCallback struct {
 	ProcessedAt    time.Time      `gorm:"column:processed_at"`
 }
 
-func (UserPaymentCallback) TableName() string { return "user_payment_callbacks" }
+func (PaymentCallback) TableName() string { return "payment_callbacks" }
+
+type UserWalletFlow struct {
+	ID                uint      `gorm:"primaryKey;column:id"`
+	UserID            uint      `gorm:"column:user_id;not null"`
+	Type              string    `gorm:"column:type;size:32;not null"`
+	AmountCents       int64     `gorm:"column:amount_cents;not null"`
+	BalanceAfterCents *int64    `gorm:"column:balance_after_cents"`
+	Currency          string    `gorm:"column:currency;size:3;not null;default:CNY"`
+	RefType           *string   `gorm:"column:ref_type;size:32"`
+	RefID             *uint     `gorm:"column:ref_id"`
+	Remark            *string   `gorm:"column:remark;size:512"`
+	CreatedAt         time.Time `gorm:"column:created_at"`
+}
+
+func (UserWalletFlow) TableName() string { return "user_wallet_flows" }
 
 type UserRefund struct {
 	ID          uint       `gorm:"primaryKey;column:id"`
 	OrderID     uint       `gorm:"column:order_id;not null"`
-	PaymentID   *uint      `gorm:"column:payment_id"`
 	RefundNo    string     `gorm:"column:refund_no;size:64;not null"`
 	AmountCents int64      `gorm:"column:amount_cents;not null"`
 	Reason      *string    `gorm:"column:reason;size:512"`

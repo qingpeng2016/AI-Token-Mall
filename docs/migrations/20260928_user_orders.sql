@@ -11,6 +11,11 @@ CREATE TABLE IF NOT EXISTS `user_orders` (
   `total_amount_cents` BIGINT    NOT NULL,
   `currency`        CHAR(3)      NOT NULL DEFAULT 'CNY',
   `enterprise_invoice` TINYINT(1) NOT NULL DEFAULT 0,
+  `pay_channel`     VARCHAR(32)  DEFAULT NULL,
+  `out_trade_no`    VARCHAR(64)  DEFAULT NULL,
+  `third_trade_no`  VARCHAR(128) DEFAULT NULL,
+  `raw_request_json`  JSON       DEFAULT NULL,
+  `raw_notify_json`   JSON       DEFAULT NULL,
   `paid_at`         DATETIME     DEFAULT NULL,
   `expire_at`       DATETIME     NOT NULL,
   `closed_at`       DATETIME     DEFAULT NULL,
@@ -19,30 +24,13 @@ CREATE TABLE IF NOT EXISTS `user_orders` (
   `updated_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_user_orders_order_no` (`order_no`),
+  UNIQUE KEY `uk_user_orders_out_trade_no` (`out_trade_no`),
   KEY `idx_user_orders_user_status` (`user_id`, `status`),
   KEY `idx_user_orders_expire` (`expire_at`),
   KEY `idx_user_orders_product` (`product_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS `user_payments` (
-  `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `order_id`        BIGINT UNSIGNED NOT NULL,
-  `channel`         VARCHAR(32)  NOT NULL,
-  `out_trade_no`    VARCHAR(64)  NOT NULL,
-  `third_trade_no`  VARCHAR(128) DEFAULT NULL,
-  `amount_cents`    BIGINT       NOT NULL,
-  `status`          VARCHAR(32)  NOT NULL,
-  `paid_at`         DATETIME     DEFAULT NULL,
-  `raw_request_json`  JSON       DEFAULT NULL,
-  `raw_notify_json`   JSON       DEFAULT NULL,
-  `created_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_user_payments_out_trade_no` (`out_trade_no`),
-  KEY `idx_user_payments_order` (`order_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `user_payment_callbacks` (
+CREATE TABLE IF NOT EXISTS `payment_callbacks` (
   `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `channel`         VARCHAR(32)  NOT NULL,
   `idempotency_key` VARCHAR(128) NOT NULL,
@@ -51,7 +39,23 @@ CREATE TABLE IF NOT EXISTS `user_payment_callbacks` (
   `process_result`  VARCHAR(32)  NOT NULL,
   `processed_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_user_payment_callbacks_idem` (`channel`, `idempotency_key`)
+  UNIQUE KEY `uk_payment_callbacks_idem` (`channel`, `idempotency_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `user_wallet_flows` (
+  `id`                  BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`             BIGINT UNSIGNED NOT NULL,
+  `type`                VARCHAR(32)  NOT NULL,
+  `amount_cents`        BIGINT       NOT NULL,
+  `balance_after_cents` BIGINT       DEFAULT NULL,
+  `currency`            CHAR(3)      NOT NULL DEFAULT 'CNY',
+  `ref_type`            VARCHAR(32)  DEFAULT NULL,
+  `ref_id`              BIGINT UNSIGNED DEFAULT NULL,
+  `remark`              VARCHAR(512) DEFAULT NULL,
+  `created_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_wallet_flows_ref` (`type`, `ref_type`, `ref_id`),
+  KEY `idx_user_wallet_flows_user_time` (`user_id`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `user_subscriptions` (
