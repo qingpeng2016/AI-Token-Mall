@@ -2,11 +2,12 @@
 import { computed, nextTick, onBeforeMount, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { formatCnyFromCents } from '@ai-token-mall/shared'
+import { formatCnyFromCents, type OrderType } from '@ai-token-mall/shared'
 import CatalogPickerModal from '@/components/catalog/CatalogPickerModal.vue'
 import PurchaseModal from '@/components/checkout/PurchaseModal.vue'
 import MemberSidebar from '@/components/member/MemberSidebar.vue'
 import type { CatalogProduct } from '@/mocks/home'
+import { useCatalogProducts } from '@/composables/useCatalogProducts'
 import {
   clearSessionUser,
   getSessionUser,
@@ -33,6 +34,7 @@ import {
   withdrawalChannelLabel,
   withdrawalStatusLabel,
   type MemberTab,
+  type MockSubscription,
   type MockSubAccount,
   type MockTeamSubKey,
   type MockWithdrawalRecord,
@@ -41,9 +43,11 @@ import {
 const router = useRouter()
 const route = useRoute()
 const user = ref(getSessionUser())
+const { products: catalogProducts } = useCatalogProducts()
 const catalogOpen = ref(false)
 const purchaseOpen = ref(false)
 const purchaseProduct = ref<CatalogProduct | null>(null)
+const purchaseOrderType = ref<OrderType>('purchase')
 const teamInviteOpen = ref(false)
 const apiKeyPanelTab = ref<'mine' | 'team' | 'group'>('mine')
 const teamMembers = ref<MockSubAccount[]>([...mockApiTeamMembers])
@@ -220,11 +224,30 @@ function goCommissionWithdrawFromOverview() {
 }
 
 function openCatalogPicker() {
+  purchaseOrderType.value = 'purchase'
   catalogOpen.value = true
 }
 
-function onCatalogBuy(p: CatalogProduct) {
+function openUpgradeCatalog() {
+  purchaseOrderType.value = 'purchase'
+  catalogOpen.value = true
+}
+
+function openRenewSubscription(sub: MockSubscription) {
+  const p = catalogProducts.value.find((item) => item.id === sub.productId)
+  if (!p) {
+    ElMessage.warning('未找到该套餐商品，请稍后重试或联系客服')
+    return
+  }
+  purchaseOrderType.value = 'renewal'
   purchaseProduct.value = p
+  purchaseOpen.value = true
+}
+
+function onCatalogBuy(p: CatalogProduct) {
+  purchaseOrderType.value = 'purchase'
+  purchaseProduct.value = p
+  catalogOpen.value = false
   purchaseOpen.value = true
 }
 
@@ -698,8 +721,15 @@ function confirmAddTeamMember() {
                 />
               </div>
               <div class="plan-actions">
-                <button type="button" class="atm-btn-primary btn-xs" @click="openCatalogPicker">
-                  续费 / 升档
+                <button
+                  type="button"
+                  class="atm-btn-primary btn-xs"
+                  @click="openRenewSubscription(sub)"
+                >
+                  续费
+                </button>
+                <button type="button" class="atm-btn-primary btn-xs" @click="openUpgradeCatalog()">
+                  升档
                 </button>
                 <button
                   type="button"
@@ -1221,6 +1251,7 @@ function confirmAddTeamMember() {
       v-model:open="purchaseOpen"
       :product="purchaseProduct"
       :user="user"
+      :order-type="purchaseOrderType"
     />
 
     <Teleport to="body">

@@ -23,6 +23,8 @@ export const memberNav: { id: MemberTab; label: string }[] = [
 
 export type MockSubscription = {
   id: number
+  /** 对应 products.id，续费下单用 */
+  productId: number
   productName: string
   skuLabel: string
   status: 'active' | 'expired' | 'suspended'
@@ -215,6 +217,7 @@ export const mockInviteRebateRecords: MockInviteRebateRecord[] = [
 export const mockSubscriptions: MockSubscription[] = [
   {
     id: 1,
+    productId: 10,
     productName: 'ChatGPT Plus 月卡',
     skuLabel: 'OAI-PLUS-M',
     status: 'active',
@@ -228,6 +231,7 @@ export const mockSubscriptions: MockSubscription[] = [
   },
   {
     id: 2,
+    productId: 3,
     productName: 'Claude Pro 月卡',
     skuLabel: 'ANT-PRO-M',
     status: 'active',
