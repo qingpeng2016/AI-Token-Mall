@@ -17,7 +17,6 @@ const navBrandEntries = computed((): NavMenuEntry[] => [
       label: i.label,
       href: i.href,
       price: i.price,
-      featured: i.featured,
     })),
   })),
   {
@@ -94,26 +93,18 @@ function isSpaNav(href: string) {
                           v-if="isSpaNav(item.href)"
                           :to="item.href"
                           class="mega-link"
-                          :class="{ 'mega-link--featured': item.featured }"
                           @click="closeAll"
                         >
-                          <span class="mega-link-label">
-                            {{ item.label }}
-                            <span v-if="item.featured" class="mega-hot">热门</span>
-                          </span>
+                          <span class="mega-link-label">{{ item.label }}</span>
                           <span class="mega-link-price">{{ item.price }}</span>
                         </RouterLink>
                         <a
                           v-else
                           :href="item.href"
                           class="mega-link"
-                          :class="{ 'mega-link--featured': item.featured }"
                           @click="closeAll"
                         >
-                          <span class="mega-link-label">
-                            {{ item.label }}
-                            <span v-if="item.featured" class="mega-hot">热门</span>
-                          </span>
+                          <span class="mega-link-label">{{ item.label }}</span>
                           <span class="mega-link-price">{{ item.price }}</span>
                         </a>
                       </li>
@@ -159,26 +150,18 @@ function isSpaNav(href: string) {
                       v-if="isSpaNav(item.href)"
                       :to="item.href"
                       class="nav-drop-link"
-                      :class="{ 'nav-drop-link--featured': item.featured }"
                       @click="closeAll"
                     >
-                      <span class="nav-drop-label">
-                        {{ item.label }}
-                        <span v-if="item.featured" class="nav-drop-hot">热门</span>
-                      </span>
+                      <span class="nav-drop-label">{{ item.label }}</span>
                       <span v-if="item.price" class="nav-drop-price">{{ item.price }}</span>
                     </RouterLink>
                     <a
                       v-else
                       :href="item.href"
                       class="nav-drop-link"
-                      :class="{ 'nav-drop-link--featured': item.featured }"
                       @click="closeAll"
                     >
-                      <span class="nav-drop-label">
-                        {{ item.label }}
-                        <span v-if="item.featured" class="nav-drop-hot">热门</span>
-                      </span>
+                      <span class="nav-drop-label">{{ item.label }}</span>
                       <span v-if="item.price" class="nav-drop-price">{{ item.price }}</span>
                     </a>
                   </template>
@@ -349,29 +332,11 @@ function isSpaNav(href: string) {
   color: var(--atm-primary);
 }
 
-.nav-drop-link--featured {
-  color: #fff;
-  background: var(--atm-gradient);
-}
-
-.nav-drop-link--featured:hover {
-  color: #fff;
-  filter: brightness(1.03);
-}
-
 .nav-drop-label {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-weight: 500;
-}
-
-.nav-drop-hot {
-  padding: 1px 5px;
-  font-size: 10px;
-  font-weight: 700;
-  background: rgba(255, 255, 255, 0.22);
-  border-radius: 999px;
 }
 
 .nav-drop-price {
@@ -380,10 +345,6 @@ function isSpaNav(href: string) {
   font-weight: 600;
   color: var(--atm-primary);
   white-space: nowrap;
-}
-
-.nav-drop-link--featured .nav-drop-price {
-  color: rgba(255, 255, 255, 0.95);
 }
 
 /* 浮层：顶部透明 padding 过桥，避免鼠标从菜单项滑向面板时误触发 mouseleave */
@@ -461,19 +422,6 @@ function isSpaNav(href: string) {
   color: var(--atm-text);
 }
 
-.mega-link--featured {
-  margin-bottom: 4px;
-  padding: 8px 10px;
-  color: #fff;
-  background: var(--atm-gradient);
-  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
-}
-
-.mega-link--featured:hover {
-  color: #fff;
-  filter: brightness(1.03);
-}
-
 .mega-link-label {
   display: inline-flex;
   align-items: center;
@@ -485,11 +433,6 @@ function isSpaNav(href: string) {
   color: var(--atm-text);
 }
 
-.mega-link--featured .mega-link-label {
-  font-weight: 600;
-  color: #fff;
-}
-
 .mega-link-price {
   flex-shrink: 0;
   font-size: 12px;
@@ -497,20 +440,6 @@ function isSpaNav(href: string) {
   color: var(--atm-primary);
   white-space: nowrap;
   padding-left: 4px;
-}
-
-.mega-link--featured .mega-link-price {
-  color: rgba(255, 255, 255, 0.95);
-}
-
-.mega-hot {
-  padding: 1px 5px;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1.3;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.22);
-  border-radius: 999px;
 }
 
 .mega-footer {

@@ -97,10 +97,9 @@ func mapProductToNavItem(p *entity.Product) response.NavPlanItemResp {
 		label = p.SKUProductName
 	}
 	return response.NavPlanItemResp{
-		Label:    label,
-		Price:    formatNavPrice(p.PriceCents, p.BillingPeriod),
-		Href:     productDetailHref(p.SKUCode),
-		Featured: p.IsHot != 0 || p.IsFlagship != 0,
+		Label: label,
+		Price: formatNavPrice(p.PriceCents, p.BillingPeriod),
+		Href:  productDetailHref(p.SKUCode),
 	}
 }
 
