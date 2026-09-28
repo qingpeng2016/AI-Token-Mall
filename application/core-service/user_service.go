@@ -21,11 +21,6 @@ import (
 
 var cnPhonePattern = regexp.MustCompile(`^1\d{10}$`)
 
-const (
-	sessionTokenSecret = "ai-token-mall-session-signing-key"
-	sessionTokenTTL    = 720 * time.Hour
-)
-
 type UserService struct {
 	users repository.UserRepo
 }
@@ -123,7 +118,7 @@ func (s *UserService) Login(ctx context.Context, req *request.LoginUserReq) (*re
 }
 
 func (s *UserService) loginUserResp(u *entity.User) (*response.LoginUserResp, error) {
-	token, err := auth.IssueUserToken(u.ID, sessionTokenSecret, sessionTokenTTL)
+	token, err := auth.IssueUserToken(u.ID, auth.SessionTokenSecret, auth.SessionTokenTTL)
 	if err != nil {
 		return nil, errorx.ErrUnknown
 	}

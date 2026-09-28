@@ -22,6 +22,7 @@ type Router struct {
 	productHandler   *handler.ProductHandler
 	tutorialHandler    *handler.TutorialHandler
 	enterpriseHandler  *handler.EnterpriseHandler
+	orderHandler       *handler.OrderHandler
 }
 
 func NewRouter(
@@ -30,6 +31,7 @@ func NewRouter(
 	productHandler *handler.ProductHandler,
 	tutorialHandler *handler.TutorialHandler,
 	enterpriseHandler *handler.EnterpriseHandler,
+	orderHandler *handler.OrderHandler,
 ) *Router {
 	return &Router{
 		setting:           setting,
@@ -37,6 +39,7 @@ func NewRouter(
 		productHandler:    productHandler,
 		tutorialHandler:   tutorialHandler,
 		enterpriseHandler: enterpriseHandler,
+		orderHandler:      orderHandler,
 	}
 }
 
@@ -44,19 +47,26 @@ func (r *Router) setupRouters() *gin.Engine {
 	engine := gin.Default()
 	engine.Use(ginMiddleware.TraceRequestLog, ginMiddleware.CORSMiddleware)
 
-	api := engine.Group("/api/v1")
+	v1 := engine.Group("/api/v1")
 	{
-		api.POST("/users/register", r.userHandler.Register)
-		api.POST("/users/login", r.userHandler.Login)
-		api.POST("/users/logout", r.userHandler.Logout)
-		api.GET("/products", r.productHandler.List)
-		api.GET("/products/nav-menu", r.productHandler.NavMenu)
-		api.GET("/products/slug/:slug", r.productHandler.DetailBySlug)
-		api.GET("/tutorials", r.tutorialHandler.List)
-		api.GET("/tutorials/articles/:slug", r.tutorialHandler.Detail)
-		api.GET("/enterprise/products", r.enterpriseHandler.ListProducts)
-		api.GET("/enterprise/products/:code", r.enterpriseHandler.GetProduct)
-		api.POST("/enterprise/inquiries", r.enterpriseHandler.SubmitInquiry)
+		v1.POST("/users/register", r.userHandler.Register)
+		v1.POST("/users/login", r.userHandler.Login)
+		v1.POST("/users/logout", r.userHandler.Logout)
+		v1.GET("/products", r.productHandler.List)
+		v1.GET("/products/nav-menu", r.productHandler.NavMenu)
+		v1.GET("/products/slug/:slug", r.productHandler.DetailBySlug)
+		v1.GET("/tutorials", r.tutorialHandler.List)
+		v1.GET("/tutorials/articles/:slug", r.tutorialHandler.Detail)
+		v1.GET("/enterprise/products", r.enterpriseHandler.ListProducts)
+		v1.GET("/enterprise/products/:code", r.enterpriseHandler.GetProduct)
+		v1.POST("/enterprise/inquiries", r.enterpriseHandler.SubmitInquiry)
+	}
+
+	// 需登录；正式网关回调另开 /api/v1/payments/notify 且无鉴权
+	authGroup := engine.Group("/api/v1/mock", ginMiddleware.RequireAuth)
+	{
+		authGroup.POST("/orders", r.orderHandler.CreateOrder)
+		authGroup.POST("/payments/notify/:channel", r.orderHandler.PaymentNotify)
 	}
 
 	return engine

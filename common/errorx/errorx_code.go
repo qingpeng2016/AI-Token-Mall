@@ -10,4 +10,8 @@ var (
 	ErrUserDisabled      = NewRespErr(100204, "账号已禁用", "帳號已禁用", "Account disabled.")
 	ErrPasswordMismatch  = NewRespErr(100205, "两次密码不一致", "兩次密碼不一致", "Passwords do not match.")
 	ErrInvalidCredential = NewRespErr(100206, "邮箱或手机号格式不正确", "郵箱或手機號格式不正確", "Invalid email or phone.")
+	ErrProductNotFound   = NewRespErr(100301, "商品不存在或已下架", "商品不存在或已下架", "Product not found.")
+	ErrOrderNotFound     = NewRespErr(100302, "订单不存在", "訂單不存在", "Order not found.")
+	ErrPaymentNotFound   = NewRespErr(100303, "支付单不存在", "支付單不存在", "Payment not found.")
+	ErrOrderNotPayable   = NewRespErr(100304, "订单状态不可支付", "訂單狀態不可支付", "Order is not payable.")
 )

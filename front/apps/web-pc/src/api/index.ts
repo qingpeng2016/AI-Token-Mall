@@ -1,5 +1,6 @@
 import {
   createEnterpriseApi,
+  createOrderApi,
   createProductApi,
   createTutorialApi,
   createUserApi,
@@ -24,6 +25,11 @@ export const tutorialApi = createTutorialApi({
 })
 
 export const enterpriseApi = createEnterpriseApi({
+  baseURL,
+  getToken: () => getAuthToken(),
+})
+
+export const orderApi = createOrderApi({
   baseURL,
   getToken: () => getAuthToken(),
 })

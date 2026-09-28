@@ -90,3 +90,12 @@ body {
   border-radius: 999px;
   text-decoration: none;
 }
+
+/* ElMessage 默认在顶部；全站改为屏幕正中 */
+.el-message {
+  top: 50% !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: translate(-50%, -50%) !important;
+}

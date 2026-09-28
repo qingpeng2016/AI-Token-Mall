@@ -14,6 +14,12 @@ import (
 
 var ErrInvalidToken = errors.New("invalid token")
 
+// SessionTokenSecret / SessionTokenTTL 与登录签发一致（MVP 固定密钥，生产应走配置）
+const (
+	SessionTokenSecret = "ai-token-mall-session-signing-key"
+	SessionTokenTTL    = 720 * time.Hour
+)
+
 // IssueUserToken 签发登录 token（payload: userID:expUnix:hmac）
 func IssueUserToken(userID uint, secret string, ttl time.Duration) (string, error) {
 	if secret == "" {

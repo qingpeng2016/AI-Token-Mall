@@ -10,4 +10,5 @@ type ProductRepo interface {
 	ListActiveCategories(ctx context.Context) ([]entity.ProductCategory, error)
 	ListOnSale(ctx context.Context, categoryID uint) ([]entity.Product, error)
 	FindOnSaleBySKUCode(ctx context.Context, skuCode string) (*entity.Product, error)
+	FindOnSaleByID(ctx context.Context, id uint) (*entity.Product, error)
 }

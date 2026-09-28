@@ -1,14 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { formatCnyFromCents } from '@ai-token-mall/shared'
 import type { UserProfile } from '@ai-token-mall/shared'
-import {
-  clearSessionUser,
-  PENDING_BUY_KEY,
-  userAccountLabel,
-} from '@/composables/useSessionUser'
+import { orderApi } from '@/api'
 import type { CatalogProduct } from '@/mocks/home'
 
 const props = defineProps<{
@@ -20,8 +16,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:open': [value: boolean]
 }>()
-
-const router = useRouter()
 
 const quantity = ref(1)
 const qtyPresets = [1, 5, 10, 20]
@@ -67,10 +61,6 @@ const totalCents = computed(() =>
   Math.max(0, subtotalCents.value + invoiceExtraCents.value - couponOffCents.value),
 )
 
-const accountText = computed(() =>
-  props.user ? userAccountLabel(props.user) : '',
-)
-
 function close() {
   emit('update:open', false)
 }
@@ -94,23 +84,19 @@ function applyCoupon() {
   couponApplied.value = null
 }
 
-function switchAccount() {
-  if (props.product) {
-    sessionStorage.setItem(PENDING_BUY_KEY, String(props.product.id))
-  }
-  clearSessionUser()
-  close()
-  router.push({ path: '/login', query: { redirect: '/' } })
-}
-
 async function submitPay(channel: 'alipay' | 'paypal') {
   if (!props.product || !props.user) return
   paying.value = true
   try {
-    // TODO: POST /api/v1/orders + 支付收银台
-    await new Promise((r) => setTimeout(r, 400))
+    const created = await orderApi.create({
+      product_id: props.product.id,
+      quantity: quantity.value,
+      channel,
+      enterprise_invoice: enterpriseInvoice.value,
+    })
+    await orderApi.mockNotify(created.channel, created.out_trade_no)
     ElMessage.success(
-      `${channel === 'alipay' ? '支付宝' : 'PayPal'} 下单已创建（演示）· ${props.product.card_title} × ${quantity.value}`,
+      `${channel === 'alipay' ? '支付宝' : 'PayPal'} 支付成功 · 订单 ${created.order_no}`,
     )
     close()
   } catch (e) {
@@ -167,13 +153,6 @@ async function submitPay(channel: 'alipay' | 'paypal') {
                 </button>
               </div>
             </div>
-          </div>
-
-          <div v-if="user" class="purchase-account">
-            <p>
-              已登录 <strong>{{ accountText }}</strong>，订单将记入你的账号
-            </p>
-            <button type="button" class="link-btn" @click="switchAccount">改用其他账号</button>
           </div>
 
           <label class="purchase-check">
@@ -412,39 +391,6 @@ async function submitPay(channel: 'alipay' | 'paypal') {
   color: #fff;
   background: var(--atm-gradient);
   border-color: transparent;
-}
-
-.purchase-account {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 12px;
-  margin-bottom: 18px;
-  padding: 12px 14px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: #334155;
-  background: #eff6ff;
-  border-radius: 12px;
-}
-
-.purchase-account strong {
-  font-weight: 600;
-  color: #1e40af;
-}
-
-.link-btn {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--atm-primary);
-  cursor: pointer;
-  background: none;
-  border: none;
-}
-
-.link-btn:hover {
-  text-decoration: underline;
 }
 
 .purchase-check {
