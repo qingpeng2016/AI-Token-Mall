@@ -1,6 +1,5 @@
-import { computed, ref, type ComputedRef, type Ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import type { TutorialArticle, TutorialCategory } from '@ai-token-mall/shared'
-import { readSessionCache, writeSessionCache } from '@ai-token-mall/shared'
 import { tutorialApi } from '@/api'
 import {
   blogCategories,
@@ -9,34 +8,22 @@ import {
   type BlogPost,
 } from '@/mocks/blog'
 
-const SESSION_KEY = 'atm:tutorial-list:v3'
-
 export type TutorialFilterCategory = {
   id: string
   label: string
 }
 
-type TutorialCache = {
-  title: string
-  categories: TutorialFilterCategory[]
-  articles: BlogPost[]
-  fromApi?: boolean
-}
-
 const pageTitle = ref('')
 const categories = ref<TutorialFilterCategory[]>([])
 const articles = ref<BlogPost[]>([])
-const revalidating = ref(false)
+const loading = ref(false)
 
-let inflight: Promise<void> | null = null
+let loadSeq = 0
 
-function fromMock(): TutorialCache {
-  return {
-    title: blogPageMeta.title,
-    categories: blogCategories.map((c) => ({ id: c.id, label: c.label })),
-    articles: blogPosts,
-    fromApi: false,
-  }
+function fromMock() {
+  pageTitle.value = blogPageMeta.title
+  categories.value = blogCategories.map((c) => ({ id: c.id, label: c.label }))
+  articles.value = blogPosts
 }
 
 function mapApiArticle(a: TutorialArticle): BlogPost {
@@ -51,87 +38,52 @@ function mapApiArticle(a: TutorialArticle): BlogPost {
   }
 }
 
-function applyCache(cache: TutorialCache) {
-  pageTitle.value = cache.title
-  categories.value = cache.categories
-  articles.value = cache.articles
-}
-
 function applyApiList(data: {
   title?: string
   categories?: TutorialCategory[]
   articles?: TutorialArticle[]
 }) {
-  const cache: TutorialCache = {
-    title: data.title || blogPageMeta.title,
-    categories: [
-      { id: 'all', label: '全部' },
-      ...(data.categories ?? [])
-        .slice()
-        .sort((a, b) => a.sort - b.sort)
-        .map((c) => ({ id: c.code, label: c.name })),
-    ],
-    articles: (data.articles ?? []).map(mapApiArticle),
-    fromApi: true,
-  }
-  applyCache(cache)
-  writeSessionCache(SESSION_KEY, cache)
+  pageTitle.value = data.title || blogPageMeta.title
+  categories.value = [
+    { id: 'all', label: '全部' },
+    ...(data.categories ?? [])
+      .slice()
+      .sort((a, b) => a.sort - b.sort)
+      .map((c) => ({ id: c.code, label: c.name })),
+  ]
+  articles.value = (data.articles ?? []).map(mapApiArticle)
 }
 
-function seedDisplayList() {
-  const session = readSessionCache<TutorialCache>(SESSION_KEY)
-  if (session?.fromApi) {
-    applyCache(session)
-    return
-  }
-  applyCache(fromMock())
-}
-
-async function revalidateList(): Promise<void> {
+export async function reloadTutorialBlog(): Promise<void> {
+  const seq = ++loadSeq
+  loading.value = true
+  pageTitle.value = ''
+  categories.value = []
+  articles.value = []
   try {
     const data = await tutorialApi.list()
+    if (seq !== loadSeq) return
     applyApiList(data)
   } catch {
-    /* 保留当前展示（mock / session / 上次 API） */
+    if (seq !== loadSeq) return
+    fromMock()
+  } finally {
+    if (seq === loadSeq) loading.value = false
   }
-}
-
-function revalidateInBackground(): Promise<void> {
-  if (inflight) return inflight
-  revalidating.value = true
-  inflight = revalidateList().finally(() => {
-    revalidating.value = false
-    inflight = null
-  })
-  return inflight
 }
 
 export function useTutorialBlog(): {
   pageTitle: Ref<string>
   categories: Ref<TutorialFilterCategory[]>
   articles: Ref<BlogPost[]>
-  revalidating: ComputedRef<boolean>
+  loading: Ref<boolean>
   reload: () => Promise<void>
 } {
-  if (!pageTitle.value && !articles.value.length) {
-    seedDisplayList()
-  }
-  void revalidateInBackground()
-
-  async function reload() {
-    revalidating.value = true
-    try {
-      await revalidateList()
-    } finally {
-      revalidating.value = false
-    }
-  }
-
   return {
     pageTitle,
     categories,
     articles,
-    revalidating: computed(() => revalidating.value),
-    reload,
+    loading,
+    reload: reloadTutorialBlog,
   }
 }

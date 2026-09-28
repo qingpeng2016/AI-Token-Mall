@@ -2,19 +2,16 @@
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import type { TutorialArticle } from '@ai-token-mall/shared'
-import { readSessionCache, writeSessionCache } from '@ai-token-mall/shared'
 import { tutorialApi } from '@/api'
+import BlogArticleSkeleton from '@/components/blog/BlogArticleSkeleton.vue'
 import { getBlogPost, type BlogPost } from '@/mocks/blog'
 
 const route = useRoute()
 const router = useRouter()
 
 const slug = computed(() => String(route.params.slug ?? ''))
-const revalidating = ref(false)
-
-function cacheKey(s: string) {
-  return `atm:tutorial-article:${s}`
-}
+const loading = ref(true)
+const post = ref<BlogPost | null>(null)
 
 function mapArticle(a: TutorialArticle): BlogPost {
   return {
@@ -28,34 +25,24 @@ function mapArticle(a: TutorialArticle): BlogPost {
   }
 }
 
-function hydratePost(currentSlug: string): BlogPost | null {
-  return (
-    readSessionCache<BlogPost>(cacheKey(currentSlug)) ??
-    getBlogPost(currentSlug) ??
-    null
-  )
-}
-
-const post = ref<BlogPost | null>(null)
-
 async function loadPost(currentSlug: string) {
-  post.value = hydratePost(currentSlug)
-  revalidating.value = true
+  loading.value = true
+  post.value = null
   try {
     const data = await tutorialApi.detail(currentSlug)
     if (data?.slug) {
-      const mapped = mapArticle(data)
-      post.value = mapped
-      writeSessionCache(cacheKey(currentSlug), mapped)
-      return
+      post.value = mapArticle(data)
     }
   } catch {
-    /* 保留 hydrate */
+    /* fallback below */
   } finally {
-    revalidating.value = false
-  }
-  if (!post.value) {
-    router.replace('/blog')
+    if (!post.value) {
+      post.value = getBlogPost(currentSlug) ?? null
+    }
+    loading.value = false
+    if (!post.value) {
+      router.replace('/blog')
+    }
   }
 }
 
@@ -69,7 +56,8 @@ watch(
 </script>
 
 <template>
-  <article v-if="post" class="article-page">
+  <BlogArticleSkeleton v-if="loading" />
+  <article v-else-if="post" class="article-page">
     <div class="atm-container article-container">
       <nav class="article-breadcrumb" aria-label="面包屑">
         <RouterLink to="/">首页</RouterLink>
@@ -174,7 +162,7 @@ watch(
 .article-foot {
   margin-top: 40px;
   padding-top: 24px;
-  border-top: 1px solid #eef2ff;
+  border-top: 1px solid #e8ecf4;
 }
 
 .back-link {

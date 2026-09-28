@@ -1,18 +1,13 @@
 import { ref, type Ref } from 'vue'
 import type { NavBrandMenu, NavMegaColumn, NavMenuResponse } from '@ai-token-mall/shared'
-import { readSessionCache, writeSessionCache } from '@ai-token-mall/shared'
 import { productApi } from '@/api'
 import { navBrandDropdowns, navMegaMenu } from '@/mocks/nav'
 
-const SESSION_KEY = 'atm:nav-menu:v1'
-
-type NavSessionCache = NavMenuResponse & { fromApi?: boolean }
-
 const megaMenu = ref<NavMegaColumn[]>([])
 const brandMenus = ref<NavBrandMenu[]>([])
-const revalidating = ref(false)
+const loading = ref(true)
 
-let inflight: Promise<void> | null = null
+let loadSeq = 0
 
 function mockBrandMenus(): NavBrandMenu[] {
   return navBrandDropdowns
@@ -31,40 +26,9 @@ function mockBrandMenus(): NavBrandMenu[] {
     }))
 }
 
-function applyNavData(data: NavMenuResponse) {
-  if (data.mega_menu?.length) {
-    megaMenu.value = data.mega_menu
-  }
-  if (data.brand_menus?.length) {
-    brandMenus.value = data.brand_menus
-  }
-}
-
-function persistNavFromApi(data: NavMenuResponse) {
-  const payload: NavSessionCache = {
-    mega_menu: data.mega_menu ?? [],
-    brand_menus: data.brand_menus ?? [],
-    fromApi: true,
-  }
-  applyNavData(payload)
-  writeSessionCache(SESSION_KEY, payload)
-}
-
-function hydrateNavFromSession(): boolean {
-  const cached = readSessionCache<NavSessionCache>(SESSION_KEY)
-  if (!cached?.fromApi) return false
-  applyNavData(cached)
-  return megaMenu.value.length > 0 || brandMenus.value.length > 0
-}
-
-function seedNavDisplay() {
-  if (hydrateNavFromSession()) return
-  if (!megaMenu.value.length) {
-    megaMenu.value = navMegaMenu
-  }
-  if (!brandMenus.value.length) {
-    brandMenus.value = mockBrandMenus()
-  }
+function applyMockNav() {
+  megaMenu.value = navMegaMenu
+  brandMenus.value = mockBrandMenus()
 }
 
 function mapNavApiResponse(data: NavMenuResponse): NavMenuResponse {
@@ -79,36 +43,30 @@ function mapNavApiResponse(data: NavMenuResponse): NavMenuResponse {
   }
 }
 
-async function revalidateNav(): Promise<void> {
+export async function reloadNavMenu(): Promise<void> {
+  const seq = ++loadSeq
+  loading.value = true
+  megaMenu.value = []
+  brandMenus.value = []
   try {
     const data = mapNavApiResponse(await productApi.navMenu())
-    persistNavFromApi(data)
+    if (seq !== loadSeq) return
+    megaMenu.value = data.mega_menu
+    brandMenus.value = data.brand_menus
   } catch {
-    /* 保留 session / mock */
+    if (seq !== loadSeq) return
+    applyMockNav()
+  } finally {
+    if (seq === loadSeq) loading.value = false
   }
 }
-
-function revalidateInBackground(): Promise<void> {
-  if (inflight) return inflight
-  revalidating.value = true
-  inflight = revalidateNav().finally(() => {
-    revalidating.value = false
-    inflight = null
-  })
-  return inflight
-}
-
-/** 模块加载时同步读 session，避免刷新首帧先闪 mock 再被接口替换 */
-seedNavDisplay()
 
 export function useNavMenu(): {
   megaMenu: Ref<NavMegaColumn[]>
   brandMenus: Ref<NavBrandMenu[]>
-  revalidating: Ref<boolean>
+  loading: Ref<boolean>
+  reload: () => Promise<void>
 } {
-  if (!megaMenu.value.length && !brandMenus.value.length) {
-    seedNavDisplay()
-  }
-  void revalidateInBackground()
-  return { megaMenu, brandMenus, revalidating }
+  void reloadNavMenu()
+  return { megaMenu, brandMenus, loading, reload: reloadNavMenu }
 }

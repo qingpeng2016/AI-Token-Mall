@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { formatCnyFromCents } from '@ai-token-mall/shared'
@@ -22,9 +22,13 @@ const purchaseOpen = ref(false)
 const sessionUser = ref(getSessionUser())
 const {
   products: catalogProducts,
-  initialLoading: catalogInitialLoading,
-  revalidating: catalogRevalidating,
+  loading: catalogLoading,
+  reload: reloadCatalog,
 } = useCatalogProducts()
+
+onMounted(() => {
+  void reloadCatalog()
+})
 
 const slug = computed(() => String(route.params.slug ?? ''))
 const product = computed(() => findProductBySlug(slug.value, catalogProducts.value))
@@ -33,9 +37,9 @@ const detail = computed(() =>
 )
 
 watch(
-  [() => route.params.slug, catalogProducts, catalogInitialLoading],
+  [() => route.params.slug, catalogProducts, catalogLoading],
   () => {
-    if (catalogInitialLoading.value) return
+    if (catalogLoading.value) return
     if (!product.value) {
       router.replace('/')
     }
@@ -58,8 +62,8 @@ const openFaqs = ref<string[]>([])
 </script>
 
 <template>
-  <ProductDetailSkeleton v-if="catalogInitialLoading && !product" />
-  <div v-else-if="product && detail" class="product-page" :class="{ 'product-page--busy': catalogRevalidating }">
+  <ProductDetailSkeleton v-if="catalogLoading || !product" />
+  <div v-else-if="product && detail" class="product-page">
     <div class="atm-container">
       <section class="hero-card">
         <div class="hero-main">

@@ -22,8 +22,7 @@ const router = useRouter()
 const {
   products: catalogProducts,
   catalogFilterPills,
-  initialLoading: catalogInitialLoading,
-  revalidating: catalogRevalidating,
+  loading: catalogLoading,
 } = useCatalogProducts()
 
 const catalogSkeletonCount = 6
@@ -50,7 +49,7 @@ const filteredProducts = computed(() => {
 watch(
   filteredProducts,
   (list) => {
-    if (catalogInitialLoading.value) return
+    if (catalogLoading.value) return
     selectedProductId.value = list[0]?.id ?? null
   },
   { immediate: true },
@@ -128,12 +127,8 @@ function onKeydown(e: KeyboardEvent) {
           </div>
 
           <div class="catalog-modal-body">
-            <div
-              class="catalog-grid"
-              :class="{ 'catalog-grid--revalidating': catalogRevalidating }"
-              :aria-busy="catalogInitialLoading || catalogRevalidating"
-            >
-              <template v-if="catalogInitialLoading">
+            <div class="catalog-grid" :aria-busy="catalogLoading">
+              <template v-if="catalogLoading">
                 <ProductCardSkeleton v-for="i in catalogSkeletonCount" :key="`sk-${i}`" />
               </template>
               <template v-else>
@@ -147,7 +142,7 @@ function onKeydown(e: KeyboardEvent) {
                 />
               </template>
             </div>
-            <p v-if="!catalogInitialLoading && !filteredProducts.length" class="catalog-empty">
+            <p v-if="!catalogLoading && !filteredProducts.length" class="catalog-empty">
               该品牌暂无套餐
             </p>
           </div>
@@ -275,10 +270,6 @@ function onKeydown(e: KeyboardEvent) {
   .catalog-grid {
     grid-template-columns: repeat(3, 1fr);
   }
-}
-
-.catalog-grid--revalidating {
-  opacity: 0.92;
 }
 
 .catalog-empty {

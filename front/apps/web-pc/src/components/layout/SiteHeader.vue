@@ -7,7 +7,7 @@ import NavMegaMenuSkeleton from '@/components/layout/NavMegaMenuSkeleton.vue'
 import { useNavMenu } from '@/composables/useNavMenu'
 import { isNavDropdown, type NavMenuEntry } from '@/mocks/nav'
 
-const { megaMenu, brandMenus, revalidating: navRevalidating } = useNavMenu()
+const { megaMenu, brandMenus, loading: navLoading } = useNavMenu()
 
 const navBrandEntries = computed((): NavMenuEntry[] => [
   ...brandMenus.value.map((b) => ({
@@ -85,8 +85,8 @@ function isSpaNav(href: string) {
               @mouseenter="openMega"
             >
               <div class="mega-popover-inner">
-                <NavMegaMenuSkeleton v-if="navRevalidating && !megaMenu.length" />
-                <div v-else class="mega-grid" :class="{ 'mega-grid--busy': navRevalidating }">
+                <NavMegaMenuSkeleton v-if="navLoading || !megaMenu.length" />
+                <div v-else class="mega-grid">
                   <div v-for="col in megaMenu" :key="col.title" class="mega-col">
                     <h3 class="mega-col-title">{{ col.title }}</h3>
                     <ul class="mega-list">
@@ -117,7 +117,17 @@ function isSpaNav(href: string) {
             </div>
           </div>
 
-          <template v-for="brand in navBrandEntries" :key="brand.id">
+          <template v-if="navLoading">
+            <span
+              v-for="i in 3"
+              :key="`nav-sk-${i}`"
+              class="nav-link nav-link--sk"
+              aria-hidden="true"
+            />
+            <RouterLink to="/enterprise" class="nav-link">企业采购</RouterLink>
+          </template>
+          <template v-else>
+            <template v-for="brand in navBrandEntries" :key="brand.id">
             <RouterLink
               v-if="!isNavDropdown(brand)"
               :to="brand.to"
@@ -169,6 +179,7 @@ function isSpaNav(href: string) {
                 </div>
               </div>
             </div>
+            </template>
           </template>
 
           <RouterLink
@@ -378,9 +389,26 @@ function isSpaNav(href: string) {
     0 24px 64px rgba(30, 27, 75, 0.16);
 }
 
-.mega-grid--busy {
-  opacity: 0.94;
-  transition: opacity 0.2s ease;
+.nav-link--sk {
+  display: inline-block;
+  width: 72px;
+  min-height: 1.25em;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #eef1f6 0%, #e2e8f0 45%, #eef1f6 90%);
+  background-size: 200% 100%;
+  animation: nav-link-sk-shimmer 1.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes nav-link-sk-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
 }
 
 .mega-grid {

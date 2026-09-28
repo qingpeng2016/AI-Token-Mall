@@ -32,9 +32,13 @@ const route = useRoute()
 const {
   products: catalogProducts,
   catalogFilterPills,
-  initialLoading: catalogInitialLoading,
-  revalidating: catalogRevalidating,
+  loading: catalogLoading,
+  reload: reloadCatalog,
 } = useCatalogProducts()
+
+onMounted(() => {
+  void reloadCatalog()
+})
 
 const catalogSkeletonCount = 6
 const filter = ref<FilterKey>('all')
@@ -63,7 +67,7 @@ const filteredProducts = computed(() => {
 watch(
   filteredProducts,
   (list) => {
-    if (catalogInitialLoading.value) return
+    if (catalogLoading.value) return
     selectedProductId.value = list[0]?.id ?? null
   },
   { immediate: true },
@@ -175,29 +179,30 @@ function reviewInitial(user: string) {
       <header class="catalog-head">
         <h2>全部套餐</h2>
       </header>
-      <div class="catalog-pills">
-        <button
-          v-for="pill in catalogFilterPills"
-          :key="pill.label"
-          type="button"
-          class="catalog-pill"
-          :class="{ active: filter === pill.value }"
-          :style="filter === pill.value ? activePillStyle : undefined"
-          @click="filter = pill.value"
-        >
-          <span v-if="pill.dot && filter !== pill.value" class="pill-dot" :style="{ background: pill.dot }" />
-          {{ pill.label }}
-        </button>
-      </div>
-      <div
-        class="catalog-grid"
-        :class="{ 'catalog-grid--revalidating': catalogRevalidating }"
-        :aria-busy="catalogInitialLoading || catalogRevalidating"
-      >
-        <template v-if="catalogInitialLoading">
+      <template v-if="catalogLoading">
+        <div class="catalog-pills catalog-pills--sk" aria-hidden="true">
+          <span v-for="i in 6" :key="i" class="catalog-pill-sk" />
+        </div>
+        <div class="catalog-grid" aria-busy="true">
           <ProductCardSkeleton v-for="i in catalogSkeletonCount" :key="`sk-${i}`" />
-        </template>
-        <template v-else>
+        </div>
+      </template>
+      <template v-else>
+        <div class="catalog-pills">
+          <button
+            v-for="pill in catalogFilterPills"
+            :key="pill.label"
+            type="button"
+            class="catalog-pill"
+            :class="{ active: filter === pill.value }"
+            :style="filter === pill.value ? activePillStyle : undefined"
+            @click="filter = pill.value"
+          >
+            <span v-if="pill.dot && filter !== pill.value" class="pill-dot" :style="{ background: pill.dot }" />
+            {{ pill.label }}
+          </button>
+        </div>
+        <div class="catalog-grid">
           <ProductCard
             v-for="p in filteredProducts"
             :key="p.id"
@@ -206,9 +211,9 @@ function reviewInitial(user: string) {
             @open="onOpenProduct"
             @buy="onBuy"
           />
-        </template>
-      </div>
-      <p v-if="!catalogInitialLoading && !filteredProducts.length" class="catalog-empty">
+        </div>
+      </template>
+      <p v-if="!catalogLoading && !filteredProducts.length" class="catalog-empty">
         该品牌暂无套餐
       </p>
     </section>
@@ -510,16 +515,30 @@ function reviewInitial(user: string) {
     grid-template-columns: repeat(3, 1fr);
   }
 }
-.catalog-grid--revalidating {
-  opacity: 0.92;
-  transition: opacity 0.2s ease;
+.catalog-pills--sk {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
-.catalog-revalidating {
-  margin: 8px 0 0;
-  text-align: center;
-  font-size: 12px;
-  color: var(--atm-text-muted);
+.catalog-pill-sk {
+  display: inline-block;
+  width: 72px;
+  height: 36px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #eef1f6 0%, #e2e8f0 45%, #eef1f6 90%);
+  background-size: 200% 100%;
+  animation: catalog-pill-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes catalog-pill-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
 }
 
 .catalog-empty {

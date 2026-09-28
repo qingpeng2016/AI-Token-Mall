@@ -3,28 +3,21 @@ import {
   catalogFilterPillsFromCategories,
   flattenCatalogProducts,
   normalizeCatalogProduct,
-  readSessionCache,
-  writeSessionCache,
   type CatalogFilterPill,
   type CatalogProduct,
   type ProductCatalogCategory,
-  type ProductCatalogResponse,
 } from '@ai-token-mall/shared'
 import { productApi } from '@/api'
 import { catalogFilterPills, mockCategorySlugById, mockProducts } from '@/mocks/home'
 
-const SESSION_KEY = 'atm:product-catalog:v3'
-
-type CatalogSession = ProductCatalogResponse & { fromApi?: boolean }
-
 const categories = ref<ProductCatalogCategory[]>([])
-const revalidating = ref(false)
+const loading = ref(false)
 
-let inflight: Promise<void> | null = null
+let loadSeq = 0
 
-function mockCatalogResponse(): ProductCatalogResponse {
+function mockCatalogCategories(): ProductCatalogCategory[] {
   const pills = catalogFilterPills.filter((p) => p.value !== 'all')
-  const cats: ProductCatalogCategory[] = pills.map((pill) => {
+  return pills.map((pill) => {
     const id = Number(pill.value)
     const slug = mockCategorySlugById[id]
     const products = mockProducts
@@ -41,72 +34,39 @@ function mockCatalogResponse(): ProductCatalogResponse {
       products,
     }
   })
-  return { categories: cats }
 }
 
-function seedDisplayCategories(): ProductCatalogCategory[] {
-  const fromSession = readSessionCache<CatalogSession>(SESSION_KEY)
-  if (fromSession?.fromApi && fromSession.categories?.length) {
-    return fromSession.categories
-  }
-  return mockCatalogResponse().categories
-}
-
-function setCategories(cats: ProductCatalogCategory[]) {
-  categories.value = cats
-}
-
-function persistApiCatalog(data: ProductCatalogResponse) {
-  const payload: CatalogSession = { ...data, fromApi: true }
-  setCategories(data.categories ?? [])
-  writeSessionCache(SESSION_KEY, payload)
-}
-
-async function revalidateCatalog(): Promise<void> {
+export async function reloadCatalogProducts(): Promise<void> {
+  const seq = ++loadSeq
+  loading.value = true
+  categories.value = []
   try {
     const data = await productApi.list()
-    persistApiCatalog({
-      categories: (data.categories ?? []).map((c) => ({
-        ...c,
-        products: (c.products ?? []).map((p) => normalizeCatalogProduct(p)),
-      })),
-    })
+    if (seq !== loadSeq) return
+    categories.value = (data.categories ?? []).map((c) => ({
+      ...c,
+      products: (c.products ?? []).map((p) => normalizeCatalogProduct(p)),
+    }))
   } catch {
-    /* 保留当前 categories（mock / session / 上次 API） */
+    if (seq !== loadSeq) return
+    categories.value = mockCatalogCategories()
+  } finally {
+    if (seq === loadSeq) loading.value = false
   }
-}
-
-function revalidateInBackground(): Promise<void> {
-  if (inflight) return inflight
-  revalidating.value = true
-  inflight = revalidateCatalog().finally(() => {
-    revalidating.value = false
-    inflight = null
-  })
-  return inflight
 }
 
 export function useCatalogProducts(): {
   categories: Ref<ProductCatalogCategory[]>
   catalogFilterPills: ComputedRef<CatalogFilterPill[]>
   products: ComputedRef<CatalogProduct[]>
-  initialLoading: Ref<boolean>
-  revalidating: Ref<boolean>
+  loading: Ref<boolean>
+  reload: () => Promise<void>
 } {
-  if (!categories.value.length) {
-    setCategories(seedDisplayCategories())
-  }
-  void revalidateInBackground()
-
-  const initialLoading = computed(
-    () => revalidating.value && categories.value.length === 0,
-  )
-
   const catalogFilterPillsComputed = computed(() => {
     if (categories.value.length) {
       return catalogFilterPillsFromCategories(categories.value)
     }
-    return catalogFilterPills
+    return []
   })
 
   const products = computed(() =>
@@ -117,7 +77,7 @@ export function useCatalogProducts(): {
     categories,
     catalogFilterPills: catalogFilterPillsComputed,
     products,
-    initialLoading,
-    revalidating,
+    loading,
+    reload: reloadCatalogProducts,
   }
 }

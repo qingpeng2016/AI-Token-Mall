@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
+import BlogListSkeleton from '@/components/blog/BlogListSkeleton.vue'
 import { useTutorialBlog } from '@/composables/useTutorialBlog'
 
 const route = useRoute()
 const router = useRouter()
-const { pageTitle, categories, articles } = useTutorialBlog()
+const { pageTitle, categories, articles, loading, reload } = useTutorialBlog()
+
+onMounted(() => {
+  void reload()
+})
 
 function parseCategory(q: unknown): string {
   const id = typeof q === 'string' ? q : 'all'
@@ -50,42 +55,46 @@ function setCategory(id: string) {
         <span class="current">教程</span>
       </nav>
 
-      <header class="blog-hero">
-        <h1 class="blog-title">{{ pageTitle }}</h1>
-      </header>
+      <BlogListSkeleton v-if="loading" />
 
-      <div class="blog-filters" role="tablist" aria-label="文章分类">
-        <button
-          v-for="cat in categories"
-          :key="cat.id"
-          type="button"
-          class="filter-pill"
-          :class="{ 'filter-pill--active': activeCategory === cat.id }"
-          role="tab"
-          :aria-selected="activeCategory === cat.id"
-          @click="setCategory(cat.id)"
-        >
-          {{ cat.label }}
-        </button>
-      </div>
+      <template v-else>
+        <header class="blog-hero">
+          <h1 class="blog-title">{{ pageTitle }}</h1>
+        </header>
 
-      <div v-if="filteredPosts.length" class="blog-grid">
-        <RouterLink
-          v-for="post in filteredPosts"
-          :key="post.slug"
-          :to="{ name: 'blog-article', params: { slug: post.slug } }"
-          class="blog-card"
-        >
-          <div class="blog-card-meta">
-            <span class="blog-card-tag">{{ post.categoryLabel }}</span>
-            <time class="blog-card-date" :datetime="post.date">{{ post.date }}</time>
-          </div>
-          <h2 class="blog-card-title">{{ post.title }}</h2>
-          <p class="blog-card-excerpt">{{ post.excerpt }}</p>
-        </RouterLink>
-      </div>
+        <div class="blog-filters" role="tablist" aria-label="文章分类">
+          <button
+            v-for="cat in categories"
+            :key="cat.id"
+            type="button"
+            class="filter-pill"
+            :class="{ 'filter-pill--active': activeCategory === cat.id }"
+            role="tab"
+            :aria-selected="activeCategory === cat.id"
+            @click="setCategory(cat.id)"
+          >
+            {{ cat.label }}
+          </button>
+        </div>
 
-      <p v-else class="blog-empty">该分类暂无文章，试试「全部」。</p>
+        <div v-if="filteredPosts.length" class="blog-grid">
+          <RouterLink
+            v-for="post in filteredPosts"
+            :key="post.slug"
+            :to="{ name: 'blog-article', params: { slug: post.slug } }"
+            class="blog-card"
+          >
+            <div class="blog-card-meta">
+              <span class="blog-card-tag">{{ post.categoryLabel }}</span>
+              <time class="blog-card-date" :datetime="post.date">{{ post.date }}</time>
+            </div>
+            <h2 class="blog-card-title">{{ post.title }}</h2>
+            <p class="blog-card-excerpt">{{ post.excerpt }}</p>
+          </RouterLink>
+        </div>
+
+        <p v-else class="blog-empty">该分类暂无文章，试试「全部」。</p>
+      </template>
     </div>
   </div>
 </template>
@@ -157,14 +166,14 @@ function setCategory(id: string) {
   border-radius: 999px;
   cursor: pointer;
   transition:
-    color 0.15s,
-    background 0.15s,
-    border-color 0.15s;
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .filter-pill:hover {
-  color: var(--atm-primary);
-  border-color: #ddd6fe;
+  border-color: #d5dbe8;
+  color: var(--atm-text);
 }
 
 .filter-pill--active {
@@ -176,47 +185,46 @@ function setCategory(id: string) {
 .blog-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 16px;
+  gap: 20px;
 }
 
 @media (min-width: 720px) {
   .blog-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
   }
 }
 
 .blog-card {
   display: block;
-  padding: 22px 24px;
+  padding: 22px;
   text-decoration: none;
+  color: inherit;
   background: #fff;
-  border: 1px solid #eef2ff;
+  border: 1px solid #e8ecf4;
   border-radius: 16px;
-  box-shadow: 0 4px 18px rgba(30, 27, 75, 0.05);
   transition:
-    transform 0.15s,
-    box-shadow 0.15s,
-    border-color 0.15s;
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 
 .blog-card:hover {
+  border-color: #d5dbe8;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
   transform: translateY(-2px);
-  border-color: #ddd6fe;
-  box-shadow: 0 12px 28px rgba(124, 58, 237, 0.1);
 }
 
 .blog-card-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 12px;
+  font-size: 12px;
 }
 
 .blog-card-tag {
-  padding: 3px 10px;
-  font-size: 11px;
+  padding: 3px 8px;
   font-weight: 700;
   color: var(--atm-primary);
   background: #f5f3ff;
@@ -224,22 +232,21 @@ function setCategory(id: string) {
 }
 
 .blog-card-date {
-  font-size: 12px;
   color: var(--atm-text-muted);
 }
 
 .blog-card-title {
   margin: 0 0 10px;
-  font-size: 17px;
-  font-weight: 700;
-  line-height: 1.4;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.35;
   color: var(--atm-text);
 }
 
 .blog-card-excerpt {
   margin: 0;
   font-size: 14px;
-  line-height: 1.55;
+  line-height: 1.6;
   color: var(--atm-text-muted);
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -248,8 +255,8 @@ function setCategory(id: string) {
 }
 
 .blog-empty {
-  padding: 48px 0;
   text-align: center;
   color: var(--atm-text-muted);
+  padding: 48px 16px;
 }
 </style>
