@@ -97,7 +97,6 @@ async function onSubmit() {
     })
     openCenterNotice('提交成功', [
       res.message ?? '已收到采购需求，顾问将尽快联系您',
-      res.id ? `需求编号：${res.id}` : '',
     ])
     form.company = ''
     form.contact = ''
@@ -895,23 +894,23 @@ async function onSubmit() {
   text-align: center;
   background: #fff;
   border-radius: 20px;
-  box-shadow: 0 24px 64px rgba(124, 58, 237, 0.22);
-  border: 1px solid rgba(124, 58, 237, 0.15);
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.12);
+  border: 1px solid #e2e8f0;
 }
 
 .ent-center-notice-title {
   margin: 0 0 16px;
   font-size: 1.25rem;
   font-weight: 800;
-  color: var(--atm-primary);
+  color: var(--atm-text);
 }
 
 .ent-center-notice-line {
   margin: 0 0 10px;
   font-size: 15px;
   line-height: 1.6;
-  font-weight: 600;
-  color: var(--atm-primary-dark);
+  font-weight: 500;
+  color: var(--atm-text-muted);
 }
 
 .ent-center-notice-line:last-of-type {
