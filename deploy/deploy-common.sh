@@ -74,8 +74,10 @@ expect {
   }
   eof
 }
-catch wait result
-exit [lindex \$result 3]
+set wait_result [wait]
+set exit_code [lindex \$wait_result 3]
+if {\$exit_code eq ""} { set exit_code 0 }
+exit \$exit_code
 EOF
     rc=$?
   else

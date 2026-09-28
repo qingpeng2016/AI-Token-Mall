@@ -233,7 +233,7 @@ EOF
 
 echo ">>> 后端 分支=${BRANCH} 动作=${ACTION} 模式=${MODE}"
 if ! run_remote_bash "$REMOTE_SCRIPT_BODY"; then
-  echo ">>> 远程部署失败（常见：8886 被占用 / go build 失败 / 启动 panic）" >&2
+  echo ">>> 远程脚本返回非 0（若上方已有 RUNNING，可先: ./deploy-backend.sh master status user）" >&2
   echo ">>> 服务器日志: ${APP_DIR}/logs/ai-token-mall-${MODE}-nohup.log" >&2
   exit 1
 fi
