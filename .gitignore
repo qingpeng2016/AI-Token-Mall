@@ -32,5 +32,6 @@ go.work.sum
 !deployment.yaml
 !service.yaml
 conf/local.conf.yaml
+deploy/.deploy.env
 conf/dev.conf-test.yaml
 .idea
