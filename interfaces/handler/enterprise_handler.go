@@ -1,6 +1,9 @@
 package handler
 
 import (
+	"errors"
+	"net/http"
+
 	coreservice "github.com/qingpeng2016/ai-token-mall/application/core-service"
 	"github.com/qingpeng2016/ai-token-mall/common/dederi/gin/response"
 	"github.com/qingpeng2016/ai-token-mall/domain/rest/request"
@@ -27,7 +30,25 @@ func (h *EnterpriseHandler) SubmitInquiry(c *gin.Context) {
 		response.ResponseErr(c, err)
 		return
 	}
-	response.ResponseSuccess(c, gin.H{"id": id})
+	response.ResponseSuccess(c, gin.H{
+		"id":      id,
+		"message": "已收到采购需求，顾问将尽快联系您",
+	})
+}
+
+// GetProduct 企业方案详情
+func (h *EnterpriseHandler) GetProduct(c *gin.Context) {
+	code := c.Param("code")
+	data, err := h.enterpriseSvc.GetProduct(c.Request.Context(), code)
+	if err != nil {
+		if errors.Is(err, coreservice.ErrEnterpriseProductNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"code": 404, "msg": "enterprise product not found"})
+			return
+		}
+		response.ResponseErr(c, err)
+		return
+	}
+	response.ResponseSuccess(c, data)
 }
 
 // ListProducts 企业方案列表

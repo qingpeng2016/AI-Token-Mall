@@ -16,6 +16,7 @@ export type SubmitEnterpriseInquiryRequest = {
 
 export type SubmitEnterpriseInquiryResponse = {
   id: number
+  message?: string
 }
 
 function unwrap<T>(envelope: ApiEnvelope<T>): T {
@@ -26,6 +27,12 @@ export function createEnterpriseApi(options: HttpClientOptions) {
   const http = createHttpClient(options)
 
   return {
+    async getProduct(code: string): Promise<EnterpriseProduct> {
+      const res = await http.get<ApiEnvelope<EnterpriseProduct>>(
+        `/api/v1/enterprise/products/${encodeURIComponent(code)}`,
+      )
+      return unwrap(res)
+    },
     async listProducts(): Promise<EnterpriseProduct[]> {
       const res = await http.get<ApiEnvelope<EnterpriseProductListResponse>>(
         '/api/v1/enterprise/products',

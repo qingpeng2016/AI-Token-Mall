@@ -9,4 +9,5 @@ import (
 type EnterpriseRepo interface {
 	CreateInquiry(ctx context.Context, row *entity.EnterpriseInquiry) error
 	ListActiveProducts(ctx context.Context) ([]entity.EnterpriseProduct, error)
+	FindActiveProductByCode(ctx context.Context, code string) (*entity.EnterpriseProduct, error)
 }

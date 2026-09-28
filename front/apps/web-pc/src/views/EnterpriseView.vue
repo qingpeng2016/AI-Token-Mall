@@ -14,7 +14,10 @@ import {
   enterpriseStats,
   enterpriseSteps,
 } from '@/mocks/enterprise'
-import { useEnterpriseProducts } from '@/composables/useEnterpriseProducts'
+import {
+  useEnterpriseProducts,
+  type EnterprisePlanView,
+} from '@/composables/useEnterpriseProducts'
 
 const submitting = ref(false)
 
@@ -26,8 +29,7 @@ watch(
   (list) => {
     if (!list.length) return
     if (!list.some((p) => p.id === selectedPlanId.value)) {
-      selectedPlanId.value =
-        list.find((p) => p.featured)?.id ?? list[0]?.id ?? ''
+      selectedPlanId.value = list[0]?.id ?? ''
     }
   },
   { immediate: true },
@@ -44,8 +46,40 @@ const form = reactive({
   email: '',
 })
 
-function scrollToContact() {
-  document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+const quotingPlanId = ref('')
+
+const centerNotice = reactive({
+  open: false,
+  title: '',
+  lines: [] as string[],
+})
+
+function openCenterNotice(title: string, lines: string[]) {
+  centerNotice.title = title
+  centerNotice.lines = lines.filter(Boolean)
+  centerNotice.open = true
+}
+
+function closeCenterNotice() {
+  centerNotice.open = false
+}
+
+async function onQuoteClick(plan: EnterprisePlanView) {
+  quotingPlanId.value = plan.id
+  try {
+    const p = await enterpriseApi.getProduct(plan.id)
+    openCenterNotice(p.name, [
+      p.price_hint,
+      p.seats,
+      ...(p.features ?? []).map((f) => `· ${f}`),
+      p.tagline,
+    ])
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : '获取方案信息失败'
+    ElMessage.error(msg)
+  } finally {
+    quotingPlanId.value = ''
+  }
 }
 
 async function onSubmit() {
@@ -55,13 +89,16 @@ async function onSubmit() {
   }
   submitting.value = true
   try {
-    await enterpriseApi.submitInquiry({
+    const res = await enterpriseApi.submitInquiry({
       company_name: form.company.trim(),
       contact_name: form.contact.trim(),
       phone: form.phone.trim(),
       email: form.email.trim() || undefined,
     })
-    ElMessage.success('已收到采购需求，顾问将尽快联系您')
+    openCenterNotice('提交成功', [
+      res.message ?? '已收到采购需求，顾问将尽快联系您',
+      res.id ? `需求编号：${res.id}` : '',
+    ])
     form.company = ''
     form.contact = ''
     form.phone = ''
@@ -76,6 +113,28 @@ async function onSubmit() {
 </script>
 
 <template>
+  <Teleport to="body">
+    <div
+      v-if="centerNotice.open"
+      class="ent-center-notice"
+      role="dialog"
+      aria-modal="true"
+      @click.self="closeCenterNotice"
+    >
+      <div class="ent-center-notice-card">
+        <h3 v-if="centerNotice.title" class="ent-center-notice-title">
+          {{ centerNotice.title }}
+        </h3>
+        <p v-for="(line, i) in centerNotice.lines" :key="i" class="ent-center-notice-line">
+          {{ line }}
+        </p>
+        <button type="button" class="ent-center-notice-btn" @click="closeCenterNotice">
+          知道了
+        </button>
+      </div>
+    </div>
+  </Teleport>
+
   <div class="enterprise-page">
     <section class="ent-hero">
       <div class="atm-container ent-hero-inner">
@@ -155,9 +214,10 @@ async function onSubmit() {
             <button
               type="button"
               class="ent-plan-btn"
-              @click.stop="scrollToContact"
+              :disabled="quotingPlanId === plan.id"
+              @click.stop="onQuoteClick(plan)"
             >
-              {{ plan.buttonLabel }}
+              {{ quotingPlanId === plan.id ? '加载中…' : plan.buttonLabel }}
             </button>
           </article>
         </div>
@@ -816,5 +876,60 @@ async function onSubmit() {
   font-size: 14px;
   line-height: 1.65;
   color: var(--atm-text-muted);
+}
+
+.ent-center-notice {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.ent-center-notice-card {
+  width: min(420px, 100%);
+  padding: 32px 28px 24px;
+  text-align: center;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 24px 64px rgba(124, 58, 237, 0.22);
+  border: 1px solid rgba(124, 58, 237, 0.15);
+}
+
+.ent-center-notice-title {
+  margin: 0 0 16px;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--atm-primary);
+}
+
+.ent-center-notice-line {
+  margin: 0 0 10px;
+  font-size: 15px;
+  line-height: 1.6;
+  font-weight: 600;
+  color: var(--atm-primary-dark);
+}
+
+.ent-center-notice-line:last-of-type {
+  margin-bottom: 24px;
+}
+
+.ent-center-notice-btn {
+  padding: 10px 28px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--atm-gradient);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.ent-center-notice-btn:hover {
+  opacity: 0.92;
 }
 </style>

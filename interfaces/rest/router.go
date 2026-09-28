@@ -54,6 +54,7 @@ func (r *Router) setupRouters() *gin.Engine {
 		api.GET("/tutorials", r.tutorialHandler.List)
 		api.GET("/tutorials/articles/:slug", r.tutorialHandler.Detail)
 		api.GET("/enterprise/products", r.enterpriseHandler.ListProducts)
+		api.GET("/enterprise/products/:code", r.enterpriseHandler.GetProduct)
 		api.POST("/enterprise/inquiries", r.enterpriseHandler.SubmitInquiry)
 	}
 

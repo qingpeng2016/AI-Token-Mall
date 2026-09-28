@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"context"
+	"errors"
 
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/entity"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/repository"
@@ -27,4 +28,18 @@ func (r *EnterpriseImpl) ListActiveProducts(ctx context.Context) ([]entity.Enter
 		Order("sort ASC, id ASC").
 		Find(&rows).Error
 	return rows, err
+}
+
+func (r *EnterpriseImpl) FindActiveProductByCode(ctx context.Context, code string) (*entity.EnterpriseProduct, error) {
+	var row entity.EnterpriseProduct
+	err := r.db.WithContext(ctx).
+		Where("code = ? AND status = ?", code, "active").
+		First(&row).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &row, nil
 }

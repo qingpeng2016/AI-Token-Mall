@@ -2,6 +2,7 @@ package coreservice
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/entity"
@@ -9,6 +10,8 @@ import (
 	"github.com/qingpeng2016/ai-token-mall/domain/rest/request"
 	"github.com/qingpeng2016/ai-token-mall/domain/rest/response"
 )
+
+var ErrEnterpriseProductNotFound = errors.New("enterprise product not found")
 
 type EnterpriseService struct {
 	enterpriseRepo repository.EnterpriseRepo
@@ -42,23 +45,38 @@ func (s *EnterpriseService) ListProducts(ctx context.Context) (*response.Enterpr
 	}
 	items := make([]response.EnterpriseProductItemResp, 0, len(rows))
 	for i := range rows {
-		p := &rows[i]
-		features := decodeStringJSONArray(p.Features)
-		if features == nil {
-			features = []string{}
-		}
-		items = append(items, response.EnterpriseProductItemResp{
-			Code:        p.Code,
-			Name:        p.Name,
-			Badge:       p.Badge,
-			PriceHint:   p.PriceHint,
-			Seats:       p.Seats,
-			Features:    features,
-			Tagline:     p.Tagline,
-			ButtonLabel: p.ButtonLabel,
-			IsFeatured:  p.IsFeatured != 0,
-			Sort:        p.Sort,
-		})
+		items = append(items, mapEnterpriseProductItem(&rows[i]))
 	}
 	return &response.EnterpriseProductListResp{Products: items}, nil
+}
+
+func (s *EnterpriseService) GetProduct(ctx context.Context, code string) (*response.EnterpriseProductItemResp, error) {
+	p, err := s.enterpriseRepo.FindActiveProductByCode(ctx, strings.TrimSpace(code))
+	if err != nil {
+		return nil, err
+	}
+	if p == nil {
+		return nil, ErrEnterpriseProductNotFound
+	}
+	item := mapEnterpriseProductItem(p)
+	return &item, nil
+}
+
+func mapEnterpriseProductItem(p *entity.EnterpriseProduct) response.EnterpriseProductItemResp {
+	features := decodeStringJSONArray(p.Features)
+	if features == nil {
+		features = []string{}
+	}
+	return response.EnterpriseProductItemResp{
+		Code:        p.Code,
+		Name:        p.Name,
+		Badge:       p.Badge,
+		PriceHint:   p.PriceHint,
+		Seats:       p.Seats,
+		Features:    features,
+		Tagline:     p.Tagline,
+		ButtonLabel: p.ButtonLabel,
+		IsFeatured:  p.IsFeatured != 0,
+		Sort:        p.Sort,
+	}
 }
