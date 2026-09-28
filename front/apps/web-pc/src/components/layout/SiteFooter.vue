@@ -16,7 +16,7 @@ import { catalogFilterPills as mockCatalogPills, mockProducts } from '@/mocks/ho
 import { productDetailPath } from '@/mocks/productRoutes'
 
 /** 与原先「工具 · 帮助」列链接数量接近 */
-const FOOTER_TUTORIAL_CATEGORY_LIMIT = 6
+const FOOTER_TUTORIAL_CATEGORY_LIMIT = 5
 
 const aboutLinks = [
   { label: '关于我们', href: '#' },
@@ -65,7 +65,7 @@ const moreAiLinks = computed(() => {
             sort: Number(p.value),
           }))
 
-  const links = sorted.map((c) => ({
+  return sorted.map((c) => ({
     label: c.name,
     to: {
       path: '/',
@@ -73,13 +73,6 @@ const moreAiLinks = computed(() => {
       query: { cat: String(c.id) },
     },
   }))
-
-  links.push({
-    label: '全部套餐',
-    to: { path: '/', hash: '#catalog', query: { cat: 'all' } },
-  })
-
-  return links
 })
 
 const toolsLinks = computed(() => {
