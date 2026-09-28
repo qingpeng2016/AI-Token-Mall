@@ -14,4 +14,5 @@ var (
 	ErrOrderNotFound     = NewRespErr(100302, "订单不存在", "訂單不存在", "Order not found.")
 	ErrPaymentNotFound   = NewRespErr(100303, "支付单不存在", "支付單不存在", "Payment not found.")
 	ErrOrderNotPayable   = NewRespErr(100304, "订单状态不可支付", "訂單狀態不可支付", "Order is not payable.")
+	ErrRenewNoSubscription = NewRespErr(100305, "没有可续费的套餐", "沒有可續費的套餐", "No active subscription to renew.")
 )

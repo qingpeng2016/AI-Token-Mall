@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS `user_orders` (
   `order_no`        VARCHAR(64)  NOT NULL COMMENT '业务订单号',
   `user_id`         BIGINT UNSIGNED NOT NULL,
   `product_id`      BIGINT UNSIGNED NOT NULL,
+  `order_type`      VARCHAR(32)  NOT NULL DEFAULT 'purchase' COMMENT 'purchase|renewal',
   `quantity`        INT          NOT NULL DEFAULT 1,
   `unit_price_cents` BIGINT       NOT NULL,
   `status`          VARCHAR(32)  NOT NULL,

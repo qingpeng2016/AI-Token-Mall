@@ -2,7 +2,6 @@ package mysql
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -50,6 +49,17 @@ func (r *OrderImpl) FindOrderByID(ctx context.Context, id uint) (*entity.UserOrd
 	return &row, nil
 }
 
+func (r *OrderImpl) HasActiveSubscription(ctx context.Context, userID, productID uint) (bool, error) {
+	var n int64
+	err := r.db.WithContext(ctx).Model(&entity.UserSubscription{}).
+		Where("user_id = ? AND product_id = ? AND status = ?", userID, productID, "active").
+		Count(&n).Error
+	if err != nil {
+		return false, err
+	}
+	return n > 0, nil
+}
+
 func (r *OrderImpl) ApplyPaymentNotifySuccess(ctx context.Context, in repository.PaymentNotifyInput) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var existed entity.PaymentCallback
@@ -86,22 +96,17 @@ func (r *OrderImpl) ApplyPaymentNotifySuccess(ctx context.Context, in repository
 			notifyRaw = datatypes.JSON([]byte("{}"))
 		}
 
-		third := in.ThirdTradeNo
 		if err := tx.Model(&order).Updates(map[string]interface{}{
 			"status":          "completed",
 			"paid_at":         now,
-			"third_trade_no":  third,
+			"third_trade_no":  in.ThirdTradeNo,
 			"raw_notify_json": notifyRaw,
 			"updated_at":      now,
 		}).Error; err != nil {
 			return err
 		}
 
-		if err := upsertSubscription(tx, &order, &product, now); err != nil {
-			return err
-		}
-
-		if err := insertOrderPayWalletFlow(tx, &order, &product, in.Channel, now); err != nil {
+		if err := fulfillPaidOrderByType(tx, &order, &product, in.Channel, now); err != nil {
 			return err
 		}
 
@@ -125,22 +130,6 @@ func (r *OrderImpl) ApplyPaymentNotifySuccess(ctx context.Context, in repository
 	})
 }
 
-func insertOrderPayWalletFlow(tx *gorm.DB, order *entity.UserOrder, product *entity.Product, channel string, now time.Time) error {
-	refType := "order"
-	remark := fmt.Sprintf("订单 %s · %s · %s", order.OrderNo, product.CardTitle, channel)
-	row := entity.UserWalletFlow{
-		UserID:      order.UserID,
-		Type:        "pay",
-		AmountCents: -order.TotalAmountCents,
-		Currency:    order.Currency,
-		RefType:     &refType,
-		RefID:       &order.ID,
-		Remark:      &remark,
-		CreatedAt:   now,
-	}
-	return tx.Create(&row).Error
-}
-
 func (r *OrderImpl) insertCallback(tx *gorm.DB, in repository.PaymentNotifyInput, sigOK int, result string) error {
 	payload := in.PayloadJSON
 	if len(payload) == 0 {
@@ -155,63 +144,6 @@ func (r *OrderImpl) insertCallback(tx *gorm.DB, in repository.PaymentNotifyInput
 		ProcessedAt:    time.Now(),
 	}
 	return tx.Create(&row).Error
-}
-
-func upsertSubscription(tx *gorm.DB, order *entity.UserOrder, product *entity.Product, now time.Time) error {
-	var sub entity.UserSubscription
-	err := tx.Where("user_id = ? AND product_id = ? AND status = ?", order.UserID, order.ProductID, "active").
-		First(&sub).Error
-
-	tokenGrant := product.LimitTokens * int64(order.Quantity)
-	periodEnd := addBillingPeriod(now, product.BillingPeriod)
-
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		ordersJSON, _ := json.Marshal([]uint{order.ID})
-		row := entity.UserSubscription{
-			UserID:               order.UserID,
-			ProductID:            order.ProductID,
-			Orders:               datatypes.JSON(ordersJSON),
-			ProductsCategoryName: product.ProductsCategoryName,
-			SKUProductName:       product.SKUProductName,
-			BaseLimitTokens:      tokenGrant,
-			LimitTokens:          tokenGrant,
-			UsedTokens:           0,
-			StartedAt:            now,
-			ExpiresAt:            periodEnd,
-			PeriodStart:          now,
-			PeriodEnd:            periodEnd,
-			Status:               "active",
-			CreatedAt:            now,
-			UpdatedAt:            now,
-		}
-		return tx.Create(&row).Error
-	}
-	if err != nil {
-		return err
-	}
-
-	var orderIDs []uint
-	_ = json.Unmarshal(sub.Orders, &orderIDs)
-	orderIDs = append(orderIDs, order.ID)
-	ordersJSON, _ := json.Marshal(orderIDs)
-
-	newExpires := periodEnd
-	if sub.ExpiresAt.After(now) {
-		newExpires = addBillingPeriod(sub.ExpiresAt, product.BillingPeriod)
-	}
-
-	return tx.Model(&sub).Updates(map[string]interface{}{
-		"orders":                 datatypes.JSON(ordersJSON),
-		"base_limit_tokens":      tokenGrant,
-		"limit_tokens":           tokenGrant,
-		"used_tokens":            0,
-		"expires_at":             newExpires,
-		"period_start":           now,
-		"period_end":             addBillingPeriod(now, product.BillingPeriod),
-		"products_category_name": product.ProductsCategoryName,
-		"sku_product_name":       product.SKUProductName,
-		"updated_at":             now,
-	}).Error
 }
 
 func addBillingPeriod(from time.Time, billingPeriod string) time.Time {

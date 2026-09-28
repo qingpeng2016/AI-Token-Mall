@@ -124,6 +124,7 @@ type UserOrder struct {
 	OrderNo           string     `gorm:"column:order_no;size:64;not null"`
 	UserID            uint       `gorm:"column:user_id;not null"`
 	ProductID         uint       `gorm:"column:product_id;not null"`
+	OrderType         string     `gorm:"column:order_type;size:32;not null;default:purchase"`
 	Quantity          int        `gorm:"column:quantity;not null;default:1"`
 	UnitPriceCents    int64      `gorm:"column:unit_price_cents;not null"`
 	Status            string     `gorm:"column:status;size:32;not null"`

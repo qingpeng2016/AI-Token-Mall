@@ -3,15 +3,20 @@ import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { formatCnyFromCents } from '@ai-token-mall/shared'
-import type { UserProfile } from '@ai-token-mall/shared'
+import type { OrderType, UserProfile } from '@ai-token-mall/shared'
 import { orderApi } from '@/api'
 import type { CatalogProduct } from '@/mocks/home'
 
-const props = defineProps<{
-  open: boolean
-  product: CatalogProduct | null
-  user: UserProfile | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    open: boolean
+    product: CatalogProduct | null
+    user: UserProfile | null
+    /** 新购默认 purchase；会员中心续费传 renewal */
+    orderType?: OrderType
+  }>(),
+  { orderType: 'purchase' },
+)
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
@@ -90,6 +95,7 @@ async function submitPay(channel: 'alipay' | 'paypal') {
   try {
     const created = await orderApi.create({
       product_id: props.product.id,
+      order_type: props.orderType,
       quantity: quantity.value,
       channel,
       enterprise_invoice: enterpriseInvoice.value,

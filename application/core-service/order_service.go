@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/qingpeng2016/ai-token-mall/common/constants"
 	"github.com/qingpeng2016/ai-token-mall/common/errorx"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/entity"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/repository"
@@ -29,6 +30,10 @@ func (s *OrderService) CreateMockOrder(ctx context.Context, userID uint, req *re
 	if channel == "" {
 		return nil, errorx.ErrParamsError
 	}
+	orderType := normalizeOrderType(req.OrderType)
+	if orderType == "" {
+		return nil, errorx.ErrParamsError
+	}
 
 	product, err := s.products.FindOnSaleByID(ctx, req.ProductID)
 	if err != nil {
@@ -36,6 +41,16 @@ func (s *OrderService) CreateMockOrder(ctx context.Context, userID uint, req *re
 	}
 	if product == nil {
 		return nil, errorx.ErrProductNotFound
+	}
+
+	if orderType == constants.OrderTypeRenewal {
+		has, err := s.orders.HasActiveSubscription(ctx, userID, product.ID)
+		if err != nil {
+			return nil, errorx.ErrDbError
+		}
+		if !has {
+			return nil, errorx.ErrRenewNoSubscription
+		}
 	}
 
 	qty := req.Quantity
@@ -53,6 +68,7 @@ func (s *OrderService) CreateMockOrder(ctx context.Context, userID uint, req *re
 		OrderNo:           orderNo,
 		UserID:            userID,
 		ProductID:         product.ID,
+		OrderType:         orderType,
 		Quantity:          qty,
 		UnitPriceCents:    product.PriceCents,
 		Status:            "pending_payment",
@@ -66,6 +82,7 @@ func (s *OrderService) CreateMockOrder(ctx context.Context, userID uint, req *re
 
 	rawReq, _ := json.Marshal(map[string]interface{}{
 		"product_id":         product.ID,
+		"order_type":         orderType,
 		"quantity":           qty,
 		"channel":            channel,
 		"enterprise_invoice": req.EnterpriseInvoice,
@@ -82,6 +99,7 @@ func (s *OrderService) CreateMockOrder(ctx context.Context, userID uint, req *re
 		OrderNo:          orderNo,
 		OutTradeNo:       outTradeNo,
 		OrderID:          order.ID,
+		OrderType:        orderType,
 		Channel:          channel,
 		Status:           order.Status,
 		TotalAmountCents: total,
@@ -128,9 +146,26 @@ func (s *OrderService) HandlePaymentNotify(ctx context.Context, channel string, 
 		if strings.Contains(err.Error(), "not payable") {
 			return errorx.ErrOrderNotPayable
 		}
+		if strings.Contains(err.Error(), "renew: no active subscription") {
+			return errorx.ErrRenewNoSubscription
+		}
+		if strings.Contains(err.Error(), "unknown order_type") {
+			return errorx.ErrParamsError
+		}
 		return errorx.ErrDbError
 	}
 	return nil
+}
+
+func normalizeOrderType(raw string) string {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "", constants.OrderTypePurchase:
+		return constants.OrderTypePurchase
+	case constants.OrderTypeRenewal:
+		return constants.OrderTypeRenewal
+	default:
+		return ""
+	}
 }
 
 func normalizePayChannel(raw string) string {
