@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# 前端（CentOS7 无法在服务器跑 Node）：本机构建 dist → git push → 服务器 git pull
+#
+# 用法: ./deploy-frontend.sh <分支> [动作]
+#   deploy(默认) = 本机 build + 提交 dist + push + 服务器 pull
+#   pull         = 仅服务器 git pull（dist 已在远程仓库时）
+#   status       = 查看服务器 dist/index.html
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=deploy-common.sh
+source "${SCRIPT_DIR}/deploy-common.sh"
+deploy_common_init
+
+usage_frontend() {
+  cat <<'EOF'
+用法: ./deploy-frontend.sh <分支> [动作]
+
+动作:
+  deploy(默认)  本机 pnpm build → git push dist → 服务器 git pull
+  pull          仅服务器 git pull
+  status        查看服务器 dist/index.html
+EOF
+  exit 1
+}
+
+BRANCH="${1:-}"
+[[ -n "$BRANCH" ]] || usage_frontend
+
+ACTION="${2:-deploy}"
+case "$ACTION" in
+  deploy|pull|status) ;;
+  *) usage_frontend ;;
+esac
+
+REMOTE_LIB="$(deploy_remote_lib)"
+
+local_build_and_push_dist() {
+  local repo="$LOCAL_REPO_DIR"
+  local web_dir="${repo}/${MALL_WEB_ROOT}"
+  local dist_rel="$MALL_WEB_DIST"
+  local dist_abs="${repo}/${MALL_WEB_DIST}"
+
+  local_git_sync "$repo" "$BRANCH"
+
+  [[ -d "$web_dir" ]] || {
+    echo "ERROR: 目录不存在: $web_dir" >&2
+    exit 1
+  }
+
+  cd "$web_dir"
+  ensure_local_node_pnpm
+  echo ">>> [本机] ${WEB_BUILD_CMD}"
+  eval "$WEB_BUILD_CMD"
+
+  [[ -f "${dist_abs}/index.html" ]] || {
+    echo "ERROR: 本机构建失败，无 ${dist_abs}/index.html" >&2
+    exit 1
+  }
+  echo ">>> [本机] 构建完成: ${dist_abs}/index.html"
+
+  cd "$repo"
+  git add -f "$dist_rel"
+  if git diff --cached --quiet; then
+    echo ">>> [本机] dist 无变化，跳过 commit"
+  else
+    git commit -m "${FRONTEND_DIST_COMMIT_MSG} $(date +%Y-%m-%d_%H:%M)"
+    echo ">>> [本机] 已 commit dist"
+  fi
+
+  echo ">>> [本机] git push origin ${BRANCH}"
+  git push origin "$BRANCH"
+}
+
+server_git_pull_only() {
+  read -r -d '' REMOTE_SCRIPT_BODY <<EOF || true
+set -euo pipefail
+APP_DIR="${APP_DIR}"
+BRANCH="${BRANCH}"
+GIT_FETCH_TIMEOUT="${GIT_FETCH_TIMEOUT}"
+GIT_CLEAN_BIN="0"
+MALL_WEB_DIST="${MALL_WEB_DIST}"
+dist_path="\${APP_DIR}/\${MALL_WEB_DIST}"
+
+${REMOTE_LIB}
+
+git_sync_branch
+
+if [[ ! -f "\${dist_path}/index.html" ]]; then
+  echo "ERROR: [服务器] 拉取后仍无 \${dist_path}/index.html" >&2
+  echo "ERROR: 请在本机执行: ./deploy-frontend.sh ${BRANCH} deploy" >&2
+  exit 1
+fi
+echo ">>> [服务器] 前端静态资源已就绪"
+ls -lh "\${dist_path}/index.html"
+EOF
+  run_remote_bash "$REMOTE_SCRIPT_BODY"
+}
+
+case "$ACTION" in
+  deploy)
+    local_build_and_push_dist
+    server_git_pull_only
+    echo ">>> 完成（Nginx: ${APP_DIR}/${MALL_WEB_DIST}）"
+    ;;
+  pull)
+    server_git_pull_only
+    echo ">>> 服务器 pull 完成"
+    ;;
+  status)
+    run_ssh "ls -lh '${APP_DIR}/${MALL_WEB_DIST}/index.html' 2>/dev/null || echo '>>> 无 dist，执行: ./deploy-frontend.sh master deploy'"
+    ;;
+esac

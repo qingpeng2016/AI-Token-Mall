@@ -1,28 +1,29 @@
 #!/usr/bin/env bash
-# AI-Token-Mall 远程部署：Go（HTTP API / Bot）+ web-pc（Vue）
+# BOX 三仓库远程部署：box（Go API/Bot）/ realbox（Vue 前端）/ box_mis（PHP 后台）
 #
 # 用法:
-#   ./remote-deploy.sh <目标> <分支> [动作] [模式]
+#   ./remote-deploy.sh <仓库> <分支> [动作] [模式]
 #
-# 目标 (target):
-#   mall | api | go | backend     Go 服务（默认 deploy 时编译 bin/ai-token-mall）
-#   web | web-pc | front          前端 pnpm build:pc
+# 仓库 (repo):
+#   box | realbox | mis
+#   别名: api/backend, front/frontend, box_mis
 #
 # 动作 (action，默认 deploy):
-#   deploy   拉代码 + 构建 + 启停（web 为 install + build）
-#   restart  不 git pull；Go 重新编译并重启，web 仍 rebuild
-#   stop     仅停止 Go 进程（web 无托管进程）
+#   deploy   拉代码 + 停旧进程 + 启动（前端/Mis 为构建/清缓存）
+#   restart  仅停旧进程 + 启动（不 git pull；realbox/mis 仍会 rebuild）
+#   stop     仅停止匹配进程（realbox/mis 无托管进程则跳过）
 #   status   查看状态
 #
-# 模式 (mode，仅 Go):
-#   user | api     HTTP API  --run_bot=false  (默认)
-#   bot | robot    定时 Bot   --run_bot=true
+# 模式 (mode，仅 box):
+#   user | api     API 用户服务  --run_bot=false  (默认)
+#   robot | bot    机器人服务    --run_bot=true
 #
 # 示例:
-#   ./remote-deploy.sh mall master
-#   ./remote-deploy.sh api master deploy user
-#   ./remote-deploy.sh go master restart bot
-#   ./remote-deploy.sh web-pc master deploy
+#   ./remote-deploy.sh box master
+#   ./remote-deploy.sh box master deploy user
+#   ./remote-deploy.sh box master restart robot
+#   ./remote-deploy.sh realbox v1 deploy
+#   ./remote-deploy.sh mis master deploy
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -30,30 +31,33 @@ ENV_FILE="${SCRIPT_DIR}/.deploy.env"
 
 usage() {
   cat <<'EOF'
-用法: ./remote-deploy.sh <目标> <分支> [动作] [模式]
+用法: ./remote-deploy.sh <仓库> <分支> [动作] [模式]
 
-目标: mall | api | go | backend | web | web-pc | front
+仓库: box | realbox | mis
 动作: deploy(默认) | restart | stop | status
-模式 (仅 Go): user | api (HTTP，默认) | bot | robot (Bot)
+模式 (仅 box):
+  user | api   API 用户服务 (默认)
+  robot | bot  机器人 Bot
 
 示例:
-  ./remote-deploy.sh mall master deploy user
-  ./remote-deploy.sh api master restart bot
-  ./remote-deploy.sh web-pc master deploy
+  ./remote-deploy.sh box master deploy user
+  ./remote-deploy.sh box master restart robot
+  ./remote-deploy.sh realbox v1 deploy
+  ./remote-deploy.sh mis master deploy
 EOF
   exit 1
 }
 
-TARGET_RAW="${1:-}"
+REPO_RAW="${1:-}"
 BRANCH="${2:-}"
 ACTION="${3:-deploy}"
 MODE="${4:-}"
 
-[[ -n "$TARGET_RAW" && -n "$BRANCH" ]] || usage
+[[ -n "$REPO_RAW" && -n "$BRANCH" ]] || usage
 
 case "$ACTION" in
   deploy|restart|stop|status) ;;
-  user|api|bot|robot)
+  user|api|robot|bot)
     MODE="$ACTION"
     ACTION="deploy"
     ;;
@@ -76,54 +80,61 @@ source "$ENV_FILE"
 : "${SSH_PASS:?请在 .deploy.env 设置 SSH_PASS}"
 SSH_PORT="${SSH_PORT:-22}"
 
-MALL_APP_DIR="${MALL_APP_DIR:-/www/wwwroot/ai-token-mall}"
-MALL_USER_RUN_CONF="${MALL_USER_RUN_CONF:-prod}"
-MALL_BOT_RUN_CONF="${MALL_BOT_RUN_CONF:-prod}"
-MALL_USER_PORT="${MALL_USER_PORT:-8886}"
-MALL_WEB_ROOT="${MALL_WEB_ROOT:-front/apps}"
-MALL_WEB_DIST="${MALL_WEB_DIST:-front/apps/web-pc/dist}"
-WEB_BUILD_CMD="${WEB_BUILD_CMD:-corepack enable && pnpm install && pnpm build:pc}"
-MALL_BIN_NAME="${MALL_BIN_NAME:-ai-token-mall}"
+BOX_APP_DIR="${BOX_APP_DIR:-/www/wwwroot/box}"
+REALBOX_APP_DIR="${REALBOX_APP_DIR:-/www/wwwroot/realbox}"
+BOX_MIS_APP_DIR="${BOX_MIS_APP_DIR:-/www/wwwroot/box_mis}"
+BOX_USER_RUN_CONF="${BOX_USER_RUN_CONF:-prod-user}"
+BOX_ROBOT_RUN_CONF="${BOX_ROBOT_RUN_CONF:-prod-robot}"
+BOX_USER_PORT="${BOX_USER_PORT:-8882}"
+BOX_ROBOT_PORT="${BOX_ROBOT_PORT:-8881}"
+REALBOX_BUILD_CMD="${REALBOX_BUILD_CMD:-npm run build:prod}"
 GIT_FETCH_TIMEOUT="${GIT_FETCH_TIMEOUT:-120}"
 
-normalize_target() {
+normalize_repo() {
   case "$1" in
-    mall|api|go|backend|ai-token-mall) echo "mall" ;;
-    web|web-pc|front|frontend|pc) echo "web" ;;
+    box|api|backend|box-prod) echo "box" ;;
+    realbox|front|frontend|box-front) echo "realbox" ;;
+    mis|box_mis|box-mis) echo "mis" ;;
     *)
-      echo "未知目标: $1（支持 mall/api/go/backend 或 web/web-pc/front）" >&2
+      echo "未知仓库: $1（支持 box / realbox / mis）" >&2
       exit 1
       ;;
   esac
 }
 
-TARGET="$(normalize_target "$TARGET_RAW")"
+REPO="$(normalize_repo "$REPO_RAW")"
 
 if [[ -z "$MODE" ]]; then
-  case "$TARGET" in
-    mall) MODE="user" ;;
+  case "$REPO" in
+    box) MODE="user" ;;
     *) MODE="" ;;
   esac
 fi
 
-APP_DIR="$MALL_APP_DIR"
-
-case "$TARGET" in
-  mall)
+case "$REPO" in
+  box)
+    APP_DIR="$BOX_APP_DIR"
     case "$MODE" in
-      user|api|bot|robot) ;;
+      user|api|robot|bot) ;;
       *)
-        echo "Go 模式只能是 user/api 或 bot/robot，当前: ${MODE}" >&2
+        echo "box 模式只能是 user/api 或 robot/bot，当前: ${MODE}" >&2
         exit 1
         ;;
     esac
     ;;
-  web) MODE="" ;;
+  realbox)
+    APP_DIR="$REALBOX_APP_DIR"
+    MODE=""
+    ;;
+  mis)
+    APP_DIR="$BOX_MIS_APP_DIR"
+    MODE=""
+    ;;
 esac
 
 case "$MODE" in
-  user|api) RUN_CONF="$MALL_USER_RUN_CONF"; RUN_BOT="false"; LISTEN_PORT="$MALL_USER_PORT" ;;
-  bot|robot) RUN_CONF="$MALL_BOT_RUN_CONF"; RUN_BOT="true"; LISTEN_PORT="" ;;
+  user|api) RUN_CONF="$BOX_USER_RUN_CONF"; RUN_BOT="false"; LISTEN_PORT="$BOX_USER_PORT" ;;
+  robot|bot) RUN_CONF="$BOX_ROBOT_RUN_CONF"; RUN_BOT="true"; LISTEN_PORT="$BOX_ROBOT_PORT" ;;
   *) RUN_CONF=""; RUN_BOT=""; LISTEN_PORT="" ;;
 esac
 
@@ -132,7 +143,7 @@ SSH_TARGET="${SSH_USER}@${SSH_HOST}"
 read -r -d '' REMOTE_SCRIPT_BODY <<EOF || true
 set -euo pipefail
 
-TARGET="${TARGET}"
+REPO="${REPO}"
 APP_DIR="${APP_DIR}"
 BRANCH="${BRANCH}"
 ACTION="${ACTION}"
@@ -140,17 +151,14 @@ MODE="${MODE}"
 RUN_CONF="${RUN_CONF}"
 RUN_BOT="${RUN_BOT}"
 LISTEN_PORT="${LISTEN_PORT}"
-MALL_WEB_ROOT="${MALL_WEB_ROOT}"
-MALL_WEB_DIST="${MALL_WEB_DIST}"
-WEB_BUILD_CMD="${WEB_BUILD_CMD}"
-MALL_BIN_NAME="${MALL_BIN_NAME}"
+REALBOX_BUILD_CMD="${REALBOX_BUILD_CMD}"
 GIT_FETCH_TIMEOUT="${GIT_FETCH_TIMEOUT}"
 
 LOG_DIR="\${APP_DIR}/logs"
 BIN_DIR="\${APP_DIR}/bin"
-PID_NAME="ai-token-mall"
+PID_NAME="\${REPO}"
 if [[ -n "\${MODE}" ]]; then
-  PID_NAME="ai-token-mall-\${MODE}"
+  PID_NAME="\${REPO}-\${MODE}"
 fi
 PID_FILE="\${LOG_DIR}/\${PID_NAME}.pid"
 LOG_FILE="\${LOG_DIR}/\${PID_NAME}-nohup.log"
@@ -162,9 +170,9 @@ proc_cwd() {
   readlink -f "/proc/\${pid}/cwd" 2>/dev/null || true
 }
 
-is_mall_go_cmd() {
+is_box_cmd() {
   local cmd="\$1"
-  [[ "\${cmd}" == *"main.go"* || "\${cmd}" == *"/bin/\${MALL_BIN_NAME}"* || "\${cmd}" == *"\${MALL_BIN_NAME}"* || "\${cmd}" == *"ai-token-mall"* || "\${cmd}" == *"--run_conf="* ]]
+  [[ "\${cmd}" == *"main.go"* || "\${cmd}" == *"/bin/box"* || "\${cmd}" == *" box "* || "\${cmd}" == *"/box "* || "\${cmd}" == *"box-prod"* || "\${cmd}" == *"--run_conf="* ]]
 }
 
 cmdline_matches_mode() {
@@ -172,13 +180,13 @@ cmdline_matches_mode() {
   local cmd
   cmd=\$(tr '\\0' ' ' <"/proc/\${pid}/cmdline" 2>/dev/null || true)
   [[ -n "\${cmd}" ]] || return 1
-  is_mall_go_cmd "\${cmd}" || return 1
+  is_box_cmd "\${cmd}" || return 1
   case "\${MODE}" in
     user|api)
       [[ "\${cmd}" == *"--run_bot=false"* || "\${cmd}" == *"--run_bot=0"* ]] || return 1
       [[ "\${cmd}" == *"--run_conf=\${RUN_CONF}"* ]] || return 1
       ;;
-    bot|robot)
+    robot|bot)
       [[ "\${cmd}" == *"--run_bot=true"* || "\${cmd}" == *"--run_bot=1"* ]] || return 1
       [[ "\${cmd}" == *"--run_conf=\${RUN_CONF}"* ]] || return 1
       ;;
@@ -240,6 +248,8 @@ git_fetch_with_timeout() {
   if command -v timeout >/dev/null 2>&1; then
     if ! timeout "\${GIT_FETCH_TIMEOUT}" git fetch origin --prune --progress; then
       echo "ERROR: git fetch 失败或超时（\${GIT_FETCH_TIMEOUT}s）" >&2
+      echo "ERROR: 常见原因: HTTPS 未配置凭据、网络不通、Gitee/GitHub 不可达" >&2
+      echo "ERROR: 请在服务器执行: cd \$(pwd) && git remote -v && git fetch origin -v" >&2
       exit 1
     fi
   elif ! git fetch origin --prune --progress; then
@@ -253,11 +263,14 @@ git_pull_at() {
   local branch="\$2"
   if [[ ! -d "\${dir}" ]]; then
     echo "ERROR: 目录不存在: \${dir}" >&2
+    echo "ERROR: 请在 .deploy.env 修正 BOX_APP_DIR / REALBOX_APP_DIR / BOX_MIS_APP_DIR" >&2
     exit 1
   fi
   cd "\${dir}"
   if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    echo "ERROR: \${dir} 不是 git 仓库" >&2
+    echo "ERROR: \${dir} 不是 git 仓库（无 .git）" >&2
+    echo "ERROR: 请 SSH 登录服务器后 clone，或修改 .deploy.env 中的目录路径" >&2
+    echo "ERROR: 示例: git clone git@github.com:qingpeng2016/box.git \${dir}" >&2
     exit 1
   fi
   git_prepare_for_pull "\${dir}"
@@ -268,15 +281,17 @@ git_pull_at() {
   elif git show-ref --verify --quiet "refs/remotes/origin/\${branch}"; then
     git checkout -B "\${branch}" "origin/\${branch}"
   else
-    echo "ERROR: 找不到分支 \${branch}" >&2
+    echo "ERROR: 找不到分支 \${branch} @ \${dir}" >&2
+    echo "ERROR: 可用远程分支:" >&2
     git branch -r | head -n 20 >&2 || true
     exit 1
   fi
   export GIT_TERMINAL_PROMPT=0
   if ! git pull --ff-only origin "\${branch}"; then
+    echo ">>> pull 仍失败，尝试 stash 后重试" >&2
     git stash push -u -m "remote-deploy auto-stash \$(date +%F_%T)" || true
     if ! git pull --ff-only origin "\${branch}"; then
-      echo "ERROR: git pull --ff-only 失败" >&2
+      echo "ERROR: git pull --ff-only 失败，可能有本地改动或需要 merge" >&2
       git status -sb >&2 || true
       exit 1
     fi
@@ -288,10 +303,10 @@ git_pull() {
   git_pull_at "\${APP_DIR}" "\${BRANCH}"
 }
 
-build_mall_binary() {
+build_box_binary() {
   cd "\${APP_DIR}"
   mkdir -p "\${BIN_DIR}"
-  local bin_path="\${BIN_DIR}/\${MALL_BIN_NAME}"
+  local bin_path="\${BIN_DIR}/box"
   echo ">>> go build -o \${bin_path} ."
   export PATH="\${PATH}:/usr/local/go/bin"
   export GOPATH="\${GOPATH:-\$HOME/go}"
@@ -332,8 +347,8 @@ kill_matching() {
   done
 }
 
-stop_mall() {
-  echo ">>> 停止 [ai-token-mall/\${MODE}] @ \${APP_DIR}"
+stop_box() {
+  echo ">>> 停止 [box/\${MODE}] @ \${APP_DIR} (port \${LISTEN_PORT})"
   if [[ -f "\${PID_FILE}" ]]; then
     old_pid=\$(tr -d '[:space:]' <"\${PID_FILE}" 2>/dev/null || true)
     if [[ -n "\${old_pid}" ]] && kill -0 "\${old_pid}" 2>/dev/null; then
@@ -342,28 +357,23 @@ stop_mall() {
     fi
     rm -f "\${PID_FILE}"
   fi
+  # 先按 run_conf 匹配（不限 cwd，兼容 go run 旧进程）
   kill_matching TERM loose
-  if [[ "\${RUN_BOT}" == "false" && -n "\${LISTEN_PORT}" ]]; then
-    kill_port_listeners "\${LISTEN_PORT}" TERM
-  fi
+  kill_port_listeners "\${LISTEN_PORT}" TERM
   sleep 2
   kill_matching KILL loose
-  if [[ "\${RUN_BOT}" == "false" && -n "\${LISTEN_PORT}" ]]; then
-    kill_port_listeners "\${LISTEN_PORT}" KILL
-    sleep 1
-    if port_in_use "\${LISTEN_PORT}"; then
-      echo "ERROR: 端口 \${LISTEN_PORT} 仍被占用:" >&2
-      ss -lptn "sport = :\${LISTEN_PORT}" 2>/dev/null >&2 || true
-      exit 1
-    fi
-    echo ">>> 已停止，端口 \${LISTEN_PORT} 已释放"
-  else
-    echo ">>> 已发送停止信号（Bot 模式无 HTTP 端口）"
+  kill_port_listeners "\${LISTEN_PORT}" KILL
+  sleep 1
+  if port_in_use "\${LISTEN_PORT}"; then
+    echo "ERROR: 端口 \${LISTEN_PORT} 仍被占用:" >&2
+    ss -lptn "sport = :\${LISTEN_PORT}" 2>/dev/null >&2 || lsof -i ":\${LISTEN_PORT}" 2>/dev/null >&2 || true
+    exit 1
   fi
+  echo ">>> 已停止，端口 \${LISTEN_PORT} 已释放"
 }
 
-show_mall_status() {
-  echo ">>> 状态 [ai-token-mall/\${MODE}] @ \${APP_DIR}"
+show_box_status() {
+  echo ">>> 状态 [box/\${MODE}] @ \${APP_DIR} (port \${LISTEN_PORT})"
   local found=0 pid cmd cwd
   for pid_path in /proc/[0-9]*; do
     pid=\${pid_path#/proc/}
@@ -374,50 +384,41 @@ show_mall_status() {
     echo ">>> RUNNING pid=\${pid} cwd=\${cwd}"
     echo ">>>   \${cmd}"
   done
-  if [[ "\${RUN_BOT}" == "false" && -n "\${LISTEN_PORT}" ]] && port_in_use "\${LISTEN_PORT}"; then
+  if port_in_use "\${LISTEN_PORT}"; then
     echo ">>> 端口 \${LISTEN_PORT} 监听中: \$(pids_on_port "\${LISTEN_PORT}" | tr '\\n' ' ')"
     found=1
   fi
   [[ -f "\${PID_FILE}" ]] && echo ">>> PID 文件: \$(cat "\${PID_FILE}" 2>/dev/null || echo '-')"
-  [[ -f "\${LOG_FILE}" ]] && echo ">>> 日志: \${LOG_FILE}"
   [[ "\${found}" -eq 0 ]] && echo ">>> 无匹配进程"
 }
 
-wait_for_mall() {
+wait_for_box() {
   local i pid
-  echo ">>> 等待进程启动（最多 30s）..."
-  for i in \$(seq 1 30); do
+  echo ">>> 等待 box 进程启动（最多 20s）..."
+  for i in \$(seq 1 20); do
     pid="\$(find_matching_pid || true)"
     if [[ -n "\${pid}" ]] && kill -0 "\${pid}" 2>/dev/null; then
-      if [[ "\${RUN_BOT}" == "false" && -n "\${LISTEN_PORT}" ]]; then
-        if port_in_use "\${LISTEN_PORT}"; then
-          echo ">>> 启动成功 pid=\${pid}，端口 \${LISTEN_PORT} 已监听"
-          show_mall_status
-          return 0
-        fi
-      else
-        echo ">>> Bot 启动成功 pid=\${pid}"
-        show_mall_status
-        return 0
-      fi
+      echo ">>> 启动成功 pid=\${pid}"
+      show_box_status
+      return 0
     fi
     if [[ -f "\${LOG_FILE}" ]] && grep -qE 'panic:|FATAL|exit status' "\${LOG_FILE}"; then
       echo ">>> 启动失败，日志:" >&2
-      tail -n 50 "\${LOG_FILE}" >&2 || true
+      tail -n 40 "\${LOG_FILE}" >&2 || true
       exit 1
     fi
     sleep 1
   done
   echo ">>> 启动超时" >&2
-  tail -n 50 "\${LOG_FILE}" 2>/dev/null >&2 || true
+  tail -n 40 "\${LOG_FILE}" 2>/dev/null >&2 || true
   exit 1
 }
 
-start_mall() {
+start_box() {
   cd "\${APP_DIR}"
   mkdir -p "\${BIN_DIR}" "\${LOG_DIR}"
-  local bin_path="\${BIN_DIR}/\${MALL_BIN_NAME}"
-  [[ -x "\${bin_path}" ]] || build_mall_binary
+  local bin_path="\${BIN_DIR}/box"
+  [[ -x "\${bin_path}" ]] || build_box_binary
 
   echo ">>> 日志: \${LOG_FILE}"
   : >"\${LOG_FILE}"
@@ -426,74 +427,93 @@ start_mall() {
   echo ">>> 启动: \${bin_path} --run_conf=\${RUN_CONF} --run_bot=\${RUN_BOT}"
   nohup "\${bin_path}" --run_conf="\${RUN_CONF}" --run_bot="\${RUN_BOT}" >>"\${LOG_FILE}" 2>&1 &
   echo \$! >"\${PID_FILE}"
-  wait_for_mall
+  wait_for_box
 }
 
-deploy_web() {
-  local web_dir="\${APP_DIR}/\${MALL_WEB_ROOT}"
-  local dist_path="\${APP_DIR}/\${MALL_WEB_DIST}"
-  echo ">>> web-pc 部署 @ \${web_dir}"
+deploy_realbox() {
+  cd "\${APP_DIR}"
+  echo ">>> realbox 前端部署 @ \${APP_DIR}"
   if [[ "\${ACTION}" == "deploy" ]]; then
     git_pull
   fi
-  if [[ ! -d "\${web_dir}" ]]; then
-    echo "ERROR: 前端目录不存在: \${web_dir}" >&2
-    exit 1
-  fi
-  cd "\${web_dir}"
+
   export PATH="\${PATH}:/usr/local/node/bin"
-  if [[ -f "\${dist_path}/.user.ini" ]]; then
-    chattr -i "\${dist_path}/.user.ini" 2>/dev/null || true
+  if [[ -f dist/.user.ini ]]; then
+    chattr -i dist/.user.ini 2>/dev/null || true
   fi
-  rm -rf "\${dist_path}" node_modules/.cache 2>/dev/null || true
+  rm -rf dist node_modules/.cache
 
-  echo ">>> \${WEB_BUILD_CMD}"
-  eval "\${WEB_BUILD_CMD}"
+  echo ">>> npm install"
+  npm install
+  echo ">>> \${REALBOX_BUILD_CMD}"
+  eval "\${REALBOX_BUILD_CMD}"
 
-  if [[ ! -f "\${dist_path}/index.html" ]]; then
-    echo "ERROR: 构建后未找到 \${dist_path}/index.html" >&2
-    exit 1
-  fi
   echo ">>> 构建完成"
-  ls -lh "\${dist_path}/" | head -n 15 || true
-  echo ">>> Nginx 静态根目录应指向: \${dist_path}"
+  ls -lh dist/ 2>/dev/null | head -n 15 || true
+  echo ">>> Nginx 根目录应指向: \${APP_DIR}/dist"
+}
+
+deploy_mis() {
+  cd "\${APP_DIR}"
+  echo ">>> box_mis 部署 @ \${APP_DIR}"
+  if [[ "\${ACTION}" == "deploy" ]]; then
+    git_pull
+  fi
+  if [[ -f vendor/autoload.php ]]; then
+    echo ">>> composer 依赖已存在，跳过 install"
+  elif command -v composer >/dev/null 2>&1; then
+    composer install --no-dev -o || true
+  fi
+  if [[ -f think ]]; then
+    php think cache:clear >/dev/null 2>&1 || true
+    echo ">>> 已执行 php think cache:clear"
+  fi
+  git log -1 --oneline 2>/dev/null || true
+  echo ">>> Mis 部署完成（Web 由 Nginx/PHP-FPM 提供）"
 }
 
 case "\${ACTION}" in
   deploy)
-    case "\${TARGET}" in
-      mall)
+    case "\${REPO}" in
+      box)
         git_pull
-        build_mall_binary
-        stop_mall
-        start_mall
+        build_box_binary
+        stop_box
+        start_box
         ;;
-      web) deploy_web ;;
+      realbox) deploy_realbox ;;
+      mis) deploy_mis ;;
     esac
     ;;
   restart)
-    case "\${TARGET}" in
-      mall)
-        build_mall_binary
-        stop_mall
-        start_mall
+    case "\${REPO}" in
+      box)
+        build_box_binary
+        stop_box
+        start_box
         ;;
-      web) deploy_web ;;
+      realbox) deploy_realbox ;;
+      mis) deploy_mis ;;
     esac
     ;;
   stop)
-    case "\${TARGET}" in
-      mall) stop_mall ;;
-      web) echo ">>> web-pc 为静态资源，无托管进程" ;;
+    case "\${REPO}" in
+      box) stop_box ;;
+      realbox) echo ">>> realbox 为静态资源，无托管进程" ;;
+      mis) echo ">>> mis 无托管 Go 进程" ;;
     esac
     ;;
   status)
-    case "\${TARGET}" in
-      mall) show_mall_status ;;
-      web)
-        echo ">>> web-pc @ \${APP_DIR}/\${MALL_WEB_DIST}"
+    case "\${REPO}" in
+      box) show_box_status ;;
+      realbox)
+        echo ">>> realbox @ \${APP_DIR}"
         cd "\${APP_DIR}" && git log -1 --oneline 2>/dev/null || true
-        ls -lh "\${APP_DIR}/\${MALL_WEB_DIST}/index.html" 2>/dev/null || echo ">>> 未构建，请: ./remote-deploy.sh web master deploy"
+        ls -lh dist/index.html 2>/dev/null || echo ">>> dist/index.html 不存在，需 deploy"
+        ;;
+      mis)
+        echo ">>> mis @ \${APP_DIR}"
+        cd "\${APP_DIR}" && git log -1 --oneline 2>/dev/null || true
         ;;
     esac
     ;;
@@ -520,7 +540,7 @@ run_with_sshpass() {
 
 run_with_expect() {
   expect <<EOF
-set timeout 900
+set timeout 600
 log_user 1
 spawn ssh -o StrictHostKeyChecking=accept-new -o PreferredAuthentications=password -o PubkeyAuthentication=no -p ${SSH_PORT} ${SSH_TARGET} "${REMOTE_ONE_LINER}"
 expect {
@@ -536,14 +556,14 @@ EOF
 }
 
 echo ">>> 连接 ${SSH_TARGET}:${SSH_PORT}"
-echo ">>> 目标=${TARGET} 分支=${BRANCH} 动作=${ACTION} 模式=${MODE:-n/a} 目录=${APP_DIR}"
+echo ">>> 仓库=${REPO} 分支=${BRANCH} 动作=${ACTION} 模式=${MODE:-n/a} 目录=${APP_DIR}"
 
 if command -v sshpass >/dev/null 2>&1; then
   run_with_sshpass
 elif command -v expect >/dev/null 2>&1; then
   run_with_expect
 else
-  echo "未找到 sshpass 或 expect，请安装其一。" >&2
+  echo "未找到 sshpass 或 expect。" >&2
   exit 1
 fi
 
