@@ -1,5 +1,6 @@
 export * from './types/user'
 export * from './types/product'
+export * from './types/nav'
 export * from './constants/upstream'
 export * from './utils/format'
 export * from './utils/catalog'

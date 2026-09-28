@@ -22,11 +22,23 @@ func (s *ProductService) List(ctx context.Context, upstreamName string) (*respon
 	if err != nil {
 		return nil, err
 	}
+	return &response.ProductListResp{Products: mapProductRows(rows)}, nil
+}
+
+func (s *ProductService) NavMenu(ctx context.Context) (*response.NavMenuResp, error) {
+	rows, err := s.productRepo.ListOnSale(ctx, "")
+	if err != nil {
+		return nil, err
+	}
+	return s.buildNavMenu(rows), nil
+}
+
+func mapProductRows(rows []entity.Product) []response.ProductItemResp {
 	items := make([]response.ProductItemResp, 0, len(rows))
 	for i := range rows {
 		items = append(items, mapProductItem(&rows[i]))
 	}
-	return &response.ProductListResp{Products: items}, nil
+	return items
 }
 
 func mapProductItem(p *entity.Product) response.ProductItemResp {

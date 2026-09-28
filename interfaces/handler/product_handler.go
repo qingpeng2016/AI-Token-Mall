@@ -24,3 +24,13 @@ func (h *ProductHandler) List(c *gin.Context) {
 	}
 	response.ResponseSuccess(c, data)
 }
+
+// NavMenu 顶部套餐购买 mega 菜单 + 品牌下拉
+func (h *ProductHandler) NavMenu(c *gin.Context) {
+	data, err := h.productSvc.NavMenu(c.Request.Context())
+	if err != nil {
+		response.ResponseErr(c, err)
+		return
+	}
+	response.ResponseSuccess(c, data)
+}

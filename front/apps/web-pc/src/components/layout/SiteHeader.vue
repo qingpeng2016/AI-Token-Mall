@@ -1,9 +1,32 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import SiteLogo from '@/components/brand/SiteLogo.vue'
 import { isLoggedIn } from '@/composables/useSessionUser'
-import { isNavDropdown, navBrandDropdowns, navMegaMenu } from '@/mocks/nav'
+import { useNavMenu } from '@/composables/useNavMenu'
+import { isNavDropdown, type NavMenuEntry } from '@/mocks/nav'
+
+const { megaMenu, brandMenus } = useNavMenu()
+
+const navBrandEntries = computed((): NavMenuEntry[] => [
+  ...brandMenus.value.map((b) => ({
+    id: b.id,
+    label: b.label,
+    hotSale: b.hot_sale,
+    items: b.items.map((i) => ({
+      label: i.label,
+      href: i.href,
+      price: i.price,
+      featured: i.featured,
+    })),
+  })),
+  {
+    id: 'enterprise',
+    label: '企业采购',
+    plainLink: true,
+    to: '/enterprise',
+  },
+])
 
 const route = useRoute()
 const loggedIn = ref(isLoggedIn())
@@ -62,7 +85,7 @@ function isSpaNav(href: string) {
             >
               <div class="mega-popover-inner">
                 <div class="mega-grid">
-                  <div v-for="col in navMegaMenu" :key="col.title" class="mega-col">
+                  <div v-for="col in megaMenu" :key="col.title" class="mega-col">
                     <h3 class="mega-col-title">{{ col.title }}</h3>
                     <ul class="mega-list">
                       <li v-for="item in col.items" :key="item.label">
@@ -101,7 +124,7 @@ function isSpaNav(href: string) {
             </div>
           </div>
 
-          <template v-for="brand in navBrandDropdowns" :key="brand.id">
+          <template v-for="brand in navBrandEntries" :key="brand.id">
             <RouterLink
               v-if="!isNavDropdown(brand)"
               :to="brand.to"

@@ -149,7 +149,7 @@ export const brandCards = [
 
 export const reviewSummary = {
   score: 5,
-  count: 6,
+  count: 2539,
 }
 
 export const reviews = [
@@ -183,7 +183,7 @@ export const reviews = [
   },
   {
     stars: 5,
-    text: '有一次支付稍慢，客服很快补开通，没重复扣款，低价这块确实能长期用。',
+    text: '支持很快就到账了，全程丝滑好用',
     user: '罗**',
     sku: 'GPT Go',
     date: '2026-06-13',
