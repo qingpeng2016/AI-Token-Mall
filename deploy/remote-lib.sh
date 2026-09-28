@@ -3,6 +3,10 @@
 git_prepare_for_pull() {
   local clean_bin="${1:-0}"
   cd "${APP_DIR}"
+
+  echo ">>> [服务器] git checkout .（丢弃已跟踪文件的本地改动）"
+  git checkout .
+
   if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     git restore --worktree log/info.log log/error.log 2>/dev/null \
       || git checkout HEAD -- log/info.log log/error.log 2>/dev/null \
@@ -37,10 +41,11 @@ git_sync_branch() {
   else
     git checkout -B "${BRANCH}" "origin/${BRANCH}"
   fi
-  git pull --ff-only origin "${BRANCH}" || {
-    git stash push -u -m "deploy stash" || true
-    git pull --ff-only origin "${BRANCH}"
-  }
+  if ! git pull --ff-only origin "${BRANCH}"; then
+    echo "ERROR: git pull --ff-only 失败（已执行 git checkout .，请检查服务器仓库状态）" >&2
+    git status -sb >&2 || true
+    exit 1
+  fi
   git log -1 --oneline
 }
 

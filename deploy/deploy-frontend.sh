@@ -3,7 +3,7 @@
 #
 # 用法: ./deploy-frontend.sh <分支> [动作]
 #   deploy(默认) = 本机 build + 提交 dist + push + 服务器 pull
-#   pull         = 仅服务器 git pull（dist 已在远程仓库时）
+#   pull         = 仅服务器同步 dist（dist 已在 GitHub 时）
 #   status       = 查看服务器 dist/index.html
 set -euo pipefail
 
@@ -18,7 +18,7 @@ usage_frontend() {
 
 动作:
   deploy(默认)  本机 pnpm build → git push dist → 服务器 git pull
-  pull          仅服务器 git pull
+  pull          仅服务器 git pull（先 checkout .）
   status        查看服务器 dist/index.html
 EOF
   exit 1
@@ -32,8 +32,6 @@ case "$ACTION" in
   deploy|pull|status) ;;
   *) usage_frontend ;;
 esac
-
-REMOTE_LIB="$(deploy_remote_lib)"
 
 local_build_and_push_dist() {
   local repo="$LOCAL_REPO_DIR"
@@ -72,7 +70,9 @@ local_build_and_push_dist() {
   git push origin "$BRANCH"
 }
 
-server_git_pull_only() {
+REMOTE_LIB="$(deploy_remote_lib)"
+
+server_git_pull() {
   read -r -d '' REMOTE_SCRIPT_BODY <<EOF || true
 set -euo pipefail
 APP_DIR="${APP_DIR}"
@@ -87,8 +87,7 @@ ${REMOTE_LIB}
 git_sync_branch
 
 if [[ ! -f "\${dist_path}/index.html" ]]; then
-  echo "ERROR: [服务器] 拉取后仍无 \${dist_path}/index.html" >&2
-  echo "ERROR: 请在本机执行: ./deploy-frontend.sh ${BRANCH} deploy" >&2
+  echo "ERROR: [服务器] pull 后无 \${dist_path}/index.html" >&2
   exit 1
 fi
 echo ">>> [服务器] 前端静态资源已就绪"
@@ -100,12 +99,12 @@ EOF
 case "$ACTION" in
   deploy)
     local_build_and_push_dist
-    server_git_pull_only
+    server_git_pull
     echo ">>> 完成（Nginx: ${APP_DIR}/${MALL_WEB_DIST}）"
     ;;
   pull)
-    server_git_pull_only
-    echo ">>> 服务器 pull 完成"
+    server_git_pull
+    echo ">>> 服务器 git pull 完成"
     ;;
   status)
     run_ssh "ls -lh '${APP_DIR}/${MALL_WEB_DIST}/index.html' 2>/dev/null || echo '>>> 无 dist，执行: ./deploy-frontend.sh master deploy'"
