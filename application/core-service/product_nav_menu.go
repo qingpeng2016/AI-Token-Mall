@@ -11,19 +11,6 @@ import (
 
 const navTopBrandCategoryLimit = 3
 
-var skuToSlug = map[string]string{
-	"OAI-GO-M":    "gpt-go",
-	"OAI-PLUS-M":  "chatgpt-plus",
-	"OAI-PRO5-M":  "chatgpt-pro-5x",
-	"OAI-PRO20-M": "chatgpt-pro-20x",
-	"ANT-PRO-M":   "claude-pro",
-	"ANT-MAX-M":   "claude-max-5x",
-	"XAI-GROK-M":  "grok-super",
-	"GEM-PRO-M":   "gemini-pro",
-	"CUR-PRO-M":   "cursor-pro",
-	"PPX-PRO-M":   "perplexity-pro",
-}
-
 func (s *ProductService) buildNavMenu(categories []entity.ProductCategory, products []entity.Product) *response.NavMenuResp {
 	byCategoryID := map[uint][]response.NavPlanItemResp{}
 	for i := range products {
