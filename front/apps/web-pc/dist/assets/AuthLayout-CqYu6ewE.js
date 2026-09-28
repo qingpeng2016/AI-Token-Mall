@@ -1,0 +1,1 @@
+import{d as t,c as o,f as e,u as a,G as s,b as r,_ as c}from"./index-Cu6_4cta.js";import{F as _}from"./FloatingCustomerService-93uii4gJ.js";const n={class:"auth-layout"},u=t({__name:"AuthLayout",setup(p){return(d,i)=>(r(),o("div",n,[e(a(s)),e(_)]))}}),l=c(u,[["__scopeId","data-v-6b59ed95"]]);export{l as default};
