@@ -2,6 +2,7 @@ import { ref, type Ref } from 'vue'
 import type { NavBrandMenu, NavMegaColumn, NavMenuResponse } from '@ai-token-mall/shared'
 import { productApi } from '@/api'
 import { navBrandDropdowns, navMegaMenu } from '@/mocks/nav'
+import type { ReloadOptions } from '@/composables/reloadOptions'
 
 const megaMenu = ref<NavMegaColumn[]>([])
 const brandMenus = ref<NavBrandMenu[]>([])
@@ -43,11 +44,14 @@ function mapNavApiResponse(data: NavMenuResponse): NavMenuResponse {
   }
 }
 
-export async function reloadNavMenu(): Promise<void> {
+export async function reloadNavMenu(options?: ReloadOptions): Promise<void> {
   const seq = ++loadSeq
-  loading.value = true
-  megaMenu.value = []
-  brandMenus.value = []
+  const soft = options?.soft === true
+  loading.value = !soft || megaMenu.value.length === 0
+  if (!soft) {
+    megaMenu.value = []
+    brandMenus.value = []
+  }
   try {
     const data = mapNavApiResponse(await productApi.navMenu())
     if (seq !== loadSeq) return
@@ -67,6 +71,5 @@ export function useNavMenu(): {
   loading: Ref<boolean>
   reload: () => Promise<void>
 } {
-  void reloadNavMenu()
   return { megaMenu, brandMenus, loading, reload: reloadNavMenu }
 }

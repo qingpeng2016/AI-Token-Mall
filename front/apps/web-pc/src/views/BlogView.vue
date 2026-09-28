@@ -1,16 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import BlogListSkeleton from '@/components/blog/BlogListSkeleton.vue'
 import { useTutorialBlog } from '@/composables/useTutorialBlog'
 
 const route = useRoute()
 const router = useRouter()
-const { pageTitle, categories, articles, loading, reload } = useTutorialBlog()
-
-onMounted(() => {
-  void reload()
-})
+const { pageTitle, categories, articles, loading } = useTutorialBlog()
 
 function parseCategory(q: unknown): string {
   const id = typeof q === 'string' ? q : 'all'
@@ -55,7 +51,7 @@ function setCategory(id: string) {
         <span class="current">教程</span>
       </nav>
 
-      <BlogListSkeleton v-if="loading" />
+      <BlogListSkeleton v-if="loading && !articles.length" />
 
       <template v-else>
         <header class="blog-hero">

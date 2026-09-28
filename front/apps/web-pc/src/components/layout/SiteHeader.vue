@@ -85,7 +85,7 @@ function isSpaNav(href: string) {
               @mouseenter="openMega"
             >
               <div class="mega-popover-inner">
-                <NavMegaMenuSkeleton v-if="navLoading || !megaMenu.length" />
+                <NavMegaMenuSkeleton v-if="navLoading && !megaMenu.length" />
                 <div v-else class="mega-grid">
                   <div v-for="col in megaMenu" :key="col.title" class="mega-col">
                     <h3 class="mega-col-title">{{ col.title }}</h3>
@@ -117,7 +117,7 @@ function isSpaNav(href: string) {
             </div>
           </div>
 
-          <template v-if="navLoading">
+          <template v-if="navLoading && !brandMenus.length">
             <span
               v-for="i in 3"
               :key="`nav-sk-${i}`"

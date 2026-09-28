@@ -4,6 +4,10 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import type { TutorialArticle } from '@ai-token-mall/shared'
 import { tutorialApi } from '@/api'
 import BlogArticleSkeleton from '@/components/blog/BlogArticleSkeleton.vue'
+import {
+  findCachedBlogPost,
+  takePrefetchedBlogPost,
+} from '@/composables/useTutorialBlog'
 import { getBlogPost, type BlogPost } from '@/mocks/blog'
 
 const route = useRoute()
@@ -26,8 +30,15 @@ function mapArticle(a: TutorialArticle): BlogPost {
 }
 
 async function loadPost(currentSlug: string) {
-  loading.value = true
-  post.value = null
+  const cached = findCachedBlogPost(currentSlug)
+  if (cached?.body?.length) {
+    post.value = cached
+    loading.value = false
+  } else {
+    loading.value = true
+    post.value = null
+  }
+
   try {
     const data = await tutorialApi.detail(currentSlug)
     if (data?.slug) {
@@ -46,17 +57,27 @@ async function loadPost(currentSlug: string) {
   }
 }
 
+function applySlug(s: string) {
+  const prefetched = takePrefetchedBlogPost(s)
+  if (prefetched) {
+    post.value = prefetched
+    loading.value = false
+    return
+  }
+  void loadPost(s)
+}
+
 watch(
   slug,
   (s) => {
-    if (s) void loadPost(s)
+    if (s) applySlug(s)
   },
   { immediate: true },
 )
 </script>
 
 <template>
-  <BlogArticleSkeleton v-if="loading" />
+  <BlogArticleSkeleton v-if="loading && !post" />
   <article v-else-if="post" class="article-page">
     <div class="atm-container article-container">
       <nav class="article-breadcrumb" aria-label="面包屑">

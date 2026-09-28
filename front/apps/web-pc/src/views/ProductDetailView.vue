@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { formatCnyFromCents } from '@ai-token-mall/shared'
@@ -23,12 +23,7 @@ const sessionUser = ref(getSessionUser())
 const {
   products: catalogProducts,
   loading: catalogLoading,
-  reload: reloadCatalog,
 } = useCatalogProducts()
-
-onMounted(() => {
-  void reloadCatalog()
-})
 
 const slug = computed(() => String(route.params.slug ?? ''))
 const product = computed(() => findProductBySlug(slug.value, catalogProducts.value))
@@ -62,7 +57,7 @@ const openFaqs = ref<string[]>([])
 </script>
 
 <template>
-  <ProductDetailSkeleton v-if="catalogLoading || !product" />
+  <ProductDetailSkeleton v-if="(catalogLoading && !catalogProducts.length) || !product" />
   <div v-else-if="product && detail" class="product-page">
     <div class="atm-container">
       <section class="hero-card">

@@ -9,6 +9,7 @@ import {
 } from '@ai-token-mall/shared'
 import { productApi } from '@/api'
 import { catalogFilterPills, mockCategorySlugById, mockProducts } from '@/mocks/home'
+import type { ReloadOptions } from '@/composables/reloadOptions'
 
 const categories = ref<ProductCatalogCategory[]>([])
 const loading = ref(false)
@@ -36,10 +37,15 @@ function mockCatalogCategories(): ProductCatalogCategory[] {
   })
 }
 
-export async function reloadCatalogProducts(): Promise<void> {
+export async function reloadCatalogProducts(
+  options?: ReloadOptions,
+): Promise<void> {
   const seq = ++loadSeq
-  loading.value = true
-  categories.value = []
+  const soft = options?.soft === true
+  loading.value = !soft || categories.value.length === 0
+  if (!soft) {
+    categories.value = []
+  }
   try {
     const data = await productApi.list()
     if (seq !== loadSeq) return

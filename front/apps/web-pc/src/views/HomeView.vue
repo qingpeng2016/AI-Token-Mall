@@ -33,12 +33,7 @@ const {
   products: catalogProducts,
   catalogFilterPills,
   loading: catalogLoading,
-  reload: reloadCatalog,
 } = useCatalogProducts()
-
-onMounted(() => {
-  void reloadCatalog()
-})
 
 const catalogSkeletonCount = 6
 const filter = ref<FilterKey>('all')
@@ -179,7 +174,7 @@ function reviewInitial(user: string) {
       <header class="catalog-head">
         <h2>全部套餐</h2>
       </header>
-      <template v-if="catalogLoading">
+      <template v-if="catalogLoading && !catalogProducts.length">
         <div class="catalog-pills catalog-pills--sk" aria-hidden="true">
           <span v-for="i in 6" :key="i" class="catalog-pill-sk" />
         </div>
