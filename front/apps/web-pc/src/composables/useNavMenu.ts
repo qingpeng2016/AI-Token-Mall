@@ -3,17 +3,14 @@ import type { NavBrandMenu, NavMegaColumn } from '@ai-token-mall/shared'
 import { productApi } from '@/api'
 import { navBrandDropdowns, navMegaMenu } from '@/mocks/nav'
 
-let cachedMega: NavMegaColumn[] | null = null
-let cachedBrands: NavBrandMenu[] | null = null
-let loadingPromise: Promise<void> | null = null
-
 function mockBrandMenus(): NavBrandMenu[] {
   return navBrandDropdowns
     .filter((e): e is Extract<typeof e, { items: unknown }> => 'items' in e)
+    .slice(0, 3)
     .map((e) => ({
       id: e.id,
       label: e.label,
-      hot_sale: e.hotSale,
+      hot_tag_name: e.hotTagName,
       items: e.items.map((i) => ({
         label: i.label,
         price: i.price ?? '',
@@ -23,34 +20,27 @@ function mockBrandMenus(): NavBrandMenu[] {
     }))
 }
 
-function applyFallback() {
-  cachedMega = navMegaMenu
-  cachedBrands = mockBrandMenus()
+function applyFallback(): { mega: NavMegaColumn[]; brands: NavBrandMenu[] } {
+  return { mega: navMegaMenu, brands: mockBrandMenus() }
 }
 
-async function loadNavMenu(): Promise<void> {
-  if (cachedMega && cachedBrands) return
-  if (!loadingPromise) {
-    loadingPromise = (async () => {
-      try {
-        const data = await productApi.navMenu()
-        if (data.mega_menu?.length) {
-          cachedMega = data.mega_menu
-          cachedBrands = (data.brand_menus ?? []).map((b) => ({
-            id: b.id,
-            label: b.label,
-            hot_sale: b.hot_sale,
-            items: b.items,
-          }))
-          return
-        }
-      } catch {
-        /* fallback */
-      }
-      applyFallback()
-    })()
+async function fetchNavMenu(): Promise<{ mega: NavMegaColumn[]; brands: NavBrandMenu[] }> {
+  try {
+    const data = await productApi.navMenu()
+    const mega = data.mega_menu ?? []
+    const brands = (data.brand_menus ?? []).slice(0, 3).map((b) => ({
+      id: b.id,
+      label: b.label,
+      hot_tag_name: b.hot_tag_name,
+      items: b.items,
+    }))
+    if (mega.length || brands.length) {
+      return { mega, brands }
+    }
+  } catch {
+    /* fallback */
   }
-  await loadingPromise
+  return applyFallback()
 }
 
 export function useNavMenu(): {
@@ -58,17 +48,15 @@ export function useNavMenu(): {
   brandMenus: Ref<NavBrandMenu[]>
   loading: Ref<boolean>
 } {
-  const megaMenu = ref<NavMegaColumn[]>(cachedMega ?? navMegaMenu)
-  const brandMenus = ref<NavBrandMenu[]>(cachedBrands ?? mockBrandMenus())
-  const loading = ref(!(cachedMega && cachedBrands))
+  const megaMenu = ref<NavMegaColumn[]>([])
+  const brandMenus = ref<NavBrandMenu[]>([])
+  const loading = ref(true)
 
-  if (!(cachedMega && cachedBrands)) {
-    void loadNavMenu().then(() => {
-      if (cachedMega) megaMenu.value = cachedMega
-      if (cachedBrands) brandMenus.value = cachedBrands
-      loading.value = false
-    })
-  }
+  void fetchNavMenu().then(({ mega, brands }) => {
+    megaMenu.value = mega
+    brandMenus.value = brands
+    loading.value = false
+  })
 
   return { megaMenu, brandMenus, loading }
 }

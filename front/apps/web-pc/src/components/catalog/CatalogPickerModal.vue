@@ -5,11 +5,9 @@ import ProductCard from '@/components/home/ProductCard.vue'
 import ProductCardSkeleton from '@/components/home/ProductCardSkeleton.vue'
 import type { CatalogProduct } from '@ai-token-mall/shared'
 import { useCatalogProducts } from '@/composables/useCatalogProducts'
-import { catalogFilterPills } from '@/mocks/home'
 import { productDetailPath } from '@/mocks/productRoutes'
-import type { UpstreamName } from '@ai-token-mall/shared'
 
-type FilterKey = 'all' | UpstreamName | 'cursor'
+type FilterKey = 'all' | string
 
 const props = defineProps<{
   open: boolean
@@ -21,14 +19,18 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
-const { products: catalogProducts, loading: catalogLoading } = useCatalogProducts()
+const {
+  products: catalogProducts,
+  catalogFilterPills,
+  loading: catalogLoading,
+} = useCatalogProducts()
 
 const catalogSkeletonCount = 6
 const filter = ref<FilterKey>('all')
 const selectedProductId = ref<number | null>(null)
 
 const activePillStyle = computed(() => {
-  const pill = catalogFilterPills.find((p) => p.value === filter.value)
+  const pill = catalogFilterPills.value.find((p) => p.value === filter.value)
   if (!pill?.activeBg || filter.value === 'all') {
     return { background: 'var(--atm-gradient)', color: '#fff' }
   }
@@ -37,14 +39,10 @@ const activePillStyle = computed(() => {
 
 const filteredProducts = computed(() => {
   let list = [...catalogProducts.value]
-  if (filter.value === 'cursor') {
-    list = list.filter((p) => p.sku_code.startsWith('CUR'))
-  } else if (filter.value !== 'all') {
-    list = list.filter(
-      (p) => p.sku_upstream_name === filter.value && !p.sku_code.startsWith('CUR'),
-    )
+  if (filter.value !== 'all') {
+    list = list.filter((p) => p.products_category_id === Number(filter.value))
   }
-  list.sort((a, b) => a.sort_order - b.sort_order)
+  list.sort((a, b) => a.sort - b.sort)
   return list
 })
 

@@ -3,6 +3,7 @@ package coreservice
 import (
 	"context"
 	"encoding/json"
+	"strings"
 
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/entity"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/repository"
@@ -17,56 +18,87 @@ func NewProductService(productRepo repository.ProductRepo) *ProductService {
 	return &ProductService{productRepo: productRepo}
 }
 
-func (s *ProductService) List(ctx context.Context, upstreamName string) (*response.ProductListResp, error) {
-	rows, err := s.productRepo.ListOnSale(ctx, upstreamName)
+func (s *ProductService) List(ctx context.Context, categoryID uint) (*response.ProductCatalogResp, error) {
+	categories, err := s.productRepo.ListActiveCategories(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &response.ProductListResp{Products: mapProductRows(rows)}, nil
+	products, err := s.productRepo.ListOnSale(ctx, categoryID)
+	if err != nil {
+		return nil, err
+	}
+	return buildProductCatalog(categories, products), nil
 }
 
 func (s *ProductService) NavMenu(ctx context.Context) (*response.NavMenuResp, error) {
-	rows, err := s.productRepo.ListOnSale(ctx, "")
+	categories, err := s.productRepo.ListActiveCategories(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return s.buildNavMenu(rows), nil
+	rows, err := s.productRepo.ListOnSale(ctx, 0)
+	if err != nil {
+		return nil, err
+	}
+	return s.buildNavMenu(categories, rows), nil
 }
 
-func mapProductRows(rows []entity.Product) []response.ProductItemResp {
-	items := make([]response.ProductItemResp, 0, len(rows))
-	for i := range rows {
-		items = append(items, mapProductItem(&rows[i]))
+func buildProductCatalog(categories []entity.ProductCategory, products []entity.Product) *response.ProductCatalogResp {
+	byCategoryID := map[uint][]response.ProductItemResp{}
+	for i := range products {
+		p := &products[i]
+		if p.ProductsCategoryID == nil {
+			continue
+		}
+		id := *p.ProductsCategoryID
+		byCategoryID[id] = append(byCategoryID[id], mapProductItem(p))
 	}
-	return items
+
+	groups := make([]response.ProductCategoryGroupResp, 0, len(categories))
+	for i := range categories {
+		c := &categories[i]
+		items := byCategoryID[c.ID]
+		if items == nil {
+			items = []response.ProductItemResp{}
+		}
+		groups = append(groups, response.ProductCategoryGroupResp{
+			ID:         c.ID,
+			Name:       c.Name,
+			DotColor:   c.DotColor,
+			ActiveBg:   c.ActiveBg,
+			Sort:       c.Sort,
+			HotTagName: strings.TrimSpace(c.HotTagName),
+			Products:   items,
+		})
+	}
+	return &response.ProductCatalogResp{Categories: groups}
 }
 
 func mapProductItem(p *entity.Product) response.ProductItemResp {
 	item := response.ProductItemResp{
-		ID:              p.ID,
-		SKUCode:         p.SKUCode,
-		CardTitle:       p.CardTitle,
-		CardSubtitle:    p.CardSubtitle,
-		CardFeatures: expandCardFeatures(decodeStringJSONArray(p.CardFeatures), p),
-		ShareSeats:      p.ShareSeats,
-		SKUUpstreamName: p.SKUUpstreamName,
-		SKUProductName:  p.SKUProductName,
-		LimitTokens:     p.LimitTokens,
-		RPMLimit:        p.RPMLimit,
-		TPMLimit:        p.TPMLimit,
-		AllowedModels:   decodeStringJSONArray(p.AllowedModels),
-		ProductType:     p.ProductType,
-		BillingPeriod:   p.BillingPeriod,
-		PriceCents:      p.PriceCents,
-		Currency:        p.Currency,
-		CompareAtPriceCents: p.CompareAtPriceCents,
-		Highlights:      decodeStringJSONArray(p.HighlightsJSON),
-		IsHot:           p.IsHot != 0,
-		IsAPIEnabled:    p.IsAPIEnabled != 0,
-		TopupTokenAmount: p.TopupTokenAmount,
-		SortOrder:       p.SortOrder,
-		Status:          p.Status,
-		Flagship:        p.IsFlagship != 0,
+		ID:                   p.ID,
+		SKUCode:              p.SKUCode,
+		CardTitle:            p.CardTitle,
+		CardSubtitle:         p.CardSubtitle,
+		CardFeatures:         expandCardFeatures(decodeStringJSONArray(p.CardFeatures), p),
+		ShareSeats:           p.ShareSeats,
+		ProductsCategoryID:   p.ProductsCategoryID,
+		ProductsCategoryName: p.ProductsCategoryName,
+		SKUProductName:       p.SKUProductName,
+		LimitTokens:          p.LimitTokens,
+		RPMLimit:             p.RPMLimit,
+		TPMLimit:             p.TPMLimit,
+		AllowedModels:        decodeStringJSONArray(p.AllowedModels),
+		ProductType:          p.ProductType,
+		BillingPeriod:        p.BillingPeriod,
+		PriceCents:           p.PriceCents,
+		Currency:             p.Currency,
+		CompareAtPriceCents:  p.CompareAtPriceCents,
+		Highlights:           decodeStringJSONArray(p.HighlightsJSON),
+		HotTagName:           strings.TrimSpace(p.HotTagName),
+		IsAPIEnabled:         p.IsAPIEnabled != 0,
+		TopupTokenAmount:     p.TopupTokenAmount,
+		Sort:                 p.SortOrder,
+		Status:               p.Status,
 	}
 	if len(item.Highlights) == 0 {
 		item.Highlights = []string{}

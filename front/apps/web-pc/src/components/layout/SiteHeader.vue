@@ -4,15 +4,17 @@ import { RouterLink, useRoute } from 'vue-router'
 import SiteLogo from '@/components/brand/SiteLogo.vue'
 import { isLoggedIn } from '@/composables/useSessionUser'
 import { useNavMenu } from '@/composables/useNavMenu'
+import NavDropMenuSkeleton from '@/components/layout/NavDropMenuSkeleton.vue'
+import NavMegaMenuSkeleton from '@/components/layout/NavMegaMenuSkeleton.vue'
 import { isNavDropdown, type NavMenuEntry } from '@/mocks/nav'
 
-const { megaMenu, brandMenus } = useNavMenu()
+const { megaMenu, brandMenus, loading: navLoading } = useNavMenu()
 
 const navBrandEntries = computed((): NavMenuEntry[] => [
   ...brandMenus.value.map((b) => ({
     id: b.id,
     label: b.label,
-    hotSale: b.hot_sale,
+    hotTagName: b.hot_tag_name,
     items: b.items.map((i) => ({
       label: i.label,
       href: i.href,
@@ -84,7 +86,8 @@ function isSpaNav(href: string) {
               @mouseenter="openMega"
             >
               <div class="mega-popover-inner">
-                <div class="mega-grid">
+                <NavMegaMenuSkeleton v-if="navLoading" />
+                <div v-else class="mega-grid">
                   <div v-for="col in megaMenu" :key="col.title" class="mega-col">
                     <h3 class="mega-col-title">{{ col.title }}</h3>
                     <ul class="mega-list">
@@ -111,12 +114,16 @@ function isSpaNav(href: string) {
                     </ul>
                   </div>
                 </div>
-                <a href="#catalog" class="mega-footer">全部套餐</a>
               </div>
             </div>
           </div>
 
-          <template v-for="brand in navBrandEntries" :key="brand.id">
+          <template v-if="navLoading">
+            <div v-for="n in 3" :key="'nav-sk-' + n" class="nav-item">
+              <span class="nav-link nav-link-btn nav-link--placeholder" aria-hidden="true" />
+            </div>
+          </template>
+          <template v-for="brand in navBrandEntries" v-else :key="brand.id">
             <RouterLink
               v-if="!isNavDropdown(brand)"
               :to="brand.to"
@@ -136,7 +143,7 @@ function isSpaNav(href: string) {
                 :class="{ 'nav-link--active': openDrop === brand.id }"
               >
                 {{ brand.label }}
-                <span v-if="brand.hotSale" class="nav-hot-tag">热销</span>
+                <span v-if="brand.hotTagName" class="nav-hot-tag">{{ brand.hotTagName }}</span>
                 <span class="nav-chevron" aria-hidden="true">▾</span>
               </button>
               <div
@@ -145,7 +152,8 @@ function isSpaNav(href: string) {
                 @mouseenter="openBrandDrop(brand.id)"
               >
                 <div class="nav-drop-panel-inner">
-                  <template v-for="item in brand.items" :key="item.label">
+                  <NavDropMenuSkeleton v-if="navLoading" />
+                  <template v-for="item in brand.items" v-else :key="item.label">
                     <RouterLink
                       v-if="isSpaNav(item.href)"
                       :to="item.href"
@@ -290,6 +298,27 @@ function isSpaNav(href: string) {
 .nav-chevron {
   font-size: 10px;
   color: var(--atm-text-muted);
+}
+
+.nav-link--placeholder {
+  display: inline-block;
+  width: 72px;
+  min-height: 1em;
+  color: transparent;
+  pointer-events: none;
+  background: linear-gradient(90deg, #e8ecf4 0%, #f1f5f9 45%, #e8ecf4 90%);
+  background-size: 200% 100%;
+  animation: nav-placeholder-shimmer 1.2s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+@keyframes nav-placeholder-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
 }
 
 .nav-drop-panel {
@@ -440,20 +469,6 @@ function isSpaNav(href: string) {
   color: var(--atm-primary);
   white-space: nowrap;
   padding-left: 4px;
-}
-
-.mega-footer {
-  display: inline-block;
-  margin-top: 14px;
-  padding-left: 4px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--atm-primary);
-  text-decoration: none;
-}
-
-.mega-footer:hover {
-  text-decoration: underline;
 }
 
 .actions {

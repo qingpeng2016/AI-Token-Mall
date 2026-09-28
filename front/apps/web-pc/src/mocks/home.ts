@@ -3,21 +3,30 @@ import { appendShareFeature, type CatalogProduct, type UpstreamName } from '@ai-
 export type { CatalogProduct }
 export { heroSubKeyShareLine, subKeyShareFeature } from '@ai-token-mall/shared'
 
-/** 全部套餐 — 胶囊筛选（对齐商城前台） */
+/** 全部套餐 — 胶囊筛选（mock 回退；线上以接口 categories[].id / name 为准） */
 export const catalogFilterPills: {
-  value: 'all' | UpstreamName | 'cursor'
+  value: 'all' | string
   label: string
   dot?: string
   activeBg?: string
 }[] = [
   { value: 'all', label: '全部' },
-  { value: 'openai', label: 'ChatGPT', dot: '#10a37f', activeBg: '#10a37f' },
-  { value: 'anthropic', label: 'Claude', dot: '#d97757', activeBg: '#d97757' },
-  { value: 'xai', label: 'Grok', dot: '#0f172a', activeBg: '#334155' },
-  { value: 'gemini', label: 'Gemini', dot: '#4285f4', activeBg: '#4285f4' },
-  { value: 'cursor', label: 'Cursor', dot: '#7c3aed', activeBg: '#7c3aed' },
-  { value: 'perplexity', label: 'Perplexity', dot: '#0d9488', activeBg: '#0d9488' },
+  { value: '1', label: 'ChatGPT', dot: '#10a37f', activeBg: '#10a37f' },
+  { value: '2', label: 'Claude', dot: '#d97757', activeBg: '#d97757' },
+  { value: '3', label: 'Grok', dot: '#0f172a', activeBg: '#334155' },
+  { value: '4', label: 'Gemini', dot: '#4285f4', activeBg: '#4285f4' },
+  { value: '5', label: 'Cursor', dot: '#7c3aed', activeBg: '#7c3aed' },
+  { value: '6', label: 'Perplexity', dot: '#0d9488', activeBg: '#0d9488' },
 ]
+
+export const mockCategorySlugById: Record<number, string> = {
+  1: 'openai',
+  2: 'anthropic',
+  3: 'xai',
+  4: 'gemini',
+  5: 'cursor',
+  6: 'perplexity',
+}
 
 export const heroQuickLinks = [
   { name: 'ChatGPT', price: '¥89', upstream: 'openai' as UpstreamName },
@@ -236,7 +245,7 @@ const mockProductsRaw: CatalogProduct[] = [
     card_subtitle: '入门档额度，日常对话与轻量开发够用。',
     card_features: ['{limit_tokens} tokens / 月', 'gpt-4o-mini 可用', 'ChatGPT 线路', '约 1 分钟开通'],
     share_seats: 3,
-    sku_upstream_name: 'openai',
+    products_category_name: 'openai',
     sku_product_name: 'GPT GO 5X',
     limit_tokens: 2_000_000,
     rpm_limit: 60,
@@ -246,9 +255,8 @@ const mockProductsRaw: CatalogProduct[] = [
     price_cents: 8900,
     currency: 'CNY',
     highlights: [],
-    is_hot: false,
     is_api_enabled: true,
-    sort_order: 10,
+    sort: 10,
     status: 'on_sale',
   },
   {
@@ -258,7 +266,7 @@ const mockProductsRaw: CatalogProduct[] = [
     card_subtitle: 'Pro Search + 多模型检索，研究类 Agent 首选。',
     card_features: ['{limit_tokens} tokens / 月', 'sonar / sonar-pro', 'Pro Search', '低价研究首选'],
     share_seats: 3,
-    sku_upstream_name: 'perplexity',
+    products_category_name: 'perplexity',
     sku_product_name: 'Perplexity Pro',
     limit_tokens: 5_000_000,
     rpm_limit: 50,
@@ -268,9 +276,8 @@ const mockProductsRaw: CatalogProduct[] = [
     price_cents: 11900,
     currency: 'CNY',
     highlights: [],
-    is_hot: false,
     is_api_enabled: true,
-    sort_order: 12,
+    sort: 12,
     status: 'on_sale',
   },
   {
@@ -280,7 +287,7 @@ const mockProductsRaw: CatalogProduct[] = [
     card_subtitle: '主力模型组合，含 Codex 与 Images 档位白名单。',
     card_features: ['{limit_tokens} tokens / 月', 'gpt-4o + o1-mini', 'Codex 可用', '热销性价比'],
     share_seats: 5,
-    sku_upstream_name: 'openai',
+    products_category_name: 'openai',
     sku_product_name: 'GPT PRO 5X',
     limit_tokens: 8_000_000,
     rpm_limit: 90,
@@ -290,9 +297,9 @@ const mockProductsRaw: CatalogProduct[] = [
     price_cents: 17800,
     currency: 'CNY',
     highlights: [],
-    is_hot: true,
+    hot_tag_name: '热销',
     is_api_enabled: true,
-    sort_order: 8,
+    sort: 8,
     status: 'on_sale',
   },
   {
@@ -302,7 +309,7 @@ const mockProductsRaw: CatalogProduct[] = [
     card_subtitle: 'Pro + Flash 组合，多模态与长上下文。',
     card_features: ['{limit_tokens} tokens / 月', '1.5 Pro / Flash', 'Nano 出图', 'Gemini 全系列'],
     share_seats: 5,
-    sku_upstream_name: 'gemini',
+    products_category_name: 'gemini',
     sku_product_name: 'Gemini Pro Pool',
     limit_tokens: 10_000_000,
     rpm_limit: 90,
@@ -312,9 +319,8 @@ const mockProductsRaw: CatalogProduct[] = [
     price_cents: 18900,
     currency: 'CNY',
     highlights: [],
-    is_hot: false,
     is_api_enabled: true,
-    sort_order: 14,
+    sort: 14,
     status: 'on_sale',
   },
   {
@@ -324,7 +330,7 @@ const mockProductsRaw: CatalogProduct[] = [
     card_subtitle: '含使用额度 + Cursor 配置教程（搭配编辑器自助使用）。',
     card_features: ['额度 + 教程', 'Cloud Agents 说明', 'Auto 模式说明', '按文档自助配置'],
     share_seats: 5,
-    sku_upstream_name: 'openai',
+    products_category_name: 'cursor',
     sku_product_name: 'Mixed Pool',
     limit_tokens: 6_000_000,
     rpm_limit: 80,
@@ -334,9 +340,9 @@ const mockProductsRaw: CatalogProduct[] = [
     price_cents: 19800,
     currency: 'CNY',
     highlights: [],
-    is_hot: true,
+    hot_tag_name: '热销',
     is_api_enabled: true,
-    sort_order: 13,
+    sort: 13,
     status: 'on_sale',
   },
   {
@@ -346,7 +352,7 @@ const mockProductsRaw: CatalogProduct[] = [
     card_subtitle: 'Sonnet / Haiku 全系，支持 Claude Code。',
     card_features: ['{limit_tokens} tokens / 月', '200K 上下文', 'Claude 全系列', 'Claude Code 可用'],
     share_seats: 5,
-    sku_upstream_name: 'anthropic',
+    products_category_name: 'anthropic',
     sku_product_name: 'Claude Pro 5X',
     limit_tokens: 8_000_000,
     rpm_limit: 80,
@@ -356,9 +362,9 @@ const mockProductsRaw: CatalogProduct[] = [
     price_cents: 21900,
     currency: 'CNY',
     highlights: [],
-    is_hot: true,
+    hot_tag_name: '热销',
     is_api_enabled: true,
-    sort_order: 7,
+    sort: 7,
     status: 'on_sale',
   },
   {
@@ -368,7 +374,7 @@ const mockProductsRaw: CatalogProduct[] = [
     card_subtitle: '约 20 倍配额，团队满血与重度 Codex。',
     card_features: ['{limit_tokens} tokens / 月', '{rpm_limit} RPM', 'o1-mini 白名单', '专业 / 团队首选'],
     share_seats: 20,
-    sku_upstream_name: 'openai',
+    products_category_name: 'openai',
     sku_product_name: 'GPT PRO 20X',
     limit_tokens: 20_000_000,
     rpm_limit: 120,
@@ -378,11 +384,10 @@ const mockProductsRaw: CatalogProduct[] = [
     price_cents: 179900,
     currency: 'CNY',
     highlights: [],
-    is_hot: true,
+    hot_tag_name: '旗舰',
     is_api_enabled: true,
-    sort_order: 5,
+    sort: 5,
     status: 'on_sale',
-    flagship: true,
   },
   {
     id: 12,
@@ -391,7 +396,7 @@ const mockProductsRaw: CatalogProduct[] = [
     card_subtitle: 'Pro 5X，主力旗舰组合，约 5 倍配额。',
     card_features: ['{limit_tokens} tokens / 月', '旗舰模型可用', 'Codex 重度可用', '约 1 分钟开通'],
     share_seats: 10,
-    sku_upstream_name: 'openai',
+    products_category_name: 'openai',
     sku_product_name: 'GPT PRO 5X',
     limit_tokens: 12_000_000,
     rpm_limit: 100,
@@ -401,9 +406,8 @@ const mockProductsRaw: CatalogProduct[] = [
     price_cents: 89900,
     currency: 'CNY',
     highlights: [],
-    is_hot: false,
     is_api_enabled: true,
-    sort_order: 6,
+    sort: 6,
     status: 'on_sale',
   },
   {
@@ -413,7 +417,7 @@ const mockProductsRaw: CatalogProduct[] = [
     card_subtitle: '约 5 倍 Pro 用量，重度编程友好。',
     card_features: ['{limit_tokens} tokens / 月', 'Opus 可选', 'Claude Code', 'Max 专线'],
     share_seats: 10,
-    sku_upstream_name: 'anthropic',
+    products_category_name: 'anthropic',
     sku_product_name: 'Claude Max 10X',
     limit_tokens: 15_000_000,
     rpm_limit: 100,
@@ -423,9 +427,8 @@ const mockProductsRaw: CatalogProduct[] = [
     price_cents: 99900,
     currency: 'CNY',
     highlights: [],
-    is_hot: false,
     is_api_enabled: true,
-    sort_order: 16,
+    sort: 16,
     status: 'on_sale',
   },
   {
@@ -435,7 +438,7 @@ const mockProductsRaw: CatalogProduct[] = [
     card_subtitle: 'DeepSearch + 联网 + Imagine 线路。',
     card_features: ['{limit_tokens} tokens / 周期', 'grok-2 系列', 'Grok 全能力', '3 个月包'],
     share_seats: 5,
-    sku_upstream_name: 'xai',
+    products_category_name: 'xai',
     sku_product_name: 'Grok 5X',
     limit_tokens: 6_000_000,
     rpm_limit: 60,
@@ -445,9 +448,8 @@ const mockProductsRaw: CatalogProduct[] = [
     price_cents: 79000,
     currency: 'CNY',
     highlights: [],
-    is_hot: false,
     is_api_enabled: true,
-    sort_order: 18,
+    sort: 18,
     status: 'on_sale',
   },
 ]

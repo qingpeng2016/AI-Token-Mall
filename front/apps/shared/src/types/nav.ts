@@ -13,7 +13,7 @@ export type NavMegaColumn = {
 export type NavBrandMenu = {
   id: string
   label: string
-  hot_sale?: boolean
+  hot_tag_name?: string
   items: NavPlanItem[]
 }
 

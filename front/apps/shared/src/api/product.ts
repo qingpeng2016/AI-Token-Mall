@@ -1,5 +1,5 @@
 import type { ApiEnvelope } from '../types/user'
-import type { CatalogProduct } from '../types/product'
+import type { ProductCatalogResponse } from '../types/product'
 import type { NavMenuResponse } from '../types/nav'
 import { createHttpClient, type HttpClientOptions } from './http'
 
@@ -11,15 +11,16 @@ export function createProductApi(options: HttpClientOptions) {
   const http = createHttpClient(options)
 
   return {
-    async list(skuUpstreamName?: string): Promise<CatalogProduct[]> {
+    async list(productsCategoryId?: number): Promise<ProductCatalogResponse> {
       const qs =
-        skuUpstreamName && skuUpstreamName.trim()
-          ? `?sku_upstream_name=${encodeURIComponent(skuUpstreamName.trim())}`
+        productsCategoryId && productsCategoryId > 0
+          ? `?products_category_id=${productsCategoryId}`
           : ''
-      const res = await http.get<ApiEnvelope<{ products: CatalogProduct[] }>>(
+      const res = await http.get<ApiEnvelope<ProductCatalogResponse>>(
         `/api/v1/products${qs}`,
       )
-      return unwrap(res).products ?? []
+      const data = unwrap(res)
+      return { categories: data.categories ?? [] }
     },
     async navMenu(): Promise<NavMenuResponse> {
       const res = await http.get<ApiEnvelope<NavMenuResponse>>('/api/v1/products/nav-menu')

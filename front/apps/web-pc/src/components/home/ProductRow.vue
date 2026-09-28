@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { UPSTREAM_LABEL, formatCnyFromCents } from '@ai-token-mall/shared'
+import {
+  UPSTREAM_LABEL,
+  formatCnyFromCents,
+  type ProductsCategoryName,
+} from '@ai-token-mall/shared'
 import type { CatalogProduct } from '@/mocks/home'
 
 defineProps<{
@@ -15,8 +19,11 @@ const emit = defineEmits<{
   <article class="row">
     <div class="row-main">
       <div class="row-tags">
-        <span v-if="product.is_hot" class="tag hot">热销</span>
-        <span class="tag line">{{ UPSTREAM_LABEL[product.sku_upstream_name] }}</span>
+        <span v-if="product.hot_tag_name" class="tag hot">{{ product.hot_tag_name }}</span>
+        <span class="tag line">{{
+          UPSTREAM_LABEL[product.products_category_name as ProductsCategoryName] ??
+            product.products_category_name
+        }}</span>
         <span v-if="product.product_type === 'token_topup'" class="tag topup">加购</span>
       </div>
       <h3 class="title">{{ product.card_title }}</h3>

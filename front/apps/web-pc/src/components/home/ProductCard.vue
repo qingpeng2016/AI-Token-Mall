@@ -24,8 +24,7 @@ const emit = defineEmits<{
     @keydown.enter.prevent="emit('open', product)"
     @keydown.space.prevent="emit('open', product)"
   >
-    <span v-if="product.flagship" class="sku-badge sku-badge--flag">旗舰</span>
-    <span v-else-if="product.is_hot" class="sku-badge">热销</span>
+    <span v-if="product.hot_tag_name" class="sku-badge">{{ product.hot_tag_name }}</span>
     <h3 class="sku-title">{{ product.card_title }}</h3>
     <p class="sku-price">{{ formatCnyFromCents(product.price_cents) }}</p>
     <p class="sku-desc">{{ product.card_subtitle }}</p>
@@ -81,12 +80,6 @@ const emit = defineEmits<{
   color: #fff;
   background: var(--atm-gradient);
   border-radius: 999px;
-}
-.sku-badge--flag {
-  background: linear-gradient(90deg, #6366f1, #8b5cf6);
-}
-.sku-badge--rec {
-  background: linear-gradient(90deg, #7c3aed, #6366f1);
 }
 .sku-title {
   margin: 0 0 8px;

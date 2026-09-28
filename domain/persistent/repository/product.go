@@ -7,5 +7,6 @@ import (
 )
 
 type ProductRepo interface {
-	ListOnSale(ctx context.Context, upstreamName string) ([]entity.Product, error)
+	ListActiveCategories(ctx context.Context) ([]entity.ProductCategory, error)
+	ListOnSale(ctx context.Context, categoryID uint) ([]entity.Product, error)
 }

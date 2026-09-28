@@ -1,4 +1,8 @@
-import type { CatalogProduct } from '../types/product'
+import type {
+  CatalogProduct,
+  ProductCatalogCategory,
+  ProductCatalogResponse,
+} from '../types/product'
 import { formatTokenCount } from './format'
 
 /** card_features 内占位符，与后端 expandCardFeatures 一致 */
@@ -26,10 +30,43 @@ export function appendShareFeature(features: string[], seats: number): string[] 
 
 export function normalizeCatalogProduct(p: CatalogProduct): CatalogProduct {
   const card_features = expandCardFeaturePlaceholders(p.card_features, p)
+  const legacy = p as CatalogProduct & { sort_order?: number }
+  const sort = typeof p.sort === 'number' ? p.sort : legacy.sort_order ?? 0
   return {
     ...p,
+    sort,
     card_features: appendShareFeature(card_features, p.share_seats),
   }
+}
+
+export function flattenCatalogProducts(
+  catalog: ProductCatalogResponse,
+): CatalogProduct[] {
+  return catalog.categories.flatMap((c) =>
+    c.products.map((p) => normalizeCatalogProduct(p)),
+  )
+}
+
+export type CatalogFilterPill = {
+  value: 'all' | string
+  label: string
+  dot?: string
+  activeBg?: string
+}
+
+export function catalogFilterPillsFromCategories(
+  categories: ProductCatalogCategory[],
+): CatalogFilterPill[] {
+  const sorted = [...categories].sort((a, b) => a.sort - b.sort)
+  return [
+    { value: 'all', label: '全部' },
+    ...sorted.map((c) => ({
+      value: String(c.id),
+      label: c.name,
+      dot: c.dot_color,
+      activeBg: c.active_bg,
+    })),
+  ]
 }
 
 export function heroSubKeyShareLine(products: { share_seats: number }[]): string {

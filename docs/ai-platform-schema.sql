@@ -72,6 +72,21 @@ CREATE TABLE IF NOT EXISTS `upstream_info` (
   KEY `idx_upstream_info_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='上游信息（厂商+档位 + 凭证 + 单条容量）';
 
+CREATE TABLE IF NOT EXISTS `products_category` (
+  `id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name`       VARCHAR(64)  NOT NULL COMMENT '展示名，如 ChatGPT',
+  `dot_color`  VARCHAR(16)  DEFAULT NULL COMMENT '胶囊圆点色',
+  `active_bg`  VARCHAR(16)  DEFAULT NULL COMMENT '选中胶囊背景色',
+  `sort`       INT          NOT NULL DEFAULT 0 COMMENT '分类排序（越小越靠前）',
+  `status`     VARCHAR(16)  NOT NULL DEFAULT 'active' COMMENT 'active|hidden',
+  `hot_tag_name` VARCHAR(32) DEFAULT NULL COMMENT '顶栏分类标签，空则不显示',
+  `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_products_category_name` (`name`),
+  KEY `idx_products_category_sort` (`status`, `sort`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='商城前台分类（全部套餐胶囊）';
+
 CREATE TABLE IF NOT EXISTS `products` (
   `id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `sku_code`          VARCHAR(64)  NOT NULL COMMENT 'SKU 编码',
@@ -79,7 +94,8 @@ CREATE TABLE IF NOT EXISTS `products` (
   `card_subtitle`     VARCHAR(512) NOT NULL DEFAULT '' COMMENT '卡片副标题',
   `card_features`     JSON         NOT NULL COMMENT '卡片卖点条目；可用 {limit_tokens}、{rpm_limit} 占位',
   `share_seats`       INT          NOT NULL DEFAULT 1 COMMENT '子 Key 可共用人数（展示）',
-  `sku_upstream_name` VARCHAR(32)  NOT NULL COMMENT 'SKU 品牌线：openai|anthropic|…',
+  `products_category_id` BIGINT UNSIGNED DEFAULT NULL COMMENT '分类 ID',
+  `products_category_name` VARCHAR(32) NOT NULL COMMENT '上游/导航分组键 openai|cursor 等',
   `sku_product_name`  VARCHAR(128) NOT NULL COMMENT 'SKU 绑定上游档位，如 GPT PRO 5X',
   `limit_tokens`      BIGINT       NOT NULL COMMENT '每计费周期 token 额度（售卖给用户）',
   `rpm_limit`         INT          NOT NULL DEFAULT 0 COMMENT '用户 RPM，0=不限',
@@ -93,6 +109,7 @@ CREATE TABLE IF NOT EXISTS `products` (
   `highlights_json`   JSON         DEFAULT NULL COMMENT '卖点',
   `is_hot`            TINYINT(1)   NOT NULL DEFAULT 0,
   `is_flagship`       TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '旗舰卡片样式',
+  `hot_tag_name`      VARCHAR(32)  DEFAULT NULL COMMENT '卡片右上角标签，空则不显示',
   `is_api_enabled`    TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '是否走 API 通道',
   `topup_token_amount` BIGINT      DEFAULT NULL COMMENT '加购包 token 数（product_type=token_topup）',
   `sort_order`        INT          NOT NULL DEFAULT 0,
@@ -101,10 +118,11 @@ CREATE TABLE IF NOT EXISTS `products` (
   `updated_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_products_sku` (`sku_code`),
-  KEY `idx_products_sku_upstream_name` (`sku_upstream_name`),
-  KEY `idx_products_sku_upstream` (`sku_upstream_name`, `sku_product_name`),
+  KEY `idx_products_category_id` (`products_category_id`),
+  KEY `idx_products_category_name` (`products_category_name`),
+  KEY `idx_products_category_product` (`products_category_name`, `sku_product_name`),
   KEY `idx_products_status_sort` (`status`, `sort_order`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='商城 SKU（含品牌筛选：sku_upstream_name）';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='商城 SKU（分类：products_category）';
 
 -- ---------------------------------------------------------------------------
 -- 交易与订单

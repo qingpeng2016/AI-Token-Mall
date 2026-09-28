@@ -1,6 +1,15 @@
 /** 与表 products 字段对齐（展示/下单用） */
 
-export type UpstreamName = 'openai' | 'anthropic' | 'xai' | 'gemini' | 'perplexity'
+export type ProductsCategoryName =
+  | 'openai'
+  | 'anthropic'
+  | 'xai'
+  | 'gemini'
+  | 'perplexity'
+  | 'cursor'
+
+/** @deprecated 使用 products_category_name */
+export type UpstreamName = Exclude<ProductsCategoryName, 'cursor'>
 
 export type ProductType = 'subscription' | 'token_topup'
 export type BillingPeriod = 'month' | 'year' | 'once'
@@ -9,7 +18,8 @@ export type ProductStatus = 'on_sale' | 'off_sale'
 export interface Product {
   id: number
   sku_code: string
-  sku_upstream_name: UpstreamName
+  products_category_id?: number | null
+  products_category_name: ProductsCategoryName | string
   sku_product_name: string
   limit_tokens: number
   rpm_limit: number
@@ -21,10 +31,12 @@ export interface Product {
   currency: string
   compare_at_price_cents?: number | null
   highlights: string[]
-  is_hot: boolean
+  /** 卡片右上角标签，空则不显示 */
+  hot_tag_name?: string
   is_api_enabled: boolean
   topup_token_amount?: number | null
-  sort_order: number
+  /** 分类内排序，对应表 products.sort_order */
+  sort: number
   status: ProductStatus
 }
 
@@ -34,7 +46,21 @@ export interface CatalogProduct extends Product {
   card_subtitle: string
   card_features: string[]
   share_seats: number
-  flagship?: boolean
+}
+
+export interface ProductCatalogCategory {
+  id: number
+  name: string
+  dot_color?: string
+  active_bg?: string
+  sort: number
+  /** 顶栏分类标签，空则不显示 */
+  hot_tag_name?: string
+  products: CatalogProduct[]
+}
+
+export interface ProductCatalogResponse {
+  categories: ProductCatalogCategory[]
 }
 
 export interface HomeBanner {

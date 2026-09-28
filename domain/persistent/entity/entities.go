@@ -59,6 +59,20 @@ type UpstreamInfo struct {
 
 func (UpstreamInfo) TableName() string { return "upstream_info" }
 
+type ProductCategory struct {
+	ID       uint      `gorm:"primaryKey;column:id"`
+	Name     string    `gorm:"column:name;size:64;not null"`
+	DotColor string    `gorm:"column:dot_color;size:16"`
+	ActiveBg             string    `gorm:"column:active_bg;size:16"`
+	Sort                 int       `gorm:"column:sort;not null;default:0"`
+	Status               string    `gorm:"column:status;size:16;not null;default:active"`
+	HotTagName           string    `gorm:"column:hot_tag_name;size:32"`
+	CreatedAt            time.Time `gorm:"column:created_at"`
+	UpdatedAt            time.Time `gorm:"column:updated_at"`
+}
+
+func (ProductCategory) TableName() string { return "products_category" }
+
 type Product struct {
 	ID                  uint           `gorm:"primaryKey;column:id"`
 	SKUCode             string         `gorm:"column:sku_code;size:64;not null"`
@@ -66,7 +80,8 @@ type Product struct {
 	CardSubtitle        string         `gorm:"column:card_subtitle;size:512;not null"`
 	CardFeatures        datatypes.JSON `gorm:"column:card_features;type:json;not null"`
 	ShareSeats          int            `gorm:"column:share_seats;not null;default:1"`
-	SKUUpstreamName     string         `gorm:"column:sku_upstream_name;size:32;not null"`
+	ProductsCategoryID  *uint          `gorm:"column:products_category_id"`
+	ProductsCategoryName string        `gorm:"column:products_category_name;size:32;not null"`
 	SKUProductName      string         `gorm:"column:sku_product_name;size:128;not null"`
 	LimitTokens         int64          `gorm:"column:limit_tokens;not null"`
 	RPMLimit            int            `gorm:"column:rpm_limit;not null;default:0"`
@@ -80,6 +95,7 @@ type Product struct {
 	HighlightsJSON      datatypes.JSON `gorm:"column:highlights_json;type:json"`
 	IsHot               int            `gorm:"column:is_hot;not null;default:0"`
 	IsFlagship          int            `gorm:"column:is_flagship;not null;default:0"`
+	HotTagName          string         `gorm:"column:hot_tag_name;size:32"`
 	IsAPIEnabled        int            `gorm:"column:is_api_enabled;not null;default:1"`
 	TopupTokenAmount    *int64         `gorm:"column:topup_token_amount"`
 	SortOrder           int            `gorm:"column:sort_order;not null;default:0"`

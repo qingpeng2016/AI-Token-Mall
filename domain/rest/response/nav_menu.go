@@ -13,7 +13,7 @@ type NavMegaColumnResp struct {
 type NavBrandMenuResp struct {
 	ID     string            `json:"id"`
 	Label  string            `json:"label"`
-	HotSale bool             `json:"hot_sale,omitempty"`
+	HotTagName string          `json:"hot_tag_name,omitempty"`
 	Items  []NavPlanItemResp `json:"items"`
 }
 

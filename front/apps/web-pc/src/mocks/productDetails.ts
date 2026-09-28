@@ -29,6 +29,7 @@ const BRAND_EYEBROW: Record<string, string> = {
   xai: 'Grok',
   gemini: 'Gemini',
   perplexity: 'Perplexity',
+  cursor: 'Cursor',
 }
 
 const OVERRIDES: Partial<Record<string, Partial<ProductDetailContent>>> = {
@@ -73,7 +74,7 @@ const OVERRIDES: Partial<Record<string, Partial<ProductDetailContent>>> = {
 }
 
 export function getProductDetail(slug: string, product: CatalogProduct): ProductDetailContent {
-  const brand = BRAND_EYEBROW[product.sku_upstream_name] ?? 'AI 套餐'
+  const brand = BRAND_EYEBROW[product.products_category_name] ?? 'AI 套餐'
   const base: ProductDetailContent = {
     eyebrow: `${brand} · ${product.sku_product_name}`,
     heroTitle: product.card_title.replace(/月卡$/, '会员套餐'),
