@@ -1,18 +1,68 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
-import { getBlogPost } from '@/mocks/blog'
+import type { TutorialArticle } from '@ai-token-mall/shared'
+import { readSessionCache, writeSessionCache } from '@ai-token-mall/shared'
+import { tutorialApi } from '@/api'
+import { getBlogPost, type BlogPost } from '@/mocks/blog'
 
 const route = useRoute()
 const router = useRouter()
 
 const slug = computed(() => String(route.params.slug ?? ''))
-const post = computed(() => getBlogPost(slug.value))
+const revalidating = ref(false)
+
+function cacheKey(s: string) {
+  return `atm:tutorial-article:${s}`
+}
+
+function mapArticle(a: TutorialArticle): BlogPost {
+  return {
+    slug: a.slug,
+    category: a.category_code as BlogPost['category'],
+    categoryLabel: a.category_name,
+    date: a.date,
+    title: a.title,
+    excerpt: a.excerpt,
+    body: a.body ?? [],
+  }
+}
+
+function hydratePost(currentSlug: string): BlogPost | null {
+  return (
+    readSessionCache<BlogPost>(cacheKey(currentSlug)) ??
+    getBlogPost(currentSlug) ??
+    null
+  )
+}
+
+const post = ref<BlogPost | null>(null)
+
+async function loadPost(currentSlug: string) {
+  post.value = hydratePost(currentSlug)
+  revalidating.value = true
+  try {
+    const data = await tutorialApi.detail(currentSlug)
+    if (data?.slug) {
+      const mapped = mapArticle(data)
+      post.value = mapped
+      writeSessionCache(cacheKey(currentSlug), mapped)
+      return
+    }
+  } catch {
+    /* 保留 hydrate */
+  } finally {
+    revalidating.value = false
+  }
+  if (!post.value) {
+    router.replace('/blog')
+  }
+}
 
 watch(
-  () => route.params.slug,
-  () => {
-    if (!post.value) router.replace('/blog')
+  slug,
+  (s) => {
+    if (s) void loadPost(s)
   },
   { immediate: true },
 )
@@ -86,50 +136,45 @@ watch(
 
 .article-head {
   margin-bottom: 28px;
-  padding-bottom: 24px;
-  border-bottom: 1px solid rgba(124, 58, 237, 0.12);
 }
 
 .article-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 16px;
+  gap: 12px;
+  margin-bottom: 14px;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--atm-text-muted);
 }
 
 .article-tag {
   padding: 4px 10px;
-  font-weight: 600;
-  color: var(--atm-primary-dark);
-  background: var(--atm-primary-light);
+  font-weight: 700;
+  color: var(--atm-primary);
+  background: #f5f3ff;
   border-radius: 999px;
 }
 
 .article-title {
   margin: 0;
-  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-size: clamp(24px, 4vw, 32px);
   font-weight: 800;
   line-height: 1.35;
-  letter-spacing: -0.03em;
   color: var(--atm-text);
 }
 
-.article-body {
+.article-body p {
+  margin: 0 0 1.1em;
   font-size: 16px;
   line-height: 1.75;
-  color: #334155;
-}
-
-.article-body p {
-  margin: 0 0 1.15em;
+  color: var(--atm-text);
 }
 
 .article-foot {
   margin-top: 40px;
   padding-top: 24px;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid #eef2ff;
 }
 
 .back-link {
@@ -140,6 +185,6 @@ watch(
 }
 
 .back-link:hover {
-  color: var(--atm-primary-dark);
+  text-decoration: underline;
 }
 </style>

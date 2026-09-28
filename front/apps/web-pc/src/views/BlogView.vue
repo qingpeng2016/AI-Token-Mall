@@ -1,22 +1,26 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
-import {
-  blogCategories,
-  blogPageMeta,
-  blogPosts,
-  type BlogCategoryId,
-} from '@/mocks/blog'
+import { useTutorialBlog } from '@/composables/useTutorialBlog'
 
 const route = useRoute()
 const router = useRouter()
+const { pageTitle, categories, articles } = useTutorialBlog()
 
-function parseCategory(q: unknown): BlogCategoryId {
+function parseCategory(q: unknown): string {
   const id = typeof q === 'string' ? q : 'all'
-  return blogCategories.some((c) => c.id === id) ? (id as BlogCategoryId) : 'all'
+  return categories.value.some((c) => c.id === id) ? id : 'all'
 }
 
-const activeCategory = ref<BlogCategoryId>(parseCategory(route.query.cat))
+const activeCategory = ref('all')
+
+watch(
+  categories,
+  () => {
+    activeCategory.value = parseCategory(route.query.cat)
+  },
+  { immediate: true },
+)
 
 watch(
   () => route.query.cat,
@@ -26,11 +30,11 @@ watch(
 )
 
 const filteredPosts = computed(() => {
-  if (activeCategory.value === 'all') return blogPosts
-  return blogPosts.filter((p) => p.category === activeCategory.value)
+  if (activeCategory.value === 'all') return articles.value
+  return articles.value.filter((p) => p.category === activeCategory.value)
 })
 
-function setCategory(id: BlogCategoryId) {
+function setCategory(id: string) {
   activeCategory.value = id
   const query = id === 'all' ? {} : { cat: id }
   router.replace({ path: '/blog', query })
@@ -47,12 +51,12 @@ function setCategory(id: BlogCategoryId) {
       </nav>
 
       <header class="blog-hero">
-        <h1 class="blog-title">{{ blogPageMeta.title }}</h1>
+        <h1 class="blog-title">{{ pageTitle }}</h1>
       </header>
 
       <div class="blog-filters" role="tablist" aria-label="文章分类">
         <button
-          v-for="cat in blogCategories"
+          v-for="cat in categories"
           :key="cat.id"
           type="button"
           class="filter-pill"
@@ -89,17 +93,20 @@ function setCategory(id: BlogCategoryId) {
 <style scoped>
 .blog-page {
   padding: 28px 0 72px;
+  background: var(--atm-bg-soft);
+  min-height: 60vh;
 }
 
 .blog-container {
-  max-width: 960px;
+  max-width: 1080px;
 }
 
 .blog-breadcrumb {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin-bottom: 28px;
+  margin-bottom: 20px;
   font-size: 14px;
   color: var(--atm-text-muted);
 }
@@ -107,7 +114,6 @@ function setCategory(id: BlogCategoryId) {
 .blog-breadcrumb a {
   color: var(--atm-text-muted);
   text-decoration: none;
-  transition: color 0.15s ease;
 }
 
 .blog-breadcrumb a:hover {
@@ -123,90 +129,81 @@ function setCategory(id: BlogCategoryId) {
 }
 
 .blog-hero {
-  text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 28px;
 }
 
 .blog-title {
-  margin: 0 0 14px;
-  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  margin: 0;
+  font-size: clamp(26px, 4vw, 34px);
   font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.2;
-  color: var(--atm-primary-dark);
+  color: var(--atm-text);
+  letter-spacing: -0.02em;
 }
 
 .blog-filters {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
   gap: 10px;
-  margin-bottom: 36px;
+  margin-bottom: 28px;
 }
 
 .filter-pill {
   padding: 8px 16px;
   font-size: 13px;
   font-weight: 600;
-  line-height: 1.2;
-  color: var(--atm-text);
+  color: var(--atm-text-muted);
   background: #fff;
-  border: 1px solid rgba(124, 58, 237, 0.14);
+  border: 1px solid #e8ecf4;
   border-radius: 999px;
   cursor: pointer;
   transition:
-    background 0.15s ease,
-    color 0.15s ease,
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+    color 0.15s,
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .filter-pill:hover {
-  border-color: rgba(124, 58, 237, 0.28);
-  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.08);
+  color: var(--atm-primary);
+  border-color: #ddd6fe;
 }
 
 .filter-pill--active {
   color: #fff;
   background: var(--atm-gradient);
   border-color: transparent;
-  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.25);
 }
 
 .blog-grid {
   display: grid;
-  gap: 20px;
+  grid-template-columns: 1fr;
+  gap: 16px;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 720px) {
   .blog-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 22px 24px;
+    gap: 20px;
   }
 }
 
 .blog-card {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-height: 100%;
-  padding: 22px 22px 20px;
+  display: block;
+  padding: 22px 24px;
   text-decoration: none;
-  color: inherit;
   background: #fff;
-  border: 1px solid rgba(124, 58, 237, 0.1);
+  border: 1px solid #eef2ff;
   border-radius: 16px;
-  box-shadow: 0 6px 24px rgba(124, 58, 237, 0.06);
+  box-shadow: 0 4px 18px rgba(30, 27, 75, 0.05);
   transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease,
-    transform 0.15s ease;
+    transform 0.15s,
+    box-shadow 0.15s,
+    border-color 0.15s;
 }
 
 .blog-card:hover {
-  border-color: rgba(124, 58, 237, 0.22);
-  box-shadow: 0 12px 32px rgba(124, 58, 237, 0.1);
   transform: translateY(-2px);
+  border-color: #ddd6fe;
+  box-shadow: 0 12px 28px rgba(124, 58, 237, 0.1);
 }
 
 .blog-card-meta {
@@ -214,46 +211,45 @@ function setCategory(id: BlogCategoryId) {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  margin-bottom: 12px;
 }
 
 .blog-card-tag {
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--atm-primary-dark);
-  background: var(--atm-primary-light);
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--atm-primary);
+  background: #f5f3ff;
   border-radius: 999px;
 }
 
 .blog-card-date {
-  flex-shrink: 0;
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--atm-text-muted);
 }
 
 .blog-card-title {
-  margin: 0;
+  margin: 0 0 10px;
   font-size: 17px;
-  font-weight: 800;
-  line-height: 1.45;
-  letter-spacing: -0.02em;
+  font-weight: 700;
+  line-height: 1.4;
   color: var(--atm-text);
 }
 
 .blog-card-excerpt {
   margin: 0;
   font-size: 14px;
-  line-height: 1.65;
+  line-height: 1.55;
   color: var(--atm-text-muted);
   display: -webkit-box;
-  -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
 .blog-empty {
+  padding: 48px 0;
   text-align: center;
-  padding: 48px 16px;
   color: var(--atm-text-muted);
 }
 </style>

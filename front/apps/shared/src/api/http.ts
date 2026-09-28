@@ -1,10 +1,26 @@
 export type HttpClientOptions = {
   baseURL: string
   getToken?: () => string | null
+  /** 请求超时（毫秒），默认 12s */
+  timeoutMs?: number
+}
+
+const DEFAULT_TIMEOUT_MS = 12_000
+
+function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs: number,
+): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  return fetch(url, { ...init, signal: controller.signal }).finally(() =>
+    clearTimeout(timer),
+  )
 }
 
 export function createHttpClient(options: HttpClientOptions) {
-  const { baseURL, getToken } = options
+  const { baseURL, getToken, timeoutMs = DEFAULT_TIMEOUT_MS } = options
 
   async function request<T>(
     path: string,
@@ -19,12 +35,24 @@ export function createHttpClient(options: HttpClientOptions) {
       headers.set('Authorization', `Bearer ${token}`)
     }
 
-    const res = await fetch(`${baseURL}${path}`, {
-      ...init,
-      headers,
-      credentials: 'include',
-      body: init.json !== undefined ? JSON.stringify(init.json) : init.body,
-    })
+    let res: Response
+    try {
+      res = await fetchWithTimeout(
+        `${baseURL}${path}`,
+        {
+          ...init,
+          headers,
+          credentials: 'include',
+          body: init.json !== undefined ? JSON.stringify(init.json) : init.body,
+        },
+        timeoutMs,
+      )
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        throw new Error('请求超时，请检查后端是否已启动')
+      }
+      throw err
+    }
 
     const text = await res.text()
     let parsed: unknown

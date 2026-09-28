@@ -32,7 +32,8 @@ const route = useRoute()
 const {
   products: catalogProducts,
   catalogFilterPills,
-  loading: catalogLoading,
+  initialLoading: catalogInitialLoading,
+  revalidating: catalogRevalidating,
 } = useCatalogProducts()
 
 const catalogSkeletonCount = 6
@@ -62,7 +63,7 @@ const filteredProducts = computed(() => {
 watch(
   filteredProducts,
   (list) => {
-    if (catalogLoading.value) return
+    if (catalogInitialLoading.value) return
     selectedProductId.value = list[0]?.id ?? null
   },
   { immediate: true },
@@ -188,8 +189,12 @@ function reviewInitial(user: string) {
           {{ pill.label }}
         </button>
       </div>
-      <div class="catalog-grid" :aria-busy="catalogLoading">
-        <template v-if="catalogLoading">
+      <div
+        class="catalog-grid"
+        :class="{ 'catalog-grid--revalidating': catalogRevalidating }"
+        :aria-busy="catalogInitialLoading || catalogRevalidating"
+      >
+        <template v-if="catalogInitialLoading">
           <ProductCardSkeleton v-for="i in catalogSkeletonCount" :key="`sk-${i}`" />
         </template>
         <template v-else>
@@ -203,7 +208,7 @@ function reviewInitial(user: string) {
           />
         </template>
       </div>
-      <p v-if="!catalogLoading && !filteredProducts.length" class="catalog-empty">
+      <p v-if="!catalogInitialLoading && !filteredProducts.length" class="catalog-empty">
         该品牌暂无套餐
       </p>
     </section>
@@ -505,6 +510,18 @@ function reviewInitial(user: string) {
     grid-template-columns: repeat(3, 1fr);
   }
 }
+.catalog-grid--revalidating {
+  opacity: 0.92;
+  transition: opacity 0.2s ease;
+}
+
+.catalog-revalidating {
+  margin: 8px 0 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--atm-text-muted);
+}
+
 .catalog-empty {
   text-align: center;
   color: var(--atm-text-muted);

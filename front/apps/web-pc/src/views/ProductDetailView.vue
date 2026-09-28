@@ -20,7 +20,11 @@ const router = useRouter()
 
 const purchaseOpen = ref(false)
 const sessionUser = ref(getSessionUser())
-const { products: catalogProducts, loading: catalogLoading } = useCatalogProducts()
+const {
+  products: catalogProducts,
+  initialLoading: catalogInitialLoading,
+  revalidating: catalogRevalidating,
+} = useCatalogProducts()
 
 const slug = computed(() => String(route.params.slug ?? ''))
 const product = computed(() => findProductBySlug(slug.value, catalogProducts.value))
@@ -29,9 +33,9 @@ const detail = computed(() =>
 )
 
 watch(
-  [() => route.params.slug, catalogProducts, catalogLoading],
+  [() => route.params.slug, catalogProducts, catalogInitialLoading],
   () => {
-    if (catalogLoading.value) return
+    if (catalogInitialLoading.value) return
     if (!product.value) {
       router.replace('/')
     }
@@ -54,8 +58,8 @@ const openFaqs = ref<string[]>([])
 </script>
 
 <template>
-  <ProductDetailSkeleton v-if="catalogLoading" />
-  <div v-else-if="product && detail" class="product-page">
+  <ProductDetailSkeleton v-if="catalogInitialLoading && !product" />
+  <div v-else-if="product && detail" class="product-page" :class="{ 'product-page--busy': catalogRevalidating }">
     <div class="atm-container">
       <section class="hero-card">
         <div class="hero-main">
@@ -156,6 +160,11 @@ const openFaqs = ref<string[]>([])
 .product-page {
   padding: 28px 0 56px;
   background: var(--atm-bg);
+}
+
+.product-page--busy {
+  opacity: 0.96;
+  transition: opacity 0.2s ease;
 }
 
 .hero-card {

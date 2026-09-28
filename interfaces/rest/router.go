@@ -16,21 +16,24 @@ import (
 )
 
 type Router struct {
-	httpServer      *http.Server
-	setting         *conf2.Config
-	userHandler     *handler.UserHandler
-	productHandler  *handler.ProductHandler
+	httpServer       *http.Server
+	setting          *conf2.Config
+	userHandler      *handler.UserHandler
+	productHandler   *handler.ProductHandler
+	tutorialHandler  *handler.TutorialHandler
 }
 
 func NewRouter(
 	setting *conf2.Config,
 	userHandler *handler.UserHandler,
 	productHandler *handler.ProductHandler,
+	tutorialHandler *handler.TutorialHandler,
 ) *Router {
 	return &Router{
-		setting:        setting,
-		userHandler:    userHandler,
-		productHandler: productHandler,
+		setting:         setting,
+		userHandler:     userHandler,
+		productHandler:  productHandler,
+		tutorialHandler: tutorialHandler,
 	}
 }
 
@@ -45,6 +48,8 @@ func (r *Router) setupRouters() *gin.Engine {
 		api.POST("/users/logout", r.userHandler.Logout)
 		api.GET("/products", r.productHandler.List)
 		api.GET("/products/nav-menu", r.productHandler.NavMenu)
+		api.GET("/tutorials", r.tutorialHandler.List)
+		api.GET("/tutorials/articles/:slug", r.tutorialHandler.Detail)
 	}
 
 	return engine

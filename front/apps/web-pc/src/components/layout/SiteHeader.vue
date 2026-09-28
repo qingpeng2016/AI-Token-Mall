@@ -3,12 +3,11 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import SiteLogo from '@/components/brand/SiteLogo.vue'
 import { isLoggedIn } from '@/composables/useSessionUser'
-import { useNavMenu } from '@/composables/useNavMenu'
-import NavDropMenuSkeleton from '@/components/layout/NavDropMenuSkeleton.vue'
 import NavMegaMenuSkeleton from '@/components/layout/NavMegaMenuSkeleton.vue'
+import { useNavMenu } from '@/composables/useNavMenu'
 import { isNavDropdown, type NavMenuEntry } from '@/mocks/nav'
 
-const { megaMenu, brandMenus, loading: navLoading } = useNavMenu()
+const { megaMenu, brandMenus, revalidating: navRevalidating } = useNavMenu()
 
 const navBrandEntries = computed((): NavMenuEntry[] => [
   ...brandMenus.value.map((b) => ({
@@ -86,8 +85,8 @@ function isSpaNav(href: string) {
               @mouseenter="openMega"
             >
               <div class="mega-popover-inner">
-                <NavMegaMenuSkeleton v-if="navLoading" />
-                <div v-else class="mega-grid">
+                <NavMegaMenuSkeleton v-if="navRevalidating && !megaMenu.length" />
+                <div v-else class="mega-grid" :class="{ 'mega-grid--busy': navRevalidating }">
                   <div v-for="col in megaMenu" :key="col.title" class="mega-col">
                     <h3 class="mega-col-title">{{ col.title }}</h3>
                     <ul class="mega-list">
@@ -118,12 +117,7 @@ function isSpaNav(href: string) {
             </div>
           </div>
 
-          <template v-if="navLoading">
-            <div v-for="n in 3" :key="'nav-sk-' + n" class="nav-item">
-              <span class="nav-link nav-link-btn nav-link--placeholder" aria-hidden="true" />
-            </div>
-          </template>
-          <template v-for="brand in navBrandEntries" v-else :key="brand.id">
+          <template v-for="brand in navBrandEntries" :key="brand.id">
             <RouterLink
               v-if="!isNavDropdown(brand)"
               :to="brand.to"
@@ -152,8 +146,7 @@ function isSpaNav(href: string) {
                 @mouseenter="openBrandDrop(brand.id)"
               >
                 <div class="nav-drop-panel-inner">
-                  <NavDropMenuSkeleton v-if="navLoading" />
-                  <template v-for="item in brand.items" v-else :key="item.label">
+                  <template v-for="item in brand.items" :key="item.label">
                     <RouterLink
                       v-if="isSpaNav(item.href)"
                       :to="item.href"
@@ -300,25 +293,11 @@ function isSpaNav(href: string) {
   color: var(--atm-text-muted);
 }
 
-.nav-link--placeholder {
-  display: inline-block;
-  width: 72px;
-  min-height: 1em;
-  color: transparent;
-  pointer-events: none;
-  background: linear-gradient(90deg, #e8ecf4 0%, #f1f5f9 45%, #e8ecf4 90%);
-  background-size: 200% 100%;
-  animation: nav-placeholder-shimmer 1.2s ease-in-out infinite;
-  border-radius: 8px;
-}
-
-@keyframes nav-placeholder-shimmer {
-  0% {
-    background-position: 100% 0;
-  }
-  100% {
-    background-position: -100% 0;
-  }
+.nav-panel-loading {
+  margin: 0;
+  padding: 12px 8px;
+  font-size: 13px;
+  color: var(--atm-text-muted);
 }
 
 .nav-drop-panel {
@@ -397,6 +376,11 @@ function isSpaNav(href: string) {
   box-shadow:
     0 4px 8px rgba(30, 27, 75, 0.04),
     0 24px 64px rgba(30, 27, 75, 0.16);
+}
+
+.mega-grid--busy {
+  opacity: 0.94;
+  transition: opacity 0.2s ease;
 }
 
 .mega-grid {

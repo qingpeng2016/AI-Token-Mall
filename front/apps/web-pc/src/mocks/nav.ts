@@ -105,7 +105,6 @@ export const navBrandDropdowns: NavMenuEntry[] = [
   {
     id: 'chatgpt',
     label: 'ChatGPT',
-    hotTagName: '热销',
     items: navMegaMenu[0].items.map((i) => ({
       label: i.label,
       href: i.href,
@@ -115,7 +114,6 @@ export const navBrandDropdowns: NavMenuEntry[] = [
   {
     id: 'claude',
     label: 'Claude',
-    hotTagName: '热销',
     items: navMegaMenu[1].items.map((i) => ({
       label: i.label,
       href: i.href,

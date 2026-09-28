@@ -1,4 +1,4 @@
-import { createProductApi, createUserApi } from '@ai-token-mall/shared'
+import { createProductApi, createTutorialApi, createUserApi } from '@ai-token-mall/shared'
 import { getAuthToken } from '@/utils/auth-cookie'
 
 const baseURL = import.meta.env.VITE_API_BASE_URL ?? ''
@@ -9,6 +9,11 @@ export const userApi = createUserApi({
 })
 
 export const productApi = createProductApi({
+  baseURL,
+  getToken: () => getAuthToken(),
+})
+
+export const tutorialApi = createTutorialApi({
   baseURL,
   getToken: () => getAuthToken(),
 })
