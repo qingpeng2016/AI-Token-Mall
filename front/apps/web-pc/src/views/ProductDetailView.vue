@@ -59,7 +59,11 @@ const openFaqs = ref<string[]>([])
 
 <template>
   <ProductDetailSkeleton v-if="loading && !product" />
-  <div v-else-if="product && detail" class="product-page">
+  <div
+    v-else-if="product && detail"
+    class="product-page"
+    :class="{ 'product-page--busy': loading && !!product }"
+  >
     <div class="atm-container">
       <section class="hero-card">
         <div class="hero-main">
@@ -193,20 +197,21 @@ const openFaqs = ref<string[]>([])
   font-size: 12px;
   font-weight: 600;
   color: var(--atm-primary);
-  background: var(--atm-primary-light);
+  background: #f5f3ff;
   border-radius: 999px;
 }
 
 .hero-main h1 {
-  margin: 0 0 14px;
-  font-size: clamp(1.65rem, 3vw, 2.1rem);
+  margin: 0 0 16px;
+  font-size: clamp(26px, 4vw, 34px);
   font-weight: 800;
-  line-height: 1.25;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
   color: var(--atm-text);
 }
 
 .lead {
-  margin: 0 0 22px;
+  margin: 0 0 20px;
   font-size: 15px;
   line-height: 1.65;
   color: var(--atm-text-muted);
@@ -220,29 +225,28 @@ const openFaqs = ref<string[]>([])
 
 .hero-bullets li {
   display: flex;
-  gap: 10px;
   align-items: flex-start;
-  margin-bottom: 10px;
-  font-size: 14px;
+  gap: 10px;
+  margin-bottom: 12px;
+  line-height: 1.45;
+}
+
+.hero-bullets .feature-text {
+  font-size: 15px;
+  font-weight: 600;
   color: var(--atm-text);
 }
 
 .check {
   flex-shrink: 0;
-  width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 700;
-  color: #059669;
-  background: #ecfdf5;
-  border-radius: 50%;
+  margin-top: 2px;
+  font-size: 15px;
+  color: #22c55e;
+  font-weight: 800;
 }
 
 .hero-scroll {
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
 .hero-tags {
@@ -252,36 +256,38 @@ const openFaqs = ref<string[]>([])
 }
 
 .hero-tags span {
-  padding: 5px 10px;
+  padding: 6px 12px;
   font-size: 12px;
-  color: var(--atm-text-muted);
-  background: #f1f5f9;
-  border-radius: 8px;
+  font-weight: 500;
+  color: var(--atm-primary);
+  background: #f5f3ff;
+  border-radius: 999px;
 }
 
 .buy-card {
   padding: 24px 22px;
-  background: #fafafa;
-  border: 1px solid #ede9fe;
+  background: #fff;
+  border: 2px solid #c4b5fd;
   border-radius: 20px;
 }
 
 .buy-card-title {
   margin: 0 0 8px;
-  font-size: 1.1rem;
+  font-size: 18px;
   font-weight: 700;
   color: var(--atm-text);
 }
 
 .buy-card-price {
-  margin: 0 0 10px;
-  font-size: 2rem;
+  margin: 0 0 12px;
+  font-size: 36px;
   font-weight: 800;
   color: var(--atm-primary);
+  letter-spacing: -0.02em;
 }
 
 .buy-card-desc {
-  margin: 0 0 16px;
+  margin: 0 0 14px;
   font-size: 13px;
   line-height: 1.55;
   color: var(--atm-text-muted);
@@ -289,41 +295,50 @@ const openFaqs = ref<string[]>([])
 
 .buy-card-features {
   margin: 0 0 20px;
-  padding: 14px;
+  padding: 12px 14px;
   list-style: none;
-  background: #fff;
+  background: #f8f7ff;
   border-radius: 12px;
+  border: 1px solid #ede9fe;
 }
 
 .buy-card-features li {
   display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-  font-size: 13px;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .buy-card-features li:last-child {
   margin-bottom: 0;
 }
 
+.buy-card-features .feature-text {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--atm-text);
+}
+
 .buy-card-cta {
   width: 100%;
   padding: 14px;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 600;
   color: #fff;
+  cursor: pointer;
   background: var(--atm-gradient);
   border: none;
-  border-radius: 12px;
-  cursor: pointer;
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.35);
 }
 
 .buy-card-after {
   display: block;
   margin-top: 12px;
   font-size: 12px;
+  color: var(--atm-primary);
   text-align: center;
-  color: var(--atm-text-muted);
   text-decoration: none;
 }
 
@@ -333,8 +348,10 @@ const openFaqs = ref<string[]>([])
 
 .section-title {
   margin: 0 0 20px;
-  font-size: 1.35rem;
+  font-size: 22px;
   font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--atm-text);
 }
 
 .audience-grid {
@@ -342,48 +359,61 @@ const openFaqs = ref<string[]>([])
   gap: 16px;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 768px) {
   .audience-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
 .audience-card {
-  padding: 18px 20px;
+  padding: 20px 22px;
   background: #fff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #ede9fe;
   border-radius: 16px;
 }
 
 .audience-card h3 {
   margin: 0 0 8px;
-  font-size: 15px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--atm-text);
 }
 
 .audience-card p {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.55;
   color: var(--atm-text-muted);
 }
 
 .compare-body {
   margin: 0;
-  font-size: 14px;
+  padding: 20px 22px;
+  font-size: 15px;
   line-height: 1.65;
   color: var(--atm-text-muted);
+  background: #fff;
+  border: 1px solid #ede9fe;
+  border-radius: 16px;
 }
 
 .steps {
   margin: 0;
   padding: 0;
   list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .steps li {
   display: flex;
   gap: 16px;
-  margin-bottom: 20px;
+  align-items: flex-start;
+  padding: 18px 20px;
+  background: #fff;
+  border: 1px solid #ede9fe;
+  border-radius: 14px;
 }
 
 .step-num {
@@ -393,25 +423,54 @@ const openFaqs = ref<string[]>([])
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 14px;
   font-weight: 700;
-  color: var(--atm-primary);
-  background: var(--atm-primary-light);
+  color: #fff;
+  background: var(--atm-gradient);
   border-radius: 50%;
 }
 
 .steps strong {
   display: block;
   margin-bottom: 4px;
+  font-size: 15px;
+  color: var(--atm-text);
 }
 
 .steps p {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1.5;
   color: var(--atm-text-muted);
+}
+
+.faq-collapse {
+  border: none;
+  background: transparent;
+}
+
+.faq-collapse :deep(.el-collapse-item) {
+  margin-bottom: 10px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #ede9fe;
+  border-radius: 12px;
+}
+
+.faq-collapse :deep(.el-collapse-item__header) {
+  padding: 0 18px;
+  font-weight: 600;
+  color: var(--atm-text);
+  border: none;
+}
+
+.faq-collapse :deep(.el-collapse-item__wrap) {
+  border: none;
 }
 
 .faq-a {
   margin: 0;
+  padding: 0 18px 16px;
   font-size: 14px;
   line-height: 1.6;
   color: var(--atm-text-muted);
@@ -420,7 +479,7 @@ const openFaqs = ref<string[]>([])
 .related {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px 24px;
+  gap: 20px;
   padding-top: 8px;
 }
 
@@ -429,5 +488,9 @@ const openFaqs = ref<string[]>([])
   font-weight: 600;
   color: var(--atm-primary);
   text-decoration: none;
+}
+
+.related a:hover {
+  text-decoration: underline;
 }
 </style>
