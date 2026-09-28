@@ -51,6 +51,7 @@ func (r *Router) setupRouters() *gin.Engine {
 		api.POST("/users/logout", r.userHandler.Logout)
 		api.GET("/products", r.productHandler.List)
 		api.GET("/products/nav-menu", r.productHandler.NavMenu)
+		api.GET("/products/slug/:slug", r.productHandler.DetailBySlug)
 		api.GET("/tutorials", r.tutorialHandler.List)
 		api.GET("/tutorials/articles/:slug", r.tutorialHandler.Detail)
 		api.GET("/enterprise/products", r.enterpriseHandler.ListProducts)

@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"errors"
+	"net/http"
 	"strconv"
 
 	coreservice "github.com/qingpeng2016/ai-token-mall/application/core-service"
@@ -39,6 +41,21 @@ func (h *ProductHandler) List(c *gin.Context) {
 func (h *ProductHandler) NavMenu(c *gin.Context) {
 	data, err := h.productSvc.NavMenu(c.Request.Context())
 	if err != nil {
+		response.ResponseErr(c, err)
+		return
+	}
+	response.ResponseSuccess(c, data)
+}
+
+// DetailBySlug 商品详情页
+func (h *ProductHandler) DetailBySlug(c *gin.Context) {
+	slug := c.Param("slug")
+	data, err := h.productSvc.DetailBySlug(c.Request.Context(), slug)
+	if err != nil {
+		if errors.Is(err, coreservice.ErrProductNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"code": 404, "msg": "product not found"})
+			return
+		}
 		response.ResponseErr(c, err)
 		return
 	}

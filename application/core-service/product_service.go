@@ -3,12 +3,15 @@ package coreservice
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/entity"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/repository"
 	"github.com/qingpeng2016/ai-token-mall/domain/rest/response"
 )
+
+var ErrProductNotFound = errors.New("product not found")
 
 type ProductService struct {
 	productRepo repository.ProductRepo
@@ -121,4 +124,25 @@ func decodeStringJSONArray(raw []byte) []string {
 		return nil
 	}
 	return out
+}
+
+func (s *ProductService) DetailBySlug(ctx context.Context, slug string) (*response.ProductDetailResp, error) {
+	sku := skuFromSlug(slug)
+	if sku == "" {
+		return nil, ErrProductNotFound
+	}
+	p, err := s.productRepo.FindOnSaleBySKUCode(ctx, sku)
+	if err != nil {
+		return nil, err
+	}
+	if p == nil {
+		return nil, ErrProductNotFound
+	}
+	item := mapProductItem(p)
+	detail := buildProductDetailContent(slug, p, item)
+	return &response.ProductDetailResp{
+		Slug:    canonicalSlugForSKU(p.SKUCode),
+		Product: item,
+		Detail:  detail,
+	}, nil
 }

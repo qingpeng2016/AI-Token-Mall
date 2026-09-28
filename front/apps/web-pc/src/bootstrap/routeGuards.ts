@@ -2,6 +2,7 @@ import type { RouteLocationNormalized, Router } from 'vue-router'
 import { reloadCatalogProducts } from '@/composables/useCatalogProducts'
 import { reloadEnterpriseProducts } from '@/composables/useEnterpriseProducts'
 import { reloadNavMenu } from '@/composables/useNavMenu'
+import { prefetchProductDetail } from '@/composables/useProductDetail'
 import {
   prefetchBlogArticle,
   reloadTutorialBlog,
@@ -17,8 +18,14 @@ async function prepareRouteData(to: RouteLocationNormalized): Promise<void> {
 
   await reloadNavMenu({ soft: true })
 
-  if (name === 'home' || name === 'product') {
+  if (name === 'home') {
     await reloadCatalogProducts({ soft: true })
+  }
+  if (name === 'product') {
+    const slug = String(to.params.slug ?? '')
+    if (slug) {
+      await prefetchProductDetail(slug)
+    }
   }
   if (name === 'enterprise') {
     await reloadEnterpriseProducts({ soft: true })

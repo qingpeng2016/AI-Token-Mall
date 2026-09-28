@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"context"
+	"errors"
 
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/entity"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/repository"
@@ -33,4 +34,18 @@ func (r *ProductImpl) ListOnSale(ctx context.Context, categoryID uint) ([]entity
 	var rows []entity.Product
 	err := q.Order("sort_order ASC, id ASC").Find(&rows).Error
 	return rows, err
+}
+
+func (r *ProductImpl) FindOnSaleBySKUCode(ctx context.Context, skuCode string) (*entity.Product, error) {
+	var row entity.Product
+	err := r.db.WithContext(ctx).
+		Where("sku_code = ? AND status = ?", skuCode, "on_sale").
+		First(&row).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &row, nil
 }

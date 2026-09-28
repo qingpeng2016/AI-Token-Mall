@@ -1,5 +1,6 @@
 export * from './types/user'
 export * from './types/product'
+export * from './types/product-detail'
 export * from './types/nav'
 export * from './types/tutorial'
 export * from './types/enterprise'
