@@ -151,7 +151,14 @@ stop_mall() {
   kill_matching KILL
   if [[ "\${RUN_BOT}" == "false" && -n "\${LISTEN_PORT}" ]]; then
     kill_port_listeners "\${LISTEN_PORT}" KILL
-    port_in_use "\${LISTEN_PORT}" && exit 1
+    sleep 1
+    if port_in_use "\${LISTEN_PORT}"; then
+      echo "ERROR: [服务器] 端口 \${LISTEN_PORT} 仍被占用，无法启动 API：" >&2
+      ss -lptn "sport = :\${LISTEN_PORT}" 2>/dev/null >&2 || lsof -i ":\${LISTEN_PORT}" 2>/dev/null >&2 || true
+      echo "ERROR: 请 SSH 登录后执行: kill \$(lsof -ti:\${LISTEN_PORT}) 或改 .deploy.env 的 MALL_USER_PORT" >&2
+      exit 1
+    fi
+    echo ">>> [服务器] 端口 \${LISTEN_PORT} 已释放"
   fi
 }
 
@@ -172,6 +179,7 @@ show_mall_status() {
 
 wait_for_mall() {
   local i pid
+  echo ">>> [服务器] 等待进程就绪（最多 30s）..."
   for i in \$(seq 1 30); do
     pid="\$(find_matching_pid || true)"
     if [[ -n "\${pid}" ]] && kill -0 "\${pid}" 2>/dev/null; then
@@ -181,11 +189,14 @@ wait_for_mall() {
       fi
     fi
     if [[ -f "\${LOG_FILE}" ]] && grep -qE 'panic:|FATAL' "\${LOG_FILE}"; then
+      echo "ERROR: [服务器] 启动失败，日志:" >&2
       tail -n 50 "\${LOG_FILE}" >&2
       exit 1
     fi
     sleep 1
   done
+  echo "ERROR: [服务器] 启动超时（端口 \${LISTEN_PORT} 未监听？检查 conf/prod.conf.yaml 的 server.port）" >&2
+  tail -n 30 "\${LOG_FILE}" 2>/dev/null >&2 || true
   exit 1
 }
 
@@ -221,5 +232,9 @@ esac
 EOF
 
 echo ">>> 后端 分支=${BRANCH} 动作=${ACTION} 模式=${MODE}"
-run_remote_bash "$REMOTE_SCRIPT_BODY"
+if ! run_remote_bash "$REMOTE_SCRIPT_BODY"; then
+  echo ">>> 远程部署失败（常见：8886 被占用 / go build 失败 / 启动 panic）" >&2
+  echo ">>> 服务器日志: ${APP_DIR}/logs/ai-token-mall-${MODE}-nohup.log" >&2
+  exit 1
+fi
 echo ">>> 后端完成"

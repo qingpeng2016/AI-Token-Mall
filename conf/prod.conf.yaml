@@ -1,10 +1,10 @@
 server:
-  service_name: "mojo_strategy_liquidation"
+  service_name: "ai-token-mall"
   run_mode: ""
-  port: "0.0.0.0:9994"
-  product_name: "mojo_strategy_liquidation"
+  port: "0.0.0.0:8886"
+  product_name: "ai-token-mall"
   env: "prod"
-  machine_name: "mojo-strategy-liquidation-0"
+  machine_name: "ai-token-mall-0"
   http_timeout_sec: 30
 
 db:
