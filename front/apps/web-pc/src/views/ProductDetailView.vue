@@ -10,24 +10,28 @@ import {
   PENDING_BUY_KEY,
 } from '@/composables/useSessionUser'
 import { getProductDetail } from '@/mocks/productDetails'
+import { useCatalogProducts } from '@/composables/useCatalogProducts'
 import { findProductBySlug } from '@/mocks/productRoutes'
-import type { CatalogProduct } from '@/mocks/home'
+import type { CatalogProduct } from '@ai-token-mall/shared'
+import ProductDetailSkeleton from '@/components/home/ProductDetailSkeleton.vue'
 
 const route = useRoute()
 const router = useRouter()
 
 const purchaseOpen = ref(false)
 const sessionUser = ref(getSessionUser())
+const { products: catalogProducts, loading: catalogLoading } = useCatalogProducts()
 
 const slug = computed(() => String(route.params.slug ?? ''))
-const product = computed(() => findProductBySlug(slug.value))
+const product = computed(() => findProductBySlug(slug.value, catalogProducts.value))
 const detail = computed(() =>
   product.value ? getProductDetail(slug.value, product.value) : null,
 )
 
 watch(
-  () => route.params.slug,
+  [() => route.params.slug, catalogProducts, catalogLoading],
   () => {
+    if (catalogLoading.value) return
     if (!product.value) {
       router.replace('/')
     }
@@ -50,7 +54,8 @@ const openFaqs = ref<string[]>([])
 </script>
 
 <template>
-  <div v-if="product && detail" class="product-page">
+  <ProductDetailSkeleton v-if="catalogLoading" />
+  <div v-else-if="product && detail" class="product-page">
     <div class="atm-container">
       <section class="hero-card">
         <div class="hero-main">
@@ -87,7 +92,7 @@ const openFaqs = ref<string[]>([])
       </section>
 
       <section class="section">
-        <h2 class="section-title">{{ product.marketing_tier }} 适合谁</h2>
+        <h2 class="section-title">{{ product.sku_product_name }} 适合谁</h2>
         <div class="audience-grid">
           <article v-for="(a, i) in detail.audiences" :key="i" class="audience-card">
             <h3>{{ a.title }}</h3>

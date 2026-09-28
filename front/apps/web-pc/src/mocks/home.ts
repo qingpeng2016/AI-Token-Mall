@@ -1,34 +1,7 @@
-import type { Product, UpstreamName } from '@ai-token-mall/shared'
+import { appendShareFeature, type CatalogProduct, type UpstreamName } from '@ai-token-mall/shared'
 
-/** 首页展示用扩展字段（UI mock，后端暂无的也先画） */
-export type CatalogProduct = Product & {
-  card_title: string
-  card_subtitle: string
-  card_features: string[]
-  /** 子 Key 可共用人数（展示用 mock） */
-  share_seats: number
-  featured?: boolean
-  flagship?: boolean
-}
-
-export function subKeyShareFeature(seats: number): string {
-  return `支持${seats}人共用`
-}
-
-function appendShareFeature(features: string[], seats: number): string[] {
-  const line = subKeyShareFeature(seats)
-  if (features.some((f) => f.includes('人共用'))) return features
-  return [...features, line]
-}
-
-/** 首页 Hero 子 Key 说明（取自各档 share_seats 区间） */
-export function heroSubKeyShareLine(products: { share_seats: number }[]): string {
-  const seats = products.map((p) => p.share_seats)
-  const min = Math.min(...seats)
-  const max = Math.max(...seats)
-  if (min === max) return `支持开通子 Key，${subKeyShareFeature(min)}`
-  return `支持开通子 Key，${min}–${max} 人按档共用`
-}
+export type { CatalogProduct }
+export { heroSubKeyShareLine, subKeyShareFeature } from '@ai-token-mall/shared'
 
 /** 全部套餐 — 胶囊筛选（对齐商城前台） */
 export const catalogFilterPills: {
@@ -259,13 +232,12 @@ const mockProductsRaw: CatalogProduct[] = [
   {
     id: 1,
     sku_code: 'OAI-GO-M',
-    marketing_tier: 'GPT Go',
     card_title: 'ChatGPT Go 月卡',
     card_subtitle: '入门档额度，日常对话与轻量开发够用。',
-    card_features: ['2M tokens / 月', 'gpt-4o-mini 可用', 'ChatGPT 线路', '约 1 分钟开通'],
+    card_features: ['{limit_tokens} tokens / 月', 'gpt-4o-mini 可用', 'ChatGPT 线路', '约 1 分钟开通'],
     share_seats: 3,
-    upstream_name: 'openai',
-    upstream_product: 'GPT GO 5X',
+    sku_upstream_name: 'openai',
+    sku_product_name: 'GPT GO 5X',
     limit_tokens: 2_000_000,
     rpm_limit: 60,
     allowed_models: ['gpt-4o-mini', 'gpt-4o'],
@@ -282,13 +254,12 @@ const mockProductsRaw: CatalogProduct[] = [
   {
     id: 9,
     sku_code: 'PPX-PRO-M',
-    marketing_tier: 'Perplexity Pro',
     card_title: 'Perplexity Pro 月卡',
     card_subtitle: 'Pro Search + 多模型检索，研究类 Agent 首选。',
-    card_features: ['5M tokens / 月', 'sonar / sonar-pro', 'Pro Search', '低价研究首选'],
+    card_features: ['{limit_tokens} tokens / 月', 'sonar / sonar-pro', 'Pro Search', '低价研究首选'],
     share_seats: 3,
-    upstream_name: 'perplexity',
-    upstream_product: 'Perplexity Pro',
+    sku_upstream_name: 'perplexity',
+    sku_product_name: 'Perplexity Pro',
     limit_tokens: 5_000_000,
     rpm_limit: 50,
     allowed_models: ['sonar', 'sonar-pro'],
@@ -305,13 +276,12 @@ const mockProductsRaw: CatalogProduct[] = [
   {
     id: 10,
     sku_code: 'OAI-PLUS-M',
-    marketing_tier: 'ChatGPT Plus',
     card_title: 'ChatGPT Plus 月卡',
     card_subtitle: '主力模型组合，含 Codex 与 Images 档位白名单。',
-    card_features: ['8M tokens / 月', 'gpt-4o + o1-mini', 'Codex 可用', '热销性价比'],
+    card_features: ['{limit_tokens} tokens / 月', 'gpt-4o + o1-mini', 'Codex 可用', '热销性价比'],
     share_seats: 5,
-    upstream_name: 'openai',
-    upstream_product: 'GPT PRO 5X',
+    sku_upstream_name: 'openai',
+    sku_product_name: 'GPT PRO 5X',
     limit_tokens: 8_000_000,
     rpm_limit: 90,
     allowed_models: ['gpt-4o', 'o1-mini'],
@@ -328,13 +298,12 @@ const mockProductsRaw: CatalogProduct[] = [
   {
     id: 6,
     sku_code: 'GEM-PRO-M',
-    marketing_tier: 'Gemini Pro',
     card_title: 'Gemini AI Pro 月卡',
     card_subtitle: 'Pro + Flash 组合，多模态与长上下文。',
-    card_features: ['10M tokens / 月', '1.5 Pro / Flash', 'Nano 出图', 'Gemini 全系列'],
+    card_features: ['{limit_tokens} tokens / 月', '1.5 Pro / Flash', 'Nano 出图', 'Gemini 全系列'],
     share_seats: 5,
-    upstream_name: 'gemini',
-    upstream_product: 'Gemini Pro Pool',
+    sku_upstream_name: 'gemini',
+    sku_product_name: 'Gemini Pro Pool',
     limit_tokens: 10_000_000,
     rpm_limit: 90,
     allowed_models: ['gemini-1.5-pro', 'gemini-1.5-flash'],
@@ -351,13 +320,12 @@ const mockProductsRaw: CatalogProduct[] = [
   {
     id: 11,
     sku_code: 'CUR-PRO-M',
-    marketing_tier: 'Cursor Pro',
     card_title: 'Cursor 配置包 月卡',
     card_subtitle: '含使用额度 + Cursor 配置教程（搭配编辑器自助使用）。',
     card_features: ['额度 + 教程', 'Cloud Agents 说明', 'Auto 模式说明', '按文档自助配置'],
     share_seats: 5,
-    upstream_name: 'openai',
-    upstream_product: 'Mixed Pool',
+    sku_upstream_name: 'openai',
+    sku_product_name: 'Mixed Pool',
     limit_tokens: 6_000_000,
     rpm_limit: 80,
     allowed_models: ['gpt-4o'],
@@ -374,13 +342,12 @@ const mockProductsRaw: CatalogProduct[] = [
   {
     id: 3,
     sku_code: 'ANT-PRO-M',
-    marketing_tier: 'Claude Pro',
     card_title: 'Claude Pro 月卡',
     card_subtitle: 'Sonnet / Haiku 全系，支持 Claude Code。',
-    card_features: ['8M tokens / 月', '200K 上下文', 'Claude 全系列', 'Claude Code 可用'],
+    card_features: ['{limit_tokens} tokens / 月', '200K 上下文', 'Claude 全系列', 'Claude Code 可用'],
     share_seats: 5,
-    upstream_name: 'anthropic',
-    upstream_product: 'Claude Pro 5X',
+    sku_upstream_name: 'anthropic',
+    sku_product_name: 'Claude Pro 5X',
     limit_tokens: 8_000_000,
     rpm_limit: 80,
     allowed_models: ['claude-3-5-sonnet-20241022'],
@@ -397,13 +364,12 @@ const mockProductsRaw: CatalogProduct[] = [
   {
     id: 2,
     sku_code: 'OAI-PRO20-M',
-    marketing_tier: 'Pro 20X',
     card_title: 'ChatGPT Pro 20X 月卡',
     card_subtitle: '约 20 倍配额，团队满血与重度 Codex。',
-    card_features: ['20M tokens / 月', '120 RPM', 'o1-mini 白名单', '专业 / 团队首选'],
+    card_features: ['{limit_tokens} tokens / 月', '{rpm_limit} RPM', 'o1-mini 白名单', '专业 / 团队首选'],
     share_seats: 20,
-    upstream_name: 'openai',
-    upstream_product: 'GPT PRO 20X',
+    sku_upstream_name: 'openai',
+    sku_product_name: 'GPT PRO 20X',
     limit_tokens: 20_000_000,
     rpm_limit: 120,
     allowed_models: ['gpt-4o', 'o1-mini'],
@@ -421,13 +387,12 @@ const mockProductsRaw: CatalogProduct[] = [
   {
     id: 12,
     sku_code: 'OAI-PRO5-M',
-    marketing_tier: 'Pro 5X',
     card_title: 'ChatGPT Pro 5X 月卡',
     card_subtitle: 'Pro 5X，主力旗舰组合，约 5 倍配额。',
-    card_features: ['12M tokens / 月', '旗舰模型可用', 'Codex 重度可用', '约 1 分钟开通'],
+    card_features: ['{limit_tokens} tokens / 月', '旗舰模型可用', 'Codex 重度可用', '约 1 分钟开通'],
     share_seats: 10,
-    upstream_name: 'openai',
-    upstream_product: 'GPT PRO 5X',
+    sku_upstream_name: 'openai',
+    sku_product_name: 'GPT PRO 5X',
     limit_tokens: 12_000_000,
     rpm_limit: 100,
     allowed_models: ['gpt-4o', 'o1-mini'],
@@ -444,13 +409,12 @@ const mockProductsRaw: CatalogProduct[] = [
   {
     id: 4,
     sku_code: 'ANT-MAX-M',
-    marketing_tier: 'Claude Max 5X',
     card_title: 'Claude Max 5X 月卡',
     card_subtitle: '约 5 倍 Pro 用量，重度编程友好。',
-    card_features: ['15M tokens / 月', 'Opus 可选', 'Claude Code', 'Max 专线'],
+    card_features: ['{limit_tokens} tokens / 月', 'Opus 可选', 'Claude Code', 'Max 专线'],
     share_seats: 10,
-    upstream_name: 'anthropic',
-    upstream_product: 'Claude Max 10X',
+    sku_upstream_name: 'anthropic',
+    sku_product_name: 'Claude Max 10X',
     limit_tokens: 15_000_000,
     rpm_limit: 100,
     allowed_models: ['claude-3-opus-20240229'],
@@ -467,13 +431,12 @@ const mockProductsRaw: CatalogProduct[] = [
   {
     id: 5,
     sku_code: 'XAI-GROK-M',
-    marketing_tier: 'Grok Super',
     card_title: 'Grok Super 3 个月',
     card_subtitle: 'DeepSearch + 联网 + Imagine 线路。',
-    card_features: ['6M tokens / 周期', 'grok-2 系列', 'Grok 全能力', '3 个月包'],
+    card_features: ['{limit_tokens} tokens / 周期', 'grok-2 系列', 'Grok 全能力', '3 个月包'],
     share_seats: 5,
-    upstream_name: 'xai',
-    upstream_product: 'Grok 5X',
+    sku_upstream_name: 'xai',
+    sku_product_name: 'Grok 5X',
     limit_tokens: 6_000_000,
     rpm_limit: 60,
     allowed_models: ['grok-2'],
@@ -494,4 +457,5 @@ export const mockProducts: CatalogProduct[] = mockProductsRaw.map((p) => ({
   card_features: appendShareFeature(p.card_features, p.share_seats),
 }))
 
-export const SUB_KEY_HERO_LINE = heroSubKeyShareLine(mockProductsRaw)
+/** 首页 Hero 固定文案（不随商品接口变化，避免加载后闪动） */
+export const SUB_KEY_HERO_LINE = '支持开通子 Key，3–20 人按档共用'

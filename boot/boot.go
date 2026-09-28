@@ -30,7 +30,9 @@ func BuildContainer() *dig.Container {
 	// HTTP
 	_ = c.Provide(rest.NewRouter)
 	_ = c.Provide(handler.NewUserHandler)
+	_ = c.Provide(handler.NewProductHandler)
 	_ = c.Provide(coreservice.NewUserService)
+	_ = c.Provide(coreservice.NewProductService)
 	_ = c.Provide(coreservice.NewAlipayService)
 	_ = c.Provide(coreservice.NewBotScheduleConfigService)
 
@@ -42,6 +44,7 @@ func BuildContainer() *dig.Container {
 	// Infra
 	_ = c.Provide(NewDBClient)
 	_ = c.Provide(mysql.NewUserImpl)
+	_ = c.Provide(mysql.NewProductImpl)
 	_ = c.Provide(mysql.NewStatsImpl)
 	_ = c.Provide(mysql.NewBotScheduleConfigImpl)
 	_ = c.Provide(redis.NewClient)

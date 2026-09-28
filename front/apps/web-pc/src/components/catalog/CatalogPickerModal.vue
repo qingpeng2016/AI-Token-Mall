@@ -2,11 +2,10 @@
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ProductCard from '@/components/home/ProductCard.vue'
-import {
-  catalogFilterPills,
-  mockProducts,
-  type CatalogProduct,
-} from '@/mocks/home'
+import ProductCardSkeleton from '@/components/home/ProductCardSkeleton.vue'
+import type { CatalogProduct } from '@ai-token-mall/shared'
+import { useCatalogProducts } from '@/composables/useCatalogProducts'
+import { catalogFilterPills } from '@/mocks/home'
 import { productDetailPath } from '@/mocks/productRoutes'
 import type { UpstreamName } from '@ai-token-mall/shared'
 
@@ -22,6 +21,9 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
+const { products: catalogProducts, loading: catalogLoading } = useCatalogProducts()
+
+const catalogSkeletonCount = 6
 const filter = ref<FilterKey>('all')
 const selectedProductId = ref<number | null>(null)
 
@@ -34,12 +36,12 @@ const activePillStyle = computed(() => {
 })
 
 const filteredProducts = computed(() => {
-  let list = [...mockProducts]
+  let list = [...catalogProducts.value]
   if (filter.value === 'cursor') {
     list = list.filter((p) => p.sku_code.startsWith('CUR'))
   } else if (filter.value !== 'all') {
     list = list.filter(
-      (p) => p.upstream_name === filter.value && !p.sku_code.startsWith('CUR'),
+      (p) => p.sku_upstream_name === filter.value && !p.sku_code.startsWith('CUR'),
     )
   }
   list.sort((a, b) => a.sort_order - b.sort_order)
@@ -49,6 +51,7 @@ const filteredProducts = computed(() => {
 watch(
   filteredProducts,
   (list) => {
+    if (catalogLoading.value) return
     selectedProductId.value = list[0]?.id ?? null
   },
   { immediate: true },
@@ -126,17 +129,24 @@ function onKeydown(e: KeyboardEvent) {
           </div>
 
           <div class="catalog-modal-body">
-            <div class="catalog-grid">
-              <ProductCard
-                v-for="p in filteredProducts"
-                :key="p.id"
-                :product="p"
-                :selected="selectedProductId === p.id"
-                @open="onOpenProduct"
-                @buy="onBuy"
-              />
+            <div class="catalog-grid" :aria-busy="catalogLoading">
+              <template v-if="catalogLoading">
+                <ProductCardSkeleton v-for="i in catalogSkeletonCount" :key="`sk-${i}`" />
+              </template>
+              <template v-else>
+                <ProductCard
+                  v-for="p in filteredProducts"
+                  :key="p.id"
+                  :product="p"
+                  :selected="selectedProductId === p.id"
+                  @open="onOpenProduct"
+                  @buy="onBuy"
+                />
+              </template>
             </div>
-            <p v-if="!filteredProducts.length" class="catalog-empty">该品牌暂无套餐</p>
+            <p v-if="!catalogLoading && !filteredProducts.length" class="catalog-empty">
+              该品牌暂无套餐
+            </p>
           </div>
         </div>
       </div>

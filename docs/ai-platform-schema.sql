@@ -75,9 +75,12 @@ CREATE TABLE IF NOT EXISTS `upstream_info` (
 CREATE TABLE IF NOT EXISTS `products` (
   `id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `sku_code`          VARCHAR(64)  NOT NULL COMMENT 'SKU 编码',
-  `marketing_tier`    VARCHAR(128) NOT NULL COMMENT '对外档位名，如 Pro 20X',
-  `upstream_name`     VARCHAR(32)  NOT NULL,
-  `upstream_product`  VARCHAR(128) NOT NULL COMMENT '绑定的上游档位，如 GPT PRO 5X',
+  `card_title`        VARCHAR(128) NOT NULL DEFAULT '' COMMENT '卡片标题',
+  `card_subtitle`     VARCHAR(512) NOT NULL DEFAULT '' COMMENT '卡片副标题',
+  `card_features`     JSON         NOT NULL COMMENT '卡片卖点条目；可用 {limit_tokens}、{rpm_limit} 占位',
+  `share_seats`       INT          NOT NULL DEFAULT 1 COMMENT '子 Key 可共用人数（展示）',
+  `sku_upstream_name` VARCHAR(32)  NOT NULL COMMENT 'SKU 品牌线：openai|anthropic|…',
+  `sku_product_name`  VARCHAR(128) NOT NULL COMMENT 'SKU 绑定上游档位，如 GPT PRO 5X',
   `limit_tokens`      BIGINT       NOT NULL COMMENT '每计费周期 token 额度（售卖给用户）',
   `rpm_limit`         INT          NOT NULL DEFAULT 0 COMMENT '用户 RPM，0=不限',
   `tpm_limit`         INT          DEFAULT NULL COMMENT '用户 TPM（可选）',
@@ -89,6 +92,7 @@ CREATE TABLE IF NOT EXISTS `products` (
   `compare_at_price_cents` BIGINT  DEFAULT NULL COMMENT '对比官方价（可选）',
   `highlights_json`   JSON         DEFAULT NULL COMMENT '卖点',
   `is_hot`            TINYINT(1)   NOT NULL DEFAULT 0,
+  `is_flagship`       TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '旗舰卡片样式',
   `is_api_enabled`    TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '是否走 API 通道',
   `topup_token_amount` BIGINT      DEFAULT NULL COMMENT '加购包 token 数（product_type=token_topup）',
   `sort_order`        INT          NOT NULL DEFAULT 0,
@@ -97,10 +101,10 @@ CREATE TABLE IF NOT EXISTS `products` (
   `updated_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_products_sku` (`sku_code`),
-  KEY `idx_products_upstream_name` (`upstream_name`),
-  KEY `idx_products_upstream` (`upstream_name`, `upstream_product`),
+  KEY `idx_products_sku_upstream_name` (`sku_upstream_name`),
+  KEY `idx_products_sku_upstream` (`sku_upstream_name`, `sku_product_name`),
   KEY `idx_products_status_sort` (`status`, `sort_order`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='商城 SKU（含品牌筛选：upstream_name）';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='商城 SKU（含品牌筛选：sku_upstream_name）';
 
 -- ---------------------------------------------------------------------------
 -- 交易与订单

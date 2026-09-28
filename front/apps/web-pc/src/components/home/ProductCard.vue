@@ -25,7 +25,6 @@ const emit = defineEmits<{
     @keydown.space.prevent="emit('open', product)"
   >
     <span v-if="product.flagship" class="sku-badge sku-badge--flag">旗舰</span>
-    <span v-else-if="product.featured" class="sku-badge sku-badge--rec">推荐</span>
     <span v-else-if="product.is_hot" class="sku-badge">热销</span>
     <h3 class="sku-title">{{ product.card_title }}</h3>
     <p class="sku-price">{{ formatCnyFromCents(product.price_cents) }}</p>

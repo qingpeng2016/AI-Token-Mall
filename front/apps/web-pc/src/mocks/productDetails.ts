@@ -73,9 +73,9 @@ const OVERRIDES: Partial<Record<string, Partial<ProductDetailContent>>> = {
 }
 
 export function getProductDetail(slug: string, product: CatalogProduct): ProductDetailContent {
-  const brand = BRAND_EYEBROW[product.upstream_name] ?? 'AI 套餐'
+  const brand = BRAND_EYEBROW[product.sku_upstream_name] ?? 'AI 套餐'
   const base: ProductDetailContent = {
-    eyebrow: `${brand} · ${product.marketing_tier}`,
+    eyebrow: `${brand} · ${product.sku_product_name}`,
     heroTitle: product.card_title.replace(/月卡$/, '会员套餐'),
     heroLead: `${product.card_subtitle} 支付宝 / 微信自助下单，约 1 分钟开通；额度与订单可在会员中心查看。`,
     heroBullets: product.card_features.map((f) => f),
@@ -91,7 +91,7 @@ export function getProductDetail(slug: string, product: CatalogProduct): Product
       { title: '登录并支付', desc: '使用支付宝或微信完成付款。' },
       { title: '开始使用', desc: '约 1 分钟到账，在会员中心查看额度与订单。' },
     ],
-    ctaTitle: `开通 ${product.marketing_tier}`,
+    ctaTitle: `开通 ${product.sku_product_name}`,
     ctaSubtitle: '选好套餐并完成支付后，在会员中心查看额度与使用说明。',
     faqs: [
       {

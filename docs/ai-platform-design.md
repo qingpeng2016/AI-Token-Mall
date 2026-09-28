@@ -108,7 +108,7 @@
 
 | 字段 | 含义 |
 |------|------|
-| `marketing_tier` | 对外名（如 Pro 20X） |
+| `sku_product_name` | SKU 档位名（如 GPT PRO 5X），详情页档位文案同此字段 |
 | `upstream_line` | openai / anthropic / xai / gemini / perplexity |
 | （见 `user_subscriptions`） | 用户使用容量在履约表；SKU 上定义默认 quota/RPM/models |
 | `upstream_name` / `upstream_product` | 网关按组选 `upstream_info`（组内 `weight` 加权） |

@@ -62,9 +62,12 @@ func (UpstreamInfo) TableName() string { return "upstream_info" }
 type Product struct {
 	ID                  uint           `gorm:"primaryKey;column:id"`
 	SKUCode             string         `gorm:"column:sku_code;size:64;not null"`
-	MarketingTier       string         `gorm:"column:marketing_tier;size:128;not null"`
-	UpstreamName        string         `gorm:"column:upstream_name;size:32;not null"`
-	UpstreamProduct     string         `gorm:"column:upstream_product;size:128;not null"`
+	CardTitle           string         `gorm:"column:card_title;size:128;not null"`
+	CardSubtitle        string         `gorm:"column:card_subtitle;size:512;not null"`
+	CardFeatures        datatypes.JSON `gorm:"column:card_features;type:json;not null"`
+	ShareSeats          int            `gorm:"column:share_seats;not null;default:1"`
+	SKUUpstreamName     string         `gorm:"column:sku_upstream_name;size:32;not null"`
+	SKUProductName      string         `gorm:"column:sku_product_name;size:128;not null"`
 	LimitTokens         int64          `gorm:"column:limit_tokens;not null"`
 	RPMLimit            int            `gorm:"column:rpm_limit;not null;default:0"`
 	TPMLimit            *int           `gorm:"column:tpm_limit"`
@@ -76,6 +79,7 @@ type Product struct {
 	CompareAtPriceCents *int64         `gorm:"column:compare_at_price_cents"`
 	HighlightsJSON      datatypes.JSON `gorm:"column:highlights_json;type:json"`
 	IsHot               int            `gorm:"column:is_hot;not null;default:0"`
+	IsFlagship          int            `gorm:"column:is_flagship;not null;default:0"`
 	IsAPIEnabled        int            `gorm:"column:is_api_enabled;not null;default:1"`
 	TopupTokenAmount    *int64         `gorm:"column:topup_token_amount"`
 	SortOrder           int            `gorm:"column:sort_order;not null;default:0"`

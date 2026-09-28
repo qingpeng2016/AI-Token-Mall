@@ -1,4 +1,4 @@
-import { mockProducts, type CatalogProduct } from '@/mocks/home'
+import type { CatalogProduct } from '@ai-token-mall/shared'
 
 /** URL slug → sku_code */
 export const SLUG_TO_SKU: Record<string, string> = {
@@ -34,10 +34,13 @@ export function productDetailPath(skuCode: string): string {
   return `/p/${slug}`
 }
 
-export function findProductBySlug(slug: string): CatalogProduct | undefined {
+export function findProductBySlug(
+  slug: string,
+  products: CatalogProduct[],
+): CatalogProduct | undefined {
   const sku = SLUG_TO_SKU[slug]
   if (!sku) return undefined
-  return mockProducts.find((p) => p.sku_code === sku)
+  return products.find((p) => p.sku_code === sku)
 }
 
 export function canonicalSlugForProduct(product: CatalogProduct): string {

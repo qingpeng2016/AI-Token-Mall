@@ -16,7 +16,7 @@ const emit = defineEmits<{
     <div class="row-main">
       <div class="row-tags">
         <span v-if="product.is_hot" class="tag hot">热销</span>
-        <span class="tag line">{{ UPSTREAM_LABEL[product.upstream_name] }}</span>
+        <span class="tag line">{{ UPSTREAM_LABEL[product.sku_upstream_name] }}</span>
         <span v-if="product.product_type === 'token_topup'" class="tag topup">加购</span>
       </div>
       <h3 class="title">{{ product.card_title }}</h3>

@@ -9,9 +9,8 @@ export type ProductStatus = 'on_sale' | 'off_sale'
 export interface Product {
   id: number
   sku_code: string
-  marketing_tier: string
-  upstream_name: UpstreamName
-  upstream_product: string
+  sku_upstream_name: UpstreamName
+  sku_product_name: string
   limit_tokens: number
   rpm_limit: number
   tpm_limit?: number | null
@@ -27,6 +26,15 @@ export interface Product {
   topup_token_amount?: number | null
   sort_order: number
   status: ProductStatus
+}
+
+/** 首页 / 选购弹窗卡片展示 */
+export interface CatalogProduct extends Product {
+  card_title: string
+  card_subtitle: string
+  card_features: string[]
+  share_seats: number
+  flagship?: boolean
 }
 
 export interface HomeBanner {
