@@ -25,7 +25,7 @@ export function createProductApi(options: HttpClientOptions) {
     },
     async navMenu(): Promise<NavMenuResponse> {
       const res = await http.get<ApiEnvelope<NavMenuResponse>>('/api/v1/products/nav-menu')
-      return unwrap(res)
+      return unwrap(res) ?? { mega_menu: [], brand_menus: [] }
     },
     async detailBySlug(slug: string): Promise<ProductDetailResponse> {
       const res = await http.get<ApiEnvelope<ProductDetailResponse>>(

@@ -4,7 +4,7 @@ import { RouterLink, useRoute } from 'vue-router'
 import SiteLogo from '@/components/brand/SiteLogo.vue'
 import { isLoggedIn } from '@/composables/useSessionUser'
 import NavMegaMenuSkeleton from '@/components/layout/NavMegaMenuSkeleton.vue'
-import { useNavMenu } from '@/composables/useNavMenu'
+import { reloadNavMenu, useNavMenu } from '@/composables/useNavMenu'
 import { isNavDropdown, type NavMenuEntry } from '@/mocks/nav'
 
 const { megaMenu, brandMenus, loading: navLoading } = useNavMenu()
@@ -35,7 +35,12 @@ function syncAuthState() {
   loggedIn.value = isLoggedIn()
 }
 
-onMounted(syncAuthState)
+onMounted(() => {
+  syncAuthState()
+  if (!brandMenus.value.length) {
+    void reloadNavMenu({ soft: true })
+  }
+})
 watch(() => route.fullPath, syncAuthState)
 
 const megaOpen = ref(false)

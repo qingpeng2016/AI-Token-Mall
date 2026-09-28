@@ -6,7 +6,7 @@ import type { ReloadOptions } from '@/composables/reloadOptions'
 
 const megaMenu = ref<NavMegaColumn[]>([])
 const brandMenus = ref<NavBrandMenu[]>([])
-const loading = ref(true)
+const loading = ref(false)
 
 let loadSeq = 0
 
@@ -32,36 +32,51 @@ function applyMockNav() {
   brandMenus.value = mockBrandMenus()
 }
 
-function mapNavApiResponse(data: NavMenuResponse): NavMenuResponse {
+function mapNavApiResponse(data: NavMenuResponse | null | undefined): NavMenuResponse {
+  if (!data) {
+    return { mega_menu: [], brand_menus: [] }
+  }
   return {
     mega_menu: data.mega_menu ?? [],
     brand_menus: (data.brand_menus ?? []).map((b) => ({
       id: b.id,
       label: b.label,
       hot_tag_name: b.hot_tag_name,
-      items: b.items,
+      items: b.items ?? [],
     })),
   }
+}
+
+function applyNavData(data: NavMenuResponse) {
+  if (data.brand_menus.length === 0 && data.mega_menu.length === 0) {
+    applyMockNav()
+    return
+  }
+  megaMenu.value = data.mega_menu
+  brandMenus.value = data.brand_menus
 }
 
 export async function reloadNavMenu(options?: ReloadOptions): Promise<void> {
   const seq = ++loadSeq
   const soft = options?.soft === true
-  loading.value = !soft || megaMenu.value.length === 0
+  const hasNav = brandMenus.value.length > 0 || megaMenu.value.length > 0
+  loading.value = !soft || !hasNav
   if (!soft) {
     megaMenu.value = []
     brandMenus.value = []
+    loading.value = true
   }
   try {
-    const data = mapNavApiResponse(await productApi.navMenu())
+    const raw = await productApi.navMenu()
     if (seq !== loadSeq) return
-    megaMenu.value = data.mega_menu
-    brandMenus.value = data.brand_menus
+    applyNavData(mapNavApiResponse(raw))
   } catch {
     if (seq !== loadSeq) return
     applyMockNav()
   } finally {
-    if (seq === loadSeq) loading.value = false
+    if (seq === loadSeq) {
+      loading.value = false
+    }
   }
 }
 
