@@ -1,5 +1,9 @@
 import { computed, ref, type ComputedRef, type Ref } from 'vue'
-import type { EnterpriseProduct } from '@ai-token-mall/shared'
+import {
+  readSessionCache,
+  writeSessionCache,
+  type EnterpriseProduct,
+} from '@ai-token-mall/shared'
 import { enterpriseApi } from '@/api'
 import { enterprisePlans as mockPlans } from '@/mocks/enterprise'
 import type { ReloadOptions } from '@/composables/reloadOptions'
@@ -19,7 +23,30 @@ export type EnterprisePlanView = {
 const products = ref<EnterpriseProduct[]>([])
 const loading = ref(false)
 
+const ENTERPRISE_PRODUCTS_CACHE_KEY = 'atm:enterprise-products'
+
 let loadSeq = 0
+
+export function hydrateEnterpriseProductsFromSession(): void {
+  const cached = readSessionCache<{ products: EnterpriseProduct[] }>(
+    ENTERPRISE_PRODUCTS_CACHE_KEY,
+  )
+  if (cached?.products?.length) {
+    products.value = cached.products
+  }
+}
+
+export function hasEnterpriseProductsSessionCache(): boolean {
+  return !!readSessionCache<{ products: EnterpriseProduct[] }>(
+    ENTERPRISE_PRODUCTS_CACHE_KEY,
+  )?.products?.length
+}
+
+function persistEnterpriseProductsToSession(): void {
+  if (products.value.length) {
+    writeSessionCache(ENTERPRISE_PRODUCTS_CACHE_KEY, { products: products.value })
+  }
+}
 
 function fromMock(): EnterpriseProduct[] {
   return mockPlans.map((p) => ({
@@ -60,10 +87,12 @@ export async function reloadEnterpriseProducts(
     const list = await enterpriseApi.listProducts()
     if (seq !== loadSeq) return
     products.value = list.length ? list : fromMock()
+    persistEnterpriseProductsToSession()
   } catch {
     if (seq !== loadSeq) return
     if (!soft || products.value.length === 0) {
       products.value = fromMock()
+      persistEnterpriseProductsToSession()
     }
   } finally {
     if (seq === loadSeq) {

@@ -1,5 +1,10 @@
 import { ref, type Ref } from 'vue'
-import type { TutorialArticle, TutorialCategory } from '@ai-token-mall/shared'
+import {
+  readSessionCache,
+  writeSessionCache,
+  type TutorialArticle,
+  type TutorialCategory,
+} from '@ai-token-mall/shared'
 import { tutorialApi } from '@/api'
 import {
   blogCategories,
@@ -20,7 +25,50 @@ const categories = ref<TutorialFilterCategory[]>([])
 const articles = ref<BlogPost[]>([])
 const loading = ref(false)
 
+const TUTORIAL_BLOG_CACHE_KEY = 'atm:tutorial-blog'
+const tutorialArticleCacheKey = (slug: string) => `atm:tutorial-article:${slug}`
+
+type TutorialBlogCache = {
+  pageTitle: string
+  categories: TutorialFilterCategory[]
+  articles: BlogPost[]
+}
+
 let loadSeq = 0
+let prefetchedSlug: string | null = null
+let prefetchedPost: BlogPost | null = null
+
+export function hydrateTutorialBlogFromSession(): void {
+  const cached = readSessionCache<TutorialBlogCache>(TUTORIAL_BLOG_CACHE_KEY)
+  if (!cached?.articles?.length) return
+  pageTitle.value = cached.pageTitle
+  categories.value = cached.categories
+  articles.value = cached.articles
+}
+
+export function hasTutorialBlogSessionCache(): boolean {
+  return !!readSessionCache<TutorialBlogCache>(TUTORIAL_BLOG_CACHE_KEY)?.articles?.length
+}
+
+function persistTutorialBlogToSession(): void {
+  if (!articles.value.length) return
+  writeSessionCache(TUTORIAL_BLOG_CACHE_KEY, {
+    pageTitle: pageTitle.value,
+    categories: categories.value,
+    articles: articles.value,
+  })
+}
+
+export function hydrateTutorialArticleFromSession(slug: string): void {
+  const cached = readSessionCache<{ post: BlogPost }>(tutorialArticleCacheKey(slug))
+  if (!cached?.post) return
+  prefetchedPost = cached.post
+  prefetchedSlug = slug
+}
+
+export function hasTutorialArticleSessionCache(slug: string): boolean {
+  return !!readSessionCache<{ post: BlogPost }>(tutorialArticleCacheKey(slug))?.post
+}
 
 function fromMock() {
   pageTitle.value = blogPageMeta.title
@@ -71,9 +119,11 @@ export async function reloadTutorialBlog(
     const data = await tutorialApi.list()
     if (seq !== loadSeq) return
     applyApiList(data)
+    persistTutorialBlogToSession()
   } catch {
     if (seq !== loadSeq) return
     fromMock()
+    persistTutorialBlogToSession()
   } finally {
     if (seq === loadSeq) loading.value = false
   }
@@ -83,8 +133,9 @@ export function findCachedBlogPost(slug: string): BlogPost | undefined {
   return articles.value.find((a) => a.slug === slug)
 }
 
-let prefetchedSlug: string | null = null
-let prefetchedPost: BlogPost | null = null
+function persistTutorialArticleToSession(slug: string, post: BlogPost): void {
+  writeSessionCache(tutorialArticleCacheKey(slug), { post })
+}
 
 export async function prefetchBlogArticle(slug: string): Promise<void> {
   try {
@@ -92,6 +143,7 @@ export async function prefetchBlogArticle(slug: string): Promise<void> {
     if (data?.slug) {
       prefetchedPost = mapApiArticle(data)
       prefetchedSlug = slug
+      persistTutorialArticleToSession(slug, prefetchedPost)
       return
     }
   } catch {
@@ -101,10 +153,14 @@ export async function prefetchBlogArticle(slug: string): Promise<void> {
   if (fromList?.body?.length) {
     prefetchedPost = fromList
     prefetchedSlug = slug
+    persistTutorialArticleToSession(slug, fromList)
     return
   }
   prefetchedPost = getBlogPost(slug) ?? null
   prefetchedSlug = prefetchedPost ? slug : null
+  if (prefetchedPost) {
+    persistTutorialArticleToSession(slug, prefetchedPost)
+  }
 }
 
 /** 路由守卫预取成功后，详情页直接消费，避免再闪 skeleton */

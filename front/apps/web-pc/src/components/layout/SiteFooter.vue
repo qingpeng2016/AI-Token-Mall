@@ -30,8 +30,12 @@ const { categories: tutorialCategories } = useTutorialBlog()
 const { categories: productCategories } = useCatalogProducts()
 
 onMounted(() => {
-  void reloadCatalogProducts({ soft: true })
-  void reloadTutorialBlog({ soft: true })
+  if (!productCategories.value.length) {
+    void reloadCatalogProducts({ soft: true })
+  }
+  if (!tutorialCategories.value.some((c) => c.id !== 'all')) {
+    void reloadTutorialBlog({ soft: true })
+  }
 })
 
 const chatgptLinks = computed(() => {

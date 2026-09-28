@@ -3,6 +3,8 @@ import {
   catalogFilterPillsFromCategories,
   flattenCatalogProducts,
   normalizeCatalogProduct,
+  readSessionCache,
+  writeSessionCache,
   type CatalogFilterPill,
   type CatalogProduct,
   type ProductCatalogCategory,
@@ -14,7 +16,27 @@ import type { ReloadOptions } from '@/composables/reloadOptions'
 const categories = ref<ProductCatalogCategory[]>([])
 const loading = ref(false)
 
+const CATALOG_CACHE_KEY = 'atm:catalog'
+
 let loadSeq = 0
+
+export function hydrateCatalogFromSession(): void {
+  const cached = readSessionCache<{ categories: ProductCatalogCategory[] }>(CATALOG_CACHE_KEY)
+  if (cached?.categories?.length) {
+    categories.value = cached.categories
+  }
+}
+
+export function hasCatalogSessionCache(): boolean {
+  return !!readSessionCache<{ categories: ProductCatalogCategory[] }>(CATALOG_CACHE_KEY)
+    ?.categories?.length
+}
+
+function persistCatalogToSession(): void {
+  if (categories.value.length) {
+    writeSessionCache(CATALOG_CACHE_KEY, { categories: categories.value })
+  }
+}
 
 function mockCatalogCategories(): ProductCatalogCategory[] {
   const pills = catalogFilterPills.filter((p) => p.value !== 'all')
@@ -53,9 +75,11 @@ export async function reloadCatalogProducts(
       ...c,
       products: (c.products ?? []).map((p) => normalizeCatalogProduct(p)),
     }))
+    persistCatalogToSession()
   } catch {
     if (seq !== loadSeq) return
     categories.value = mockCatalogCategories()
+    persistCatalogToSession()
   } finally {
     if (seq === loadSeq) loading.value = false
   }

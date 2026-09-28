@@ -1,6 +1,11 @@
 import { ref, type Ref } from 'vue'
-import type { CatalogProduct, ProductDetailResponse } from '@ai-token-mall/shared'
-import { normalizeCatalogProduct } from '@ai-token-mall/shared'
+import {
+  normalizeCatalogProduct,
+  readSessionCache,
+  writeSessionCache,
+  type CatalogProduct,
+  type ProductDetailResponse,
+} from '@ai-token-mall/shared'
 import { productApi } from '@/api'
 import {
   getProductDetail,
@@ -8,8 +13,16 @@ import {
 } from '@/mocks/productDetails'
 import { findProductBySlug } from '@/mocks/productRoutes'
 import { mockProducts } from '@/mocks/home'
+import type { ReloadOptions } from '@/composables/reloadOptions'
 
 export type ProductDetailViewContent = MockProductDetailContent
+
+const productDetailCacheKey = (slug: string) => `atm:product-detail:${slug}`
+
+type ProductDetailCache = {
+  product: CatalogProduct
+  detail: ProductDetailViewContent
+}
 
 const product = ref<CatalogProduct | null>(null)
 const detail = ref<ProductDetailViewContent | null>(null)
@@ -18,10 +31,7 @@ const loading = ref(false)
 let loadSeq = 0
 let prefetchedSlug: string | null = null
 
-function mapApiDetail(data: ProductDetailResponse): {
-  product: CatalogProduct
-  detail: ProductDetailViewContent
-} {
+function mapApiDetail(data: ProductDetailResponse): ProductDetailCache {
   const p = normalizeCatalogProduct(data.product)
   const d = data.detail
   return {
@@ -44,6 +54,27 @@ function mapApiDetail(data: ProductDetailResponse): {
   }
 }
 
+function applyDetailCache(cached: ProductDetailCache, slug: string) {
+  product.value = cached.product
+  detail.value = cached.detail
+  prefetchedSlug = slug
+}
+
+function persistProductDetailToSession(slug: string, cached: ProductDetailCache) {
+  writeSessionCache(productDetailCacheKey(slug), cached)
+}
+
+export function hydrateProductDetailFromSession(slug: string): void {
+  const cached = readSessionCache<ProductDetailCache>(productDetailCacheKey(slug))
+  if (cached?.product && cached.detail) {
+    applyDetailCache(cached, slug)
+  }
+}
+
+export function hasProductDetailSessionCache(slug: string): boolean {
+  return !!readSessionCache<ProductDetailCache>(productDetailCacheKey(slug))?.product
+}
+
 function applyMock(slug: string) {
   const fromList = findProductBySlug(slug, mockProducts)
   if (!fromList) {
@@ -55,21 +86,33 @@ function applyMock(slug: string) {
   detail.value = getProductDetail(slug, fromList)
 }
 
-export async function prefetchProductDetail(slug: string): Promise<void> {
+export async function prefetchProductDetail(
+  slug: string,
+  options?: ReloadOptions,
+): Promise<void> {
   const s = slug.trim()
   if (!s) return
   const seq = ++loadSeq
-  loading.value = true
+  const soft = options?.soft === true
+  const hasData = product.value && detail.value && prefetchedSlug === s
+  loading.value = !soft || !hasData
   try {
     const data = await productApi.detailBySlug(s)
     if (seq !== loadSeq) return
     const mapped = mapApiDetail(data)
-    product.value = mapped.product
-    detail.value = mapped.detail
-    prefetchedSlug = s
+    applyDetailCache(mapped, s)
+    persistProductDetailToSession(s, mapped)
   } catch {
     if (seq !== loadSeq) return
-    applyMock(s)
+    if (!soft || !hasData) {
+      applyMock(s)
+      if (product.value && detail.value) {
+        persistProductDetailToSession(s, {
+          product: product.value,
+          detail: detail.value,
+        })
+      }
+    }
     prefetchedSlug = product.value ? s : null
   } finally {
     if (seq === loadSeq) loading.value = false
