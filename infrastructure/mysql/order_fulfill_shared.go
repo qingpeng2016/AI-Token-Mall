@@ -81,6 +81,10 @@ func fulfillPaidOrderByType(tx *gorm.DB, order *entity.UserOrder, product *entit
 	switch order.OrderType {
 	case constants.OrderTypeRenewal:
 		return fulfillRenewalOrderPaid(tx, order, product, payChannel, now)
+	case constants.OrderTypeUpgrade:
+		return fulfillUpgradeOrderPaid(tx, order, product, payChannel, now)
+	case constants.OrderTypeQuotaAddon:
+		return fulfillQuotaAddonOrderPaid(tx, order, product, payChannel, now)
 	case constants.OrderTypePurchase, "":
 		return fulfillPurchaseOrderPaid(tx, order, product, payChannel, now)
 	default:

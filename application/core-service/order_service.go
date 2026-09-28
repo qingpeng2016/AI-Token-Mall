@@ -43,14 +43,9 @@ func (s *OrderService) CreateMockOrder(ctx context.Context, userID uint, req *re
 		return nil, errorx.ErrProductNotFound
 	}
 
-	if orderType == constants.OrderTypeRenewal {
-		has, err := s.orders.HasActiveSubscription(ctx, userID, product.ID)
-		if err != nil {
-			return nil, errorx.ErrDbError
-		}
-		if !has {
-			return nil, errorx.ErrRenewNoSubscription
-		}
+	userSubID, err := resolveOrderUserSubscriptionID(ctx, s.orders, userID, orderType, product.ID, req.UserSubscriptionID)
+	if err != nil {
+		return nil, err
 	}
 
 	qty := req.Quantity
@@ -68,8 +63,9 @@ func (s *OrderService) CreateMockOrder(ctx context.Context, userID uint, req *re
 		OrderNo:           orderNo,
 		UserID:            userID,
 		ProductID:         product.ID,
-		OrderType:         orderType,
-		Quantity:          qty,
+		OrderType:          orderType,
+		UserSubscriptionID: userSubID,
+		Quantity:           qty,
 		UnitPriceCents:    product.PriceCents,
 		Status:            "pending_payment",
 		TotalAmountCents:  total,
@@ -82,8 +78,9 @@ func (s *OrderService) CreateMockOrder(ctx context.Context, userID uint, req *re
 
 	rawReq, _ := json.Marshal(map[string]interface{}{
 		"product_id":         product.ID,
-		"order_type":         orderType,
-		"quantity":           qty,
+		"order_type":            orderType,
+		"user_subscription_id": userSubID,
+		"quantity":              qty,
 		"channel":            channel,
 		"enterprise_invoice": req.EnterpriseInvoice,
 	})
@@ -99,8 +96,9 @@ func (s *OrderService) CreateMockOrder(ctx context.Context, userID uint, req *re
 		OrderNo:          orderNo,
 		OutTradeNo:       outTradeNo,
 		OrderID:          order.ID,
-		OrderType:        orderType,
-		Channel:          channel,
+		OrderType:          orderType,
+		UserSubscriptionID: userSubID,
+		Channel:            channel,
 		Status:           order.Status,
 		TotalAmountCents: total,
 		Currency:         order.Currency,
@@ -146,7 +144,8 @@ func (s *OrderService) HandlePaymentNotify(ctx context.Context, channel string, 
 		if strings.Contains(err.Error(), "not payable") {
 			return errorx.ErrOrderNotPayable
 		}
-		if strings.Contains(err.Error(), "renew: no active subscription") {
+		if strings.Contains(err.Error(), "renew: no active subscription") ||
+			strings.Contains(err.Error(), "quota_addon:") {
 			return errorx.ErrRenewNoSubscription
 		}
 		if strings.Contains(err.Error(), "unknown order_type") {
@@ -163,6 +162,10 @@ func normalizeOrderType(raw string) string {
 		return constants.OrderTypePurchase
 	case constants.OrderTypeRenewal:
 		return constants.OrderTypeRenewal
+	case constants.OrderTypeUpgrade:
+		return constants.OrderTypeUpgrade
+	case constants.OrderTypeQuotaAddon:
+		return constants.OrderTypeQuotaAddon
 	default:
 		return ""
 	}

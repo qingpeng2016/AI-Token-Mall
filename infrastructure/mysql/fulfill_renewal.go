@@ -32,13 +32,22 @@ func fulfillRenewalOrderPaid(tx *gorm.DB, order *entity.UserOrder, product *enti
 
 func renewActiveSubscription(tx *gorm.DB, order *entity.UserOrder, product *entity.Product, now time.Time) (*entity.UserSubscription, error) {
 	var sub entity.UserSubscription
-	err := tx.Where("user_id = ? AND product_id = ? AND status = ?", order.UserID, order.ProductID, "active").
-		First(&sub).Error
+	var err error
+	if order.UserSubscriptionID > 0 {
+		err = tx.Where("id = ? AND user_id = ? AND status = ?", order.UserSubscriptionID, order.UserID, "active").
+			First(&sub).Error
+	} else {
+		err = tx.Where("user_id = ? AND product_id = ? AND status = ?", order.UserID, order.ProductID, "active").
+			First(&sub).Error
+	}
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, gorm.ErrRecordNotFound
 	}
 	if err != nil {
 		return nil, err
+	}
+	if sub.ProductID != order.ProductID {
+		return nil, fmt.Errorf("renew: subscription %d product mismatch", sub.ID)
 	}
 
 	tokenGrant := product.LimitTokens * int64(order.Quantity)

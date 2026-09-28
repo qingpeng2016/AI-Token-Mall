@@ -12,10 +12,12 @@ const props = withDefaults(
     open: boolean
     product: CatalogProduct | null
     user: UserProfile | null
-    /** 新购默认 purchase；会员中心续费传 renewal */
+    /** 新购默认 purchase；会员中心续费/升档 */
     orderType?: OrderType
+    /** 续费/升档关联 user_subscriptions.id，新购为 0 */
+    userSubscriptionId?: number
   }>(),
-  { orderType: 'purchase' },
+  { orderType: 'purchase', userSubscriptionId: 0 },
 )
 
 const emit = defineEmits<{
@@ -93,13 +95,17 @@ async function submitPay(channel: 'alipay' | 'paypal') {
   if (!props.product || !props.user) return
   paying.value = true
   try {
-    const created = await orderApi.create({
+    const body: Parameters<typeof orderApi.create>[0] = {
       product_id: props.product.id,
       order_type: props.orderType,
       quantity: quantity.value,
       channel,
       enterprise_invoice: enterpriseInvoice.value,
-    })
+    }
+    if (props.userSubscriptionId > 0) {
+      body.user_subscription_id = props.userSubscriptionId
+    }
+    const created = await orderApi.create(body)
     await orderApi.mockNotify(created.channel, created.out_trade_no)
     ElMessage.success(
       `${channel === 'alipay' ? '支付宝' : 'PayPal'} 支付成功 · 订单 ${created.order_no}`,

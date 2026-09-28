@@ -49,15 +49,35 @@ func (r *OrderImpl) FindOrderByID(ctx context.Context, id uint) (*entity.UserOrd
 	return &row, nil
 }
 
-func (r *OrderImpl) HasActiveSubscription(ctx context.Context, userID, productID uint) (bool, error) {
-	var n int64
-	err := r.db.WithContext(ctx).Model(&entity.UserSubscription{}).
+func (r *OrderImpl) FindActiveSubscriptionByUserProduct(ctx context.Context, userID, productID uint) (*entity.UserSubscription, error) {
+	var row entity.UserSubscription
+	err := r.db.WithContext(ctx).
 		Where("user_id = ? AND product_id = ? AND status = ?", userID, productID, "active").
-		Count(&n).Error
-	if err != nil {
-		return false, err
+		First(&row).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
 	}
-	return n > 0, nil
+	if err != nil {
+		return nil, err
+	}
+	return &row, nil
+}
+
+func (r *OrderImpl) FindSubscriptionForUser(ctx context.Context, userID, subscriptionID uint) (*entity.UserSubscription, error) {
+	if subscriptionID == 0 {
+		return nil, nil
+	}
+	var row entity.UserSubscription
+	err := r.db.WithContext(ctx).
+		Where("id = ? AND user_id = ?", subscriptionID, userID).
+		First(&row).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &row, nil
 }
 
 func (r *OrderImpl) ApplyPaymentNotifySuccess(ctx context.Context, in repository.PaymentNotifyInput) error {

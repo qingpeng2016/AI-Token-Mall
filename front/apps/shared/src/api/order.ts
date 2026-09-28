@@ -1,12 +1,14 @@
 import type { ApiEnvelope } from '../types/user'
 import { createHttpClient, type HttpClientOptions } from './http'
 
-export type OrderType = 'purchase' | 'renewal'
+export type OrderType = 'purchase' | 'renewal' | 'upgrade' | 'quota_addon'
 
 export type CreateOrderBody = {
   product_id: number
   /** 默认 purchase；会员中心续费传 renewal */
   order_type?: OrderType
+  /** 续费/升档必填，新购传 0 或不传 */
+  user_subscription_id?: number
   quantity: number
   channel: 'alipay' | 'wechat' | 'paypal'
   enterprise_invoice?: boolean
@@ -17,6 +19,7 @@ export type CreateOrderResult = {
   out_trade_no: string
   order_id: number
   order_type: OrderType
+  user_subscription_id: number
   channel: string
   status: string
   total_amount_cents: number

@@ -48,6 +48,7 @@ const catalogOpen = ref(false)
 const purchaseOpen = ref(false)
 const purchaseProduct = ref<CatalogProduct | null>(null)
 const purchaseOrderType = ref<OrderType>('purchase')
+const purchaseUserSubscriptionId = ref(0)
 const teamInviteOpen = ref(false)
 const apiKeyPanelTab = ref<'mine' | 'team' | 'group'>('mine')
 const teamMembers = ref<MockSubAccount[]>([...mockApiTeamMembers])
@@ -225,12 +226,26 @@ function goCommissionWithdrawFromOverview() {
 
 function openCatalogPicker() {
   purchaseOrderType.value = 'purchase'
+  purchaseUserSubscriptionId.value = 0
   catalogOpen.value = true
 }
 
-function openUpgradeCatalog() {
-  purchaseOrderType.value = 'purchase'
+function openUpgradeCatalog(sub: MockSubscription) {
+  purchaseOrderType.value = 'upgrade'
+  purchaseUserSubscriptionId.value = sub.id
   catalogOpen.value = true
+}
+
+function openQuotaAddon(sub: MockSubscription) {
+  const p = catalogProducts.value.find((item) => item.id === sub.productId)
+  if (!p) {
+    ElMessage.warning('未找到该套餐商品，请稍后重试或联系客服')
+    return
+  }
+  purchaseOrderType.value = 'quota_addon'
+  purchaseUserSubscriptionId.value = sub.id
+  purchaseProduct.value = p
+  purchaseOpen.value = true
 }
 
 function openRenewSubscription(sub: MockSubscription) {
@@ -240,12 +255,16 @@ function openRenewSubscription(sub: MockSubscription) {
     return
   }
   purchaseOrderType.value = 'renewal'
+  purchaseUserSubscriptionId.value = sub.id
   purchaseProduct.value = p
   purchaseOpen.value = true
 }
 
 function onCatalogBuy(p: CatalogProduct) {
-  purchaseOrderType.value = 'purchase'
+  if (purchaseOrderType.value !== 'upgrade') {
+    purchaseOrderType.value = 'purchase'
+    purchaseUserSubscriptionId.value = 0
+  }
   purchaseProduct.value = p
   catalogOpen.value = false
   purchaseOpen.value = true
@@ -728,13 +747,13 @@ function confirmAddTeamMember() {
                 >
                   续费
                 </button>
-                <button type="button" class="atm-btn-primary btn-xs" @click="openUpgradeCatalog()">
+                <button type="button" class="atm-btn-primary btn-xs" @click="openUpgradeCatalog(sub)">
                   升档
                 </button>
                 <button
                   type="button"
                   class="atm-btn-primary btn-xs"
-                  @click="mockAction('加购 token 包即将上线')"
+                  @click="openQuotaAddon(sub)"
                 >
                   加购额度
                 </button>
@@ -1252,6 +1271,7 @@ function confirmAddTeamMember() {
       :product="purchaseProduct"
       :user="user"
       :order-type="purchaseOrderType"
+      :user-subscription-id="purchaseUserSubscriptionId"
     />
 
     <Teleport to="body">

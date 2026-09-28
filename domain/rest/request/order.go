@@ -2,8 +2,9 @@ package request
 
 type CreateOrderReq struct {
 	ProductID         uint   `json:"product_id" binding:"required"`
-	OrderType         string `json:"order_type" binding:"omitempty,oneof=purchase renewal"`
-	Quantity          int    `json:"quantity" binding:"required,min=1,max=99"`
+	OrderType          string `json:"order_type" binding:"omitempty,oneof=purchase renewal upgrade quota_addon"`
+	UserSubscriptionID uint   `json:"user_subscription_id" binding:"omitempty"`
+	Quantity           int    `json:"quantity" binding:"required,min=1,max=99"`
 	Channel           string `json:"channel" binding:"required"`
 	EnterpriseInvoice bool   `json:"enterprise_invoice"`
 }
