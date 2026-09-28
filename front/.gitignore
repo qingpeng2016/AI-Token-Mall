@@ -2,4 +2,5 @@ apps/node_modules
 apps/**/node_modules
 apps/**/dist
 apps/**/*.local
+apps/web-pc/.env.production
 .DS_Store

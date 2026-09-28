@@ -31,6 +31,8 @@ deploy_common_init() {
   MALL_WEB_ROOT="${MALL_WEB_ROOT:-front/apps}"
   MALL_WEB_DIST="${MALL_WEB_DIST:-front/apps/web-pc/dist}"
   WEB_BUILD_CMD="${WEB_BUILD_CMD:-pnpm install && pnpm build:pc}"
+  # 生产打包写入 web-pc/.env.production（路径含 /api/v1，base 不要末尾斜杠）
+  VITE_API_BASE_URL="${VITE_API_BASE_URL:-}"
   MALL_BIN_NAME="${MALL_BIN_NAME:-ai-token-mall}"
   GIT_FETCH_TIMEOUT="${GIT_FETCH_TIMEOUT:-120}"
   LOCAL_REPO_DIR="${LOCAL_REPO_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"

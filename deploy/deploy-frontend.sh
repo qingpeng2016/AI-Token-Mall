@@ -33,6 +33,20 @@ case "$ACTION" in
   *) usage_frontend ;;
 esac
 
+write_vite_production_env() {
+  [[ -n "${VITE_API_BASE_URL}" ]] || {
+    echo "ERROR: 请在 deploy/.deploy.env 设置 VITE_API_BASE_URL（如 https://api.niceboxs.com）" >&2
+    exit 1
+  }
+  local web_pc="${LOCAL_REPO_DIR}/front/apps/web-pc"
+  local env_file="${web_pc}/.env.production"
+  echo ">>> [本机] 写入 ${env_file} ← VITE_API_BASE_URL=${VITE_API_BASE_URL}"
+  cat >"$env_file" <<ENV
+# 由 deploy-frontend.sh 根据 deploy/.deploy.env 生成，打包后生效
+VITE_API_BASE_URL=${VITE_API_BASE_URL}
+ENV
+}
+
 local_build_and_push_dist() {
   local repo="$LOCAL_REPO_DIR"
   local web_dir="${repo}/${MALL_WEB_ROOT}"
@@ -40,6 +54,8 @@ local_build_and_push_dist() {
   local dist_abs="${repo}/${MALL_WEB_DIST}"
 
   local_git_sync "$repo" "$BRANCH"
+
+  write_vite_production_env
 
   [[ -d "$web_dir" ]] || {
     echo "ERROR: 目录不存在: $web_dir" >&2
