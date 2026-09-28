@@ -70,9 +70,10 @@ function isSpaNav(href: string) {
         <nav class="main-nav" aria-label="主导航">
           <div class="nav-item nav-item--mega" @mouseenter="openMega">
             <a
-              href="#catalog"
+              href="/"
               class="nav-link nav-link--mega"
               :class="{ 'nav-link--active': megaOpen }"
+              @click.prevent="openMega"
             >
               套餐购买
               <span class="nav-chevron" aria-hidden="true">▾</span>

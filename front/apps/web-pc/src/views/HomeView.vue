@@ -106,6 +106,10 @@ function resumePendingPurchase() {
 }
 
 onMounted(() => {
+  if (window.location.hash === '#catalog') {
+    history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
+    window.scrollTo(0, 0)
+  }
   sessionUser.value = getSessionUser()
   resumePendingPurchase()
 })
