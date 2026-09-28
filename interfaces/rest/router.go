@@ -20,7 +20,8 @@ type Router struct {
 	setting          *conf2.Config
 	userHandler      *handler.UserHandler
 	productHandler   *handler.ProductHandler
-	tutorialHandler  *handler.TutorialHandler
+	tutorialHandler    *handler.TutorialHandler
+	enterpriseHandler  *handler.EnterpriseHandler
 }
 
 func NewRouter(
@@ -28,12 +29,14 @@ func NewRouter(
 	userHandler *handler.UserHandler,
 	productHandler *handler.ProductHandler,
 	tutorialHandler *handler.TutorialHandler,
+	enterpriseHandler *handler.EnterpriseHandler,
 ) *Router {
 	return &Router{
-		setting:         setting,
-		userHandler:     userHandler,
-		productHandler:  productHandler,
-		tutorialHandler: tutorialHandler,
+		setting:           setting,
+		userHandler:       userHandler,
+		productHandler:    productHandler,
+		tutorialHandler:   tutorialHandler,
+		enterpriseHandler: enterpriseHandler,
 	}
 }
 
@@ -50,6 +53,8 @@ func (r *Router) setupRouters() *gin.Engine {
 		api.GET("/products/nav-menu", r.productHandler.NavMenu)
 		api.GET("/tutorials", r.tutorialHandler.List)
 		api.GET("/tutorials/articles/:slug", r.tutorialHandler.Detail)
+		api.GET("/enterprise/products", r.enterpriseHandler.ListProducts)
+		api.POST("/enterprise/inquiries", r.enterpriseHandler.SubmitInquiry)
 	}
 
 	return engine

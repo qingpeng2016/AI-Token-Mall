@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { enterpriseApi } from '@/api'
 import EnterpriseBenefitIcon from '@/components/enterprise/EnterpriseBenefitIcon.vue'
 import { SITE_NAME } from '@/constants/brand'
 import {
@@ -10,14 +11,27 @@ import {
   enterpriseChannelHighlights,
   enterpriseHero,
   enterpriseInvoiceNotes,
-  enterprisePlans,
   enterpriseStats,
   enterpriseSteps,
 } from '@/mocks/enterprise'
+import { useEnterpriseProducts } from '@/composables/useEnterpriseProducts'
 
 const submitting = ref(false)
 
-const selectedPlanId = ref(enterprisePlans[0]?.id ?? '')
+const { plans: enterprisePlans } = useEnterpriseProducts()
+const selectedPlanId = ref('')
+
+watch(
+  enterprisePlans,
+  (list) => {
+    if (!list.length) return
+    if (!list.some((p) => p.id === selectedPlanId.value)) {
+      selectedPlanId.value =
+        list.find((p) => p.featured)?.id ?? list[0]?.id ?? ''
+    }
+  },
+  { immediate: true },
+)
 
 function selectPlan(planId: string) {
   selectedPlanId.value = planId
@@ -40,13 +54,24 @@ async function onSubmit() {
     return
   }
   submitting.value = true
-  await new Promise((r) => setTimeout(r, 600))
-  submitting.value = false
-  ElMessage.success('已收到采购需求（演示），顾问将尽快联系您')
-  form.company = ''
-  form.contact = ''
-  form.phone = ''
-  form.email = ''
+  try {
+    await enterpriseApi.submitInquiry({
+      company_name: form.company.trim(),
+      contact_name: form.contact.trim(),
+      phone: form.phone.trim(),
+      email: form.email.trim() || undefined,
+    })
+    ElMessage.success('已收到采购需求，顾问将尽快联系您')
+    form.company = ''
+    form.contact = ''
+    form.phone = ''
+    form.email = ''
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : '提交失败，请稍后重试'
+    ElMessage.error(msg)
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
@@ -132,7 +157,7 @@ async function onSubmit() {
               class="ent-plan-btn"
               @click.stop="scrollToContact"
             >
-              获取报价
+              {{ plan.buttonLabel }}
             </button>
           </article>
         </div>

@@ -1,5 +1,6 @@
 import type { RouteLocationNormalized, Router } from 'vue-router'
 import { reloadCatalogProducts } from '@/composables/useCatalogProducts'
+import { reloadEnterpriseProducts } from '@/composables/useEnterpriseProducts'
 import { reloadNavMenu } from '@/composables/useNavMenu'
 import {
   prefetchBlogArticle,
@@ -18,6 +19,9 @@ async function prepareRouteData(to: RouteLocationNormalized): Promise<void> {
 
   if (name === 'home' || name === 'product') {
     await reloadCatalogProducts({ soft: true })
+  }
+  if (name === 'enterprise') {
+    await reloadEnterpriseProducts({ soft: true })
   }
   if (name === 'blog') {
     await reloadTutorialBlog({ soft: true })
