@@ -91,20 +91,12 @@ func mapProductItem(p *entity.Product) response.ProductItemResp {
 		RPMLimit:             p.RPMLimit,
 		TPMLimit:             p.TPMLimit,
 		AllowedModels:        decodeStringJSONArray(p.AllowedModels),
-		ProductType:          p.ProductType,
 		BillingPeriod:        p.BillingPeriod,
 		PriceCents:           p.PriceCents,
 		Currency:             p.Currency,
-		CompareAtPriceCents:  p.CompareAtPriceCents,
-		Highlights:           decodeStringJSONArray(p.HighlightsJSON),
 		HotTagName:           strings.TrimSpace(p.HotTagName),
-		IsAPIEnabled:         p.IsAPIEnabled != 0,
-		TopupTokenAmount:     p.TopupTokenAmount,
 		Sort:                 p.SortOrder,
 		Status:               p.Status,
-	}
-	if len(item.Highlights) == 0 {
-		item.Highlights = []string{}
 	}
 	if len(item.CardFeatures) == 0 {
 		item.CardFeatures = []string{}

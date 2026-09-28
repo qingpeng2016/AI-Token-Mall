@@ -40,8 +40,8 @@ func (UserInvoiceConfig) TableName() string { return "user_invoice_config" }
 
 type UpstreamInfo struct {
 	ID                   uint       `gorm:"primaryKey;column:id"`
-	UpstreamName         string     `gorm:"column:upstream_name;size:32;not null"`
-	UpstreamProduct      string     `gorm:"column:upstream_product;size:128;not null"`
+	ProductsCategoryName string     `gorm:"column:products_category_name;size:32;not null"`
+	SKUProductName       string     `gorm:"column:sku_product_name;size:128;not null"`
 	AccountLabel         string     `gorm:"column:account_label;size:128;not null"`
 	APIKeyCiphertext     []byte     `gorm:"column:api_key_ciphertext;not null"`
 	APISecretCiphertext  []byte     `gorm:"column:api_secret_ciphertext"`
@@ -87,17 +87,11 @@ type Product struct {
 	RPMLimit            int            `gorm:"column:rpm_limit;not null;default:0"`
 	TPMLimit            *int           `gorm:"column:tpm_limit"`
 	AllowedModels       datatypes.JSON `gorm:"column:allowed_models;type:json;not null"`
-	ProductType         string         `gorm:"column:product_type;size:32;not null;default:subscription"`
 	BillingPeriod       string         `gorm:"column:billing_period;size:16;not null;default:month"`
 	PriceCents          int64          `gorm:"column:price_cents;not null"`
 	Currency            string         `gorm:"column:currency;size:3;not null;default:CNY"`
-	CompareAtPriceCents *int64         `gorm:"column:compare_at_price_cents"`
-	HighlightsJSON      datatypes.JSON `gorm:"column:highlights_json;type:json"`
 	IsHot               int            `gorm:"column:is_hot;not null;default:0"`
-	IsFlagship          int            `gorm:"column:is_flagship;not null;default:0"`
 	HotTagName          string         `gorm:"column:hot_tag_name;size:32"`
-	IsAPIEnabled        int            `gorm:"column:is_api_enabled;not null;default:1"`
-	TopupTokenAmount    *int64         `gorm:"column:topup_token_amount"`
 	SortOrder           int            `gorm:"column:sort_order;not null;default:0"`
 	Status              string         `gorm:"column:status;size:16;not null;default:on_sale"`
 	CreatedAt           time.Time      `gorm:"column:created_at"`
@@ -193,11 +187,13 @@ type UserSubscription struct {
 	UserID           uint           `gorm:"column:user_id;not null"`
 	ProductID        uint           `gorm:"column:product_id;not null"`
 	Orders           datatypes.JSON `gorm:"column:orders;type:json;not null"`
-	UpstreamName     string         `gorm:"column:upstream_name;size:32;not null"`
-	UpstreamProduct  string         `gorm:"column:upstream_product;size:128;not null"`
+	ProductsCategoryName string       `gorm:"column:products_category_name;size:32;not null"`
+	SKUProductName       string       `gorm:"column:sku_product_name;size:128;not null"`
 	BaseLimitTokens  int64          `gorm:"column:base_limit_tokens;not null"`
 	LimitTokens      int64          `gorm:"column:limit_tokens;not null"`
 	UsedTokens       int64          `gorm:"column:used_tokens;not null;default:0"`
+	RPMLimit         int            `gorm:"column:rpm_limit;not null;default:0"`
+	TPMLimit         *int           `gorm:"column:tpm_limit"`
 	StartedAt        time.Time      `gorm:"column:started_at;not null"`
 	ExpiresAt        time.Time      `gorm:"column:expires_at;not null"`
 	PeriodStart      time.Time      `gorm:"column:period_start;not null"`
@@ -214,8 +210,8 @@ type UserAPIKey struct {
 	UserID             uint       `gorm:"column:user_id;not null"`
 	UserSubscriptionID uint       `gorm:"column:user_subscription_id;not null"`
 	KeyHash            string     `gorm:"column:key_hash;size:64;not null"`
-	UpstreamName       string     `gorm:"column:upstream_name;size:32;not null"`
-	LimitTokens        int64      `gorm:"column:limit_tokens;not null"`
+	ProductsCategoryName string   `gorm:"column:products_category_name;size:32;not null"`
+	LimitTokens          int64    `gorm:"column:limit_tokens;not null"`
 	UsedTokens         int64      `gorm:"column:used_tokens;not null;default:0"`
 	Status             string     `gorm:"column:status;size:32;not null;default:active"`
 	RotatedAt          *time.Time `gorm:"column:rotated_at"`
@@ -245,8 +241,8 @@ type UserAccessLog struct {
 	UserID             *uint     `gorm:"column:user_id"`
 	UserSubscriptionID *uint     `gorm:"column:user_subscription_id"`
 	APIKeyID           *uint     `gorm:"column:api_key_id"`
-	UpstreamName       string    `gorm:"column:upstream_name;size:32;not null"`
-	UpstreamProduct    *string   `gorm:"column:upstream_product;size:128"`
+	ProductsCategoryName string  `gorm:"column:products_category_name;size:32;not null"`
+	SKUProductName       *string `gorm:"column:sku_product_name;size:128"`
 	UpstreamInfoID     *uint     `gorm:"column:upstream_info_id"`
 	Model              *string   `gorm:"column:model;size:128"`
 	HTTPMethod         string    `gorm:"column:http_method;size:16;not null"`

@@ -24,7 +24,6 @@ const emit = defineEmits<{
           UPSTREAM_LABEL[product.products_category_name as ProductsCategoryName] ??
             product.products_category_name
         }}</span>
-        <span v-if="product.product_type === 'token_topup'" class="tag topup">加购</span>
       </div>
       <h3 class="title">{{ product.card_title }}</h3>
       <p class="desc">{{ product.card_subtitle }}</p>

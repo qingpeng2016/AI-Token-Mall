@@ -28,15 +28,10 @@ type ProductItemResp struct {
 	RPMLimit             int      `json:"rpm_limit"`
 	TPMLimit             *int     `json:"tpm_limit,omitempty"`
 	AllowedModels        []string `json:"allowed_models"`
-	ProductType          string   `json:"product_type"`
 	BillingPeriod        string   `json:"billing_period"`
 	PriceCents           int64    `json:"price_cents"`
 	Currency             string   `json:"currency"`
-	CompareAtPriceCents  *int64   `json:"compare_at_price_cents,omitempty"`
-	Highlights           []string `json:"highlights"`
 	HotTagName           string   `json:"hot_tag_name,omitempty"`
-	IsAPIEnabled         bool     `json:"is_api_enabled"`
-	TopupTokenAmount     *int64   `json:"topup_token_amount,omitempty"`
 	Sort                 int      `json:"sort"`
 	Status               string   `json:"status"`
 }

@@ -11,7 +11,6 @@ export type ProductsCategoryName =
 /** @deprecated 使用 products_category_name */
 export type UpstreamName = Exclude<ProductsCategoryName, 'cursor'>
 
-export type ProductType = 'subscription' | 'token_topup'
 export type BillingPeriod = 'month' | 'year' | 'once'
 export type ProductStatus = 'on_sale' | 'off_sale'
 
@@ -25,16 +24,11 @@ export interface Product {
   rpm_limit: number
   tpm_limit?: number | null
   allowed_models: string[]
-  product_type: ProductType
   billing_period: BillingPeriod
   price_cents: number
   currency: string
-  compare_at_price_cents?: number | null
-  highlights: string[]
   /** 卡片右上角标签，空则不显示 */
   hot_tag_name?: string
-  is_api_enabled: boolean
-  topup_token_amount?: number | null
   /** 分类内排序，对应表 products.sort_order */
   sort: number
   status: ProductStatus
