@@ -192,8 +192,6 @@ type UserSubscription struct {
 	BaseLimitTokens  int64          `gorm:"column:base_limit_tokens;not null"`
 	LimitTokens      int64          `gorm:"column:limit_tokens;not null"`
 	UsedTokens       int64          `gorm:"column:used_tokens;not null;default:0"`
-	RPMLimit         int            `gorm:"column:rpm_limit;not null;default:0"`
-	TPMLimit         *int           `gorm:"column:tpm_limit"`
 	StartedAt        time.Time      `gorm:"column:started_at;not null"`
 	ExpiresAt        time.Time      `gorm:"column:expires_at;not null"`
 	PeriodStart      time.Time      `gorm:"column:period_start;not null"`

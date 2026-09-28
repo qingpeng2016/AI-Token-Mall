@@ -227,8 +227,6 @@ CREATE TABLE IF NOT EXISTS `user_subscriptions` (
   `base_limit_tokens` BIGINT       NOT NULL COMMENT '套餐基准上限；续费升档改此值；周期重置时 limit_tokens 回到此值',
   `limit_tokens`      BIGINT       NOT NULL COMMENT '当前周期有效上限（=base+本周期临时加购，可>base）',
   `used_tokens`       BIGINT       NOT NULL DEFAULT 0 COMMENT '当前周期已用；剩余=limit_tokens-used_tokens',
-  `rpm_limit`         INT          NOT NULL DEFAULT 0 COMMENT '用户 RPM 快照，0=不限',
-  `tpm_limit`         INT          DEFAULT NULL COMMENT '用户 TPM 快照（可选）',
   `started_at`        DATETIME     NOT NULL COMMENT '服务整体开始时间（首开）',
   `expires_at`        DATETIME     NOT NULL COMMENT '服务整体到期（续费延长；网关校验是否仍可调用）',
   `period_start`      DATETIME     NOT NULL COMMENT '当前 token 计费周期起（如自然月）',
