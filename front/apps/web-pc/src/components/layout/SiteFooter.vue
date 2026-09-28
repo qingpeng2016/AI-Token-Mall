@@ -1,36 +1,22 @@
 <script setup lang="ts">
+import { computed, onMounted } from 'vue'
+import { RouterLink } from 'vue-router'
 import SiteLogo from '@/components/brand/SiteLogo.vue'
 import { SITE_NAME } from '@/constants/brand'
+import {
+  reloadCatalogProducts,
+  useCatalogProducts,
+} from '@/composables/useCatalogProducts'
+import {
+  reloadTutorialBlog,
+  useTutorialBlog,
+} from '@/composables/useTutorialBlog'
+import { blogCategories } from '@/mocks/blog'
+import { catalogFilterPills as mockCatalogPills, mockProducts } from '@/mocks/home'
+import { productDetailPath } from '@/mocks/productRoutes'
 
-const chatgptLinks = [
-  { label: 'GPT Go', href: '#catalog' },
-  { label: 'Plus 月卡', href: '#catalog' },
-  { label: 'Pro 5X', href: '#catalog' },
-  { label: 'Pro 20X', href: '#catalog' },
-  { label: 'Codex', href: '#catalog' },
-  { label: 'Images 2.5', href: '#catalog' },
-]
-
-const moreAiLinks = [
-  { label: 'Claude Pro', href: '#catalog' },
-  { label: 'Max 5X', href: '#catalog' },
-  { label: 'Max 20X', href: '#catalog' },
-  { label: 'Claude Code', href: '#catalog' },
-  { label: 'Grok 套餐', href: '#catalog' },
-  { label: 'Gemini 套餐', href: '#catalog' },
-  { label: 'Cursor 配置', href: '#catalog' },
-  { label: 'Perplexity Pro', href: '#catalog' },
-  { label: '全部套餐', href: '#catalog' },
-]
-
-const toolsLinks = [
-  { label: '工具中心', href: '#' },
-  { label: 'Codex 使用说明', href: '#' },
-  { label: 'Skills 库', href: '#' },
-  { label: '价格中心', href: '#catalog' },
-  { label: '价格说明', href: '#faq' },
-  { label: '教程资讯', href: '/blog' },
-]
+/** 与原先「工具 · 帮助」列链接数量接近 */
+const FOOTER_TUTORIAL_CATEGORY_LIMIT = 6
 
 const aboutLinks = [
   { label: '关于我们', href: '#' },
@@ -39,6 +25,82 @@ const aboutLinks = [
   { label: '分销合作', href: '#' },
   { label: '服务条款与隐私', href: '#' },
 ]
+
+const { categories: tutorialCategories } = useTutorialBlog()
+const { categories: productCategories } = useCatalogProducts()
+
+onMounted(() => {
+  void reloadCatalogProducts({ soft: true })
+  void reloadTutorialBlog({ soft: true })
+})
+
+const chatgptLinks = computed(() => {
+  const chatgptCategory =
+    productCategories.value.find((c) => c.name === 'ChatGPT') ??
+    productCategories.value.find((c) =>
+      c.products.some((p) => p.products_category_name === 'openai'),
+    )
+
+  const products = chatgptCategory
+    ? [...chatgptCategory.products].sort((a, b) => a.sort - b.sort)
+    : mockProducts
+        .filter((p) => p.products_category_name === 'openai')
+        .sort((a, b) => a.sort - b.sort)
+
+  return products.map((p) => ({
+    label: p.card_title || p.sku_product_name,
+    to: productDetailPath(p.sku_code),
+  }))
+})
+
+const moreAiLinks = computed(() => {
+  const sorted =
+    productCategories.value.length > 0
+      ? [...productCategories.value].sort((a, b) => a.sort - b.sort)
+      : mockCatalogPills
+          .filter((p) => p.value !== 'all')
+          .map((p) => ({
+            id: Number(p.value),
+            name: p.label,
+            sort: Number(p.value),
+          }))
+
+  const links = sorted.map((c) => ({
+    label: c.name,
+    to: {
+      path: '/',
+      hash: '#catalog',
+      query: { cat: String(c.id) },
+    },
+  }))
+
+  links.push({
+    label: '全部套餐',
+    to: { path: '/', hash: '#catalog', query: { cat: 'all' } },
+  })
+
+  return links
+})
+
+const toolsLinks = computed(() => {
+  const fromState = tutorialCategories.value.filter((c) => c.id !== 'all')
+  const source =
+    fromState.length > 0
+      ? fromState
+      : blogCategories.map((c) => ({ id: c.id, label: c.label }))
+
+  return source.slice(0, FOOTER_TUTORIAL_CATEGORY_LIMIT).map((c) => ({
+    label: c.label,
+    to: { path: '/blog', query: { cat: c.id } },
+  }))
+})
+
+const footerColumns = computed(() => [
+  { title: 'CHATGPT', links: chatgptLinks.value, kind: 'router' as const },
+  { title: '更多 AI', links: moreAiLinks.value, kind: 'router' as const },
+  { title: '工具 · 帮助', links: toolsLinks.value, kind: 'router' as const },
+  { title: '关于', links: aboutLinks, kind: 'href' as const },
+])
 </script>
 
 <template>
@@ -48,16 +110,18 @@ const aboutLinks = [
         <SiteLogo variant="footer" class="footer-logo" />
       </div>
 
-      <div v-for="(col, idx) in [
-        { title: 'CHATGPT', links: chatgptLinks },
-        { title: '更多 AI', links: moreAiLinks },
-        { title: '工具 · 帮助', links: toolsLinks },
-        { title: '关于', links: aboutLinks },
-      ]" :key="idx" class="footer-col">
+      <div v-for="(col, idx) in footerColumns" :key="idx" class="footer-col">
         <h3 class="footer-col-title">{{ col.title }}</h3>
         <ul class="footer-col-list">
           <li v-for="link in col.links" :key="link.label">
-            <a :href="link.href">{{ link.label }}</a>
+            <RouterLink
+              v-if="col.kind === 'router' && 'to' in link"
+              :to="link.to"
+              class="footer-link"
+            >
+              {{ link.label }}
+            </RouterLink>
+            <a v-else-if="'href' in link" :href="link.href" class="footer-link">{{ link.label }}</a>
           </li>
         </ul>
       </div>
@@ -133,13 +197,13 @@ const aboutLinks = [
   margin-top: 10px;
 }
 
-.footer-col-list a {
+.footer-link {
   color: #cbd5e1;
   text-decoration: none;
   transition: color 0.15s;
 }
 
-.footer-col-list a:hover {
+.footer-link:hover {
   color: #fff;
 }
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import PurchaseModal from '@/components/checkout/PurchaseModal.vue'
@@ -103,13 +103,51 @@ function resumePendingPurchase() {
   }
 }
 
+function syncCatalogFilterFromRoute() {
+  const cat = route.query.cat
+  if (cat === 'all') {
+    filter.value = 'all'
+    return
+  }
+  if (typeof cat === 'string' && cat !== '') {
+    const exists = catalogFilterPills.value.some((p) => p.value === cat)
+    if (exists) filter.value = cat
+  }
+}
+
+function scrollToCatalogSection() {
+  nextTick(() => {
+    document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
+}
+
 onMounted(() => {
-  if (window.location.hash === '#catalog') {
+  const hasCatalogIntent = route.hash === '#catalog' || route.query.cat !== undefined
+  if (hasCatalogIntent) {
+    syncCatalogFilterFromRoute()
+    scrollToCatalogSection()
+  } else if (window.location.hash === '#catalog') {
     history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
     window.scrollTo(0, 0)
   }
   sessionUser.value = getSessionUser()
   resumePendingPurchase()
+})
+
+watch(
+  () => [route.query.cat, route.hash] as const,
+  () => {
+    if (route.path !== '/') return
+    if (route.hash !== '#catalog' && route.query.cat === undefined) return
+    syncCatalogFilterFromRoute()
+    scrollToCatalogSection()
+  },
+)
+
+watch(catalogFilterPills, () => {
+  if (route.path === '/' && route.query.cat !== undefined) {
+    syncCatalogFilterFromRoute()
+  }
 })
 
 watch(catalogProducts, () => {
