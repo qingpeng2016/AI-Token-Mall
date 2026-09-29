@@ -13,16 +13,25 @@ import (
 	"go.uber.org/zap"
 )
 
+// Entry Bot 入口（定时驱动 Scheduler.Handle）
 type Entry struct {
 	scheduler *Scheduler
 	ns        *gocron.Scheduler
 	startMu   sync.Mutex
 }
 
+func catch() {
+	if e := recover(); e != nil {
+		notification.SendErrorLog(context.Background(), "bot panic", zap.Any("e", e), zap.Any("stack", debug.Stack()))
+	}
+}
+
+// NewEntry 创建 Bot 入口
 func NewEntry(scheduler *Scheduler) *Entry {
 	return &Entry{scheduler: scheduler}
 }
 
+// Start 启动 Bot
 func (e *Entry) Start() error {
 	_ = notification.GetGlobalNotificationManager().SendInfoAlert(context.Background(), "AI-Token-Mall bot 启动", []notification.FieldPair{
 		{Key: "机器", Value: conf.Get_MACHINE_NAME()},
@@ -35,20 +44,18 @@ func (e *Entry) Start() error {
 	}
 
 	e.ns = gocron.NewScheduler(time.Local)
-	_, err := e.ns.Every(10).Seconds().Name("BotScheduler").WaitForSchedule().SingletonMode().Do(func() {
-		defer func() {
-			if r := recover(); r != nil {
-				notification.SendErrorLog(context.Background(), "bot-entry-panic", zap.Any("panic", r), zap.Any("stack", debug.Stack()))
-			}
-		}()
+	_, err := e.ns.Every(4).Seconds().Name("Scheduler").WaitForSchedule().SingletonMode().Do(func() {
+		defer catch()
 		e.scheduler.Handle()
 	})
 	if err != nil {
+		notification.SendErrorLog(context.Background(), "bot Scheduler-job-create-failed", zap.Error(err))
 		return err
 	}
 	e.ns.SetMaxConcurrentJobs(1, gocron.WaitMode)
 	e.ns.StartAsync()
-	logger.InfoZ(context.Background(), "bot-started", zap.String("machine", conf.Get_MACHINE_NAME()))
+
+	logger.InfoZ(context.Background(), "bot Start", zap.String("message", "AI-Token-Mall bot 已启动"))
 	return nil
 }
 

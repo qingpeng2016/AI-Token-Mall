@@ -46,7 +46,6 @@ func BuildContainer() *dig.Container {
 	_ = c.Provide(coreservice.NewBotScheduleConfigService)
 
 	// Bot
-	_ = c.Provide(scripts.NewStatsJob)
 	_ = c.Provide(scripts.NewSubscriptionLifecycleJob)
 	_ = c.Provide(bot.NewScheduler)
 	_ = c.Provide(bot.NewEntry)
@@ -59,7 +58,6 @@ func BuildContainer() *dig.Container {
 	_ = c.Provide(mysql.NewEnterpriseImpl)
 	_ = c.Provide(mysql.NewOrderImpl)
 	_ = c.Provide(mysql.NewSubscriptionImpl)
-	_ = c.Provide(mysql.NewStatsImpl)
 	_ = c.Provide(mysql.NewBotScheduleConfigImpl)
 	_ = c.Provide(redis.NewClient)
 	_ = c.Provide(http.NewHTTPClient)

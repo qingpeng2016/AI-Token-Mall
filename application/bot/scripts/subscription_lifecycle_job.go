@@ -9,7 +9,10 @@ import (
 	"gorm.io/gorm"
 )
 
-const TaskSubscriptionLifecycle = "subscription_lifecycle"
+const (
+	ModuleAITokenMall         = "ai_token_mall"
+	TaskSubscriptionLifecycle = "subscription_lifecycle"
+)
 
 type SubscriptionLifecycleJob struct {
 	db *gorm.DB
