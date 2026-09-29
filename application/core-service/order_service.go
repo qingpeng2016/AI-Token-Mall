@@ -88,21 +88,36 @@ func (s *OrderService) CreateMockOrder(ctx context.Context, userID uint, req *re
 	order.OutTradeNo = outTradeNo
 	order.RawRequestJSON = datatypes.JSON(rawReq)
 
-	if err := s.orders.CreateOrder(ctx, order); err != nil {
+	var createErr error
+	switch orderType {
+	case constants.OrderTypeRenewal:
+		createErr = s.orders.CreateRenewalOrderReplacingPending(ctx, order)
+	case constants.OrderTypeUpgrade:
+		createErr = s.orders.CreateUpgradeOrderReplacingPending(ctx, order)
+	case constants.OrderTypeQuotaAddon:
+		createErr = s.orders.CreateQuotaAddonOrderReplacingPending(ctx, order)
+	default:
+		createErr = s.orders.CreateOrder(ctx, order)
+	}
+	if createErr != nil {
 		return nil, errorx.ErrDbError
 	}
 
+	return createOrderRespFromEntity(order), nil
+}
+
+func createOrderRespFromEntity(order *entity.UserOrder) *response.CreateOrderResp {
 	return &response.CreateOrderResp{
-		OrderNo:          orderNo,
-		OutTradeNo:       outTradeNo,
-		OrderID:          order.ID,
-		OrderType:          orderType,
-		UserSubscriptionID: userSubID,
-		Channel:            channel,
-		Status:           order.Status,
-		TotalAmountCents: total,
-		Currency:         order.Currency,
-	}, nil
+		OrderNo:            order.OrderNo,
+		OutTradeNo:         order.OutTradeNo,
+		OrderID:            order.ID,
+		OrderType:          order.OrderType,
+		UserSubscriptionID: order.UserSubscriptionID,
+		Channel:            order.PayChannel,
+		Status:             order.Status,
+		TotalAmountCents:   order.TotalAmountCents,
+		Currency:           order.Currency,
+	}
 }
 
 func (s *OrderService) HandlePaymentNotify(ctx context.Context, channel string, req *request.PaymentNotifyReq) error {

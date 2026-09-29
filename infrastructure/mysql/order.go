@@ -25,6 +25,63 @@ func (r *OrderImpl) CreateOrder(ctx context.Context, order *entity.UserOrder) er
 	return r.db.WithContext(ctx).Create(order).Error
 }
 
+func (r *OrderImpl) CreateRenewalOrderReplacingPending(ctx context.Context, order *entity.UserOrder) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		now := time.Now()
+		if err := tx.Model(&entity.UserOrder{}).
+			Where(
+				"user_id = ? AND user_subscription_id = ? AND order_type = ? AND status = ?",
+				order.UserID, order.UserSubscriptionID, "renewal", "pending_payment",
+			).
+			Updates(map[string]interface{}{
+				"status":     "cancelled",
+				"closed_at":  now,
+				"updated_at": now,
+			}).Error; err != nil {
+			return err
+		}
+		return tx.Create(order).Error
+	})
+}
+
+func (r *OrderImpl) CreateUpgradeOrderReplacingPending(ctx context.Context, order *entity.UserOrder) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		now := time.Now()
+		if err := tx.Model(&entity.UserOrder{}).
+			Where(
+				"user_id = ? AND user_subscription_id = ? AND order_type = ? AND status = ?",
+				order.UserID, order.UserSubscriptionID, "upgrade", "pending_payment",
+			).
+			Updates(map[string]interface{}{
+				"status":     "cancelled",
+				"closed_at":  now,
+				"updated_at": now,
+			}).Error; err != nil {
+			return err
+		}
+		return tx.Create(order).Error
+	})
+}
+
+func (r *OrderImpl) CreateQuotaAddonOrderReplacingPending(ctx context.Context, order *entity.UserOrder) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		now := time.Now()
+		if err := tx.Model(&entity.UserOrder{}).
+			Where(
+				"user_id = ? AND user_subscription_id = ? AND order_type = ? AND status = ?",
+				order.UserID, order.UserSubscriptionID, "quota_addon", "pending_payment",
+			).
+			Updates(map[string]interface{}{
+				"status":     "cancelled",
+				"closed_at":  now,
+				"updated_at": now,
+			}).Error; err != nil {
+			return err
+		}
+		return tx.Create(order).Error
+	})
+}
+
 func (r *OrderImpl) FindOrderByOutTradeNo(ctx context.Context, outTradeNo string) (*entity.UserOrder, error) {
 	var row entity.UserOrder
 	err := r.db.WithContext(ctx).Where("out_trade_no = ?", outTradeNo).First(&row).Error
