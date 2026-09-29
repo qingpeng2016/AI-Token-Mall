@@ -62,7 +62,18 @@ func upgradeSubscriptionForOrder(tx *gorm.DB, order *entity.UserOrder, product *
 	}
 
 	if wasActive {
-		// period_start / period_end / started_at / expires_at 保持不变
+		if order.Quantity > 1 {
+			anchor := sub.ExpiresAt
+			if !anchor.After(now) {
+				anchor = now
+			}
+			newExpires := anchor
+			for i := 0; i < order.Quantity; i++ {
+				newExpires = addBillingPeriod(newExpires, product.BillingPeriod)
+			}
+			updates["expires_at"] = newExpires
+		}
+		// 1 周期：period_start / period_end / started_at / expires_at 保持不变
 	} else {
 		periodEnd := addBillingPeriod(now, product.BillingPeriod)
 		updates["used_tokens"] = 0

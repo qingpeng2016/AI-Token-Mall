@@ -16,8 +16,16 @@ const props = withDefaults(
     orderType?: OrderType
     /** 续费/升档关联 user_subscriptions.id，新购为 0 */
     userSubscriptionId?: number
+    /** 升档时展示到期预览（来自当前订阅 expires_at） */
+    subscriptionExpiresAt?: string
+    subscriptionStatus?: string
   }>(),
-  { orderType: 'purchase', userSubscriptionId: 0 },
+  {
+    orderType: 'purchase',
+    userSubscriptionId: 0,
+    subscriptionExpiresAt: '',
+    subscriptionStatus: '',
+  },
 )
 
 const emit = defineEmits<{
@@ -31,8 +39,72 @@ const couponInput = ref('')
 const couponApplied = ref<{ code: string; percentOff: number } | null>(null)
 const paying = ref(false)
 
-/** 仅新购可选份数；续费/升档/加购额度固定 1 */
-const showQuantityPicker = computed(() => props.orderType === 'purchase')
+/** 新购、升档可选份数（份数 = 计费周期数）；续费/加购额度固定 1 */
+const showQuantityPicker = computed(
+  () => props.orderType === 'purchase' || props.orderType === 'upgrade',
+)
+
+const showTotalSub = computed(
+  () => props.orderType === 'purchase' || props.orderType === 'upgrade',
+)
+
+function parseSubscriptionDate(s: string): Date | null {
+  const raw = s?.trim()
+  if (!raw) return null
+  const d = new Date(`${raw}T12:00:00`)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+function addBillingPeriod(from: Date, billingPeriod: string): Date {
+  const d = new Date(from.getTime())
+  if (billingPeriod === 'year') {
+    d.setFullYear(d.getFullYear() + 1)
+  } else if (billingPeriod === 'once') {
+    d.setDate(d.getDate() + 30)
+  } else {
+    d.setMonth(d.getMonth() + 1)
+  }
+  return d
+}
+
+function formatSubscriptionDate(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+const billingPeriodUnit = computed(() => {
+  const p = props.product?.billing_period
+  if (p === 'year') return '年'
+  if (p === 'once') return '次'
+  return '月'
+})
+
+/** 升档：按购买周期数推算支付后服务到期（active 且 1 周期时到期不变） */
+const upgradeExpiresPreview = computed(() => {
+  if (props.orderType !== 'upgrade' || !props.product) return null
+  const qty = quantity.value
+  const period = props.product.billing_period ?? 'month'
+  const current = parseSubscriptionDate(props.subscriptionExpiresAt ?? '')
+  const isActive = props.subscriptionStatus === 'active'
+
+  if (isActive && qty === 1 && current) {
+    return { date: formatSubscriptionDate(current), unchanged: true }
+  }
+
+  const now = new Date()
+  let anchor = now
+  if (isActive && current && current.getTime() > now.getTime()) {
+    anchor = current
+  }
+
+  let end = anchor
+  for (let i = 0; i < qty; i++) {
+    end = addBillingPeriod(end, period)
+  }
+  return { date: formatSubscriptionDate(end), unchanged: false }
+})
 
 watch(
   () => props.open,
@@ -164,7 +236,9 @@ async function submitPay(channel: 'alipay' | 'paypal') {
           </div>
 
           <div v-if="showQuantityPicker" class="purchase-qty">
-            <span class="field-label">购买数量</span>
+            <span class="field-label">{{
+              orderType === 'upgrade' ? '购买周期数' : '购买数量'
+            }}</span>
             <div class="qty-row">
               <div class="qty-stepper">
                 <button type="button" aria-label="减少" @click="clampQty(quantity - 1)">−</button>
@@ -206,15 +280,25 @@ async function submitPay(channel: 'alipay' | 'paypal') {
             <p v-if="orderType === 'quota_addon' && quotaAddonGrantTokens > 0" class="quota-grant-line">
               新增额度 {{ formatTokenCount(quotaAddonGrantTokens) }} tokens
             </p>
+            <p
+              v-if="orderType === 'upgrade' && upgradeExpiresPreview"
+              class="upgrade-expires-line"
+            >
+              <template v-if="upgradeExpiresPreview.unchanged">
+                升档后服务到期不变 · {{ upgradeExpiresPreview.date }}
+              </template>
+              <template v-else>
+                购买 {{ quantity }} 个{{ billingPeriodUnit }}周期 · 预计服务到期
+                {{ upgradeExpiresPreview.date }}
+              </template>
+            </p>
             <p class="total-line">
               合计
               <strong>{{ formatCnyFromCents(totalCents) }}</strong>
             </p>
-            <p v-if="showQuantityPicker" class="total-sub">
-              <template v-if="showQuantityPicker">
-                {{ quantity }} 份 × {{ formatCnyFromCents(unitCents) }}
-              </template>
-              <template v-else>{{ formatCnyFromCents(unitCents) }}</template>
+            <p v-if="showTotalSub" class="total-sub">
+              {{ quantity }} {{ orderType === 'upgrade' ? '个周期' : '份' }} ×
+              {{ formatCnyFromCents(unitCents) }}
               <template v-if="couponApplied"> · 优惠券 −{{ couponApplied.percentOff }}%</template>
             </p>
           </div>
@@ -463,7 +547,8 @@ async function submitPay(channel: 'alipay' | 'paypal') {
   margin-bottom: 20px;
 }
 
-.quota-grant-line {
+.quota-grant-line,
+.upgrade-expires-line {
   margin: 0 0 10px;
   font-size: 14px;
   font-weight: 600;
