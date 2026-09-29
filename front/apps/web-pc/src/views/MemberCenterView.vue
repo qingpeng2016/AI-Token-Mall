@@ -836,11 +836,15 @@ function confirmAddTeamMember() {
                   </div>
                   <div class="plan-card-tags">
                     <span v-if="isSubscriptionActive(sub.status)" class="tag tag--active">
-                      余额自动续费
+                      余额自动续费中
                     </span>
-                    <span class="tag" :class="subscriptionTagClass(sub.status)">{{
-                      subscriptionStatusLabel[sub.status] ?? sub.status
-                    }}</span>
+                    <span
+                      v-else
+                      class="tag"
+                      :class="subscriptionTagClass(sub.status)"
+                    >
+                      {{ subscriptionStatusLabel[sub.status] ?? sub.status }}
+                    </span>
                   </div>
                 </div>
                 <div class="plan-metrics">

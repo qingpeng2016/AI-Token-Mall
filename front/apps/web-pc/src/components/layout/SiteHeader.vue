@@ -413,8 +413,8 @@ function isSpaNav(href: string) {
 
 @media (min-width: 1100px) {
   .mega-grid {
-    grid-template-columns: repeat(5, minmax(152px, 1fr));
-    gap: 16px 22px;
+    grid-template-columns: repeat(5, minmax(172px, 1fr));
+    gap: 16px 20px;
   }
 }
 
@@ -458,14 +458,13 @@ function isSpaNav(href: string) {
 }
 
 .mega-link-label {
-  display: inline-flex;
-  align-items: center;
   flex: 1;
-  flex-wrap: wrap;
-  gap: 4px;
   min-width: 0;
   font-weight: 500;
   color: var(--atm-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mega-link-price {

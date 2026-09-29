@@ -46,8 +46,8 @@ withDefaults(
 
 @media (min-width: 1100px) {
   .mega-grid {
-    grid-template-columns: repeat(5, minmax(152px, 1fr));
-    gap: 16px 22px;
+    grid-template-columns: repeat(5, minmax(172px, 1fr));
+    gap: 16px 20px;
   }
 }
 

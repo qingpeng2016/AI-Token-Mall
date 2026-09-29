@@ -41,30 +41,9 @@ const emit = defineEmits<{
   paid: []
 }>()
 
-const quantity = ref(1)
-const qtyPresets = [1, 5, 10, 20]
 const couponInput = ref('')
 const couponApplied = ref<{ code: string; percentOff: number } | null>(null)
 const paying = ref(false)
-
-/** 仅新购可选份数；升档周期由订阅 period_end / expires_at 自动计算 */
-const showQuantityPicker = computed(() => props.orderType === 'purchase')
-
-const showTotalSub = computed(() =>
-  ['purchase', 'renewal', 'upgrade', 'quota_addon'].includes(props.orderType),
-)
-
-const totalSubUnit = computed(() => {
-  switch (props.orderType) {
-    case 'upgrade':
-      return '个周期'
-    case 'renewal':
-    case 'quota_addon':
-      return '份'
-    default:
-      return '份'
-  }
-})
 
 const billingPeriodUnit = computed(() => {
   const p = props.product?.billing_period
@@ -86,8 +65,9 @@ const upgradeBillingCycles = computed(() => {
   )
 })
 
+/** 新购/续费/加购固定 1 份；升档份数由订阅周期自动计算 */
 const checkoutQuantity = computed(() =>
-  props.orderType === 'upgrade' ? upgradeBillingCycles.value : quantity.value,
+  props.orderType === 'upgrade' ? upgradeBillingCycles.value : 1,
 )
 
 const upgradeExpiresLabel = computed(() => {
@@ -100,18 +80,8 @@ watch(
   () => props.open,
   (visible) => {
     if (visible) {
-      quantity.value = 1
       couponInput.value = ''
       couponApplied.value = null
-    }
-  },
-)
-
-watch(
-  () => props.orderType,
-  () => {
-    if (!showQuantityPicker.value) {
-      quantity.value = 1
     }
   },
 )
@@ -153,15 +123,11 @@ const totalAmount = computed(() =>
 
 const quotaAddonGrantTokens = computed(() => {
   if (props.orderType !== 'quota_addon' || !props.product) return 0
-  return props.product.limit_tokens * quantity.value
+  return props.product.limit_tokens
 })
 
 function close() {
   emit('update:open', false)
-}
-
-function clampQty(n: number) {
-  quantity.value = Math.min(99, Math.max(1, n))
 }
 
 function applyCoupon() {
@@ -237,35 +203,6 @@ async function submitPay(channel: 'alipay' | 'paypal') {
             </label>
           </div>
 
-          <div v-if="showQuantityPicker" class="purchase-qty">
-            <span class="field-label">购买数量</span>
-            <div class="qty-row">
-              <div class="qty-stepper">
-                <button type="button" aria-label="减少" @click="clampQty(quantity - 1)">−</button>
-                <input
-                  v-model.number="quantity"
-                  type="number"
-                  min="1"
-                  max="99"
-                  @change="clampQty(quantity)"
-                />
-                <button type="button" aria-label="增加" @click="clampQty(quantity + 1)">+</button>
-              </div>
-              <div class="qty-presets">
-                <button
-                  v-for="n in qtyPresets"
-                  :key="n"
-                  type="button"
-                  class="qty-pill"
-                  :class="{ active: quantity === n }"
-                  @click="clampQty(n)"
-                >
-                  {{ n }}
-                </button>
-              </div>
-            </div>
-          </div>
-
           <div class="purchase-coupon">
             <input
               v-model="couponInput"
@@ -287,11 +224,6 @@ async function submitPay(channel: 'alipay' | 'paypal') {
             <p class="total-line">
               合计
               <strong>{{ formatCny(totalAmount) }}</strong>
-            </p>
-            <p v-if="showTotalSub" class="total-sub">
-              {{ checkoutQuantity }} {{ totalSubUnit }} ×
-              {{ formatCny(unitPrice) }}
-              <template v-if="couponApplied"> · 优惠券 −{{ couponApplied.percentOff }}%</template>
             </p>
           </div>
 
@@ -428,84 +360,6 @@ async function submitPay(channel: 'alipay' | 'paypal') {
   color: var(--atm-primary);
 }
 
-.field-label {
-  display: block;
-  margin-bottom: 10px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--atm-text);
-}
-
-.purchase-qty {
-  margin-bottom: 20px;
-}
-
-.qty-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-}
-
-.qty-stepper {
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-}
-
-.qty-stepper button {
-  width: 40px;
-  height: 40px;
-  font-size: 18px;
-  color: var(--atm-text);
-  cursor: pointer;
-  background: #f8fafc;
-  border: none;
-}
-
-.qty-stepper input {
-  width: 48px;
-  height: 40px;
-  font-size: 15px;
-  font-weight: 600;
-  text-align: center;
-  border: none;
-  border-left: 1px solid #e2e8f0;
-  border-right: 1px solid #e2e8f0;
-  -moz-appearance: textfield;
-}
-
-.qty-stepper input::-webkit-outer-spin-button,
-.qty-stepper input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.qty-presets {
-  display: flex;
-  gap: 8px;
-}
-
-.qty-pill {
-  min-width: 40px;
-  padding: 8px 14px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--atm-text-muted);
-  cursor: pointer;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 999px;
-}
-
-.qty-pill.active {
-  color: #fff;
-  background: var(--atm-gradient);
-  border-color: transparent;
-}
-
 .purchase-coupon {
   display: flex;
   gap: 0;
@@ -558,12 +412,6 @@ async function submitPay(channel: 'alipay' | 'paypal') {
   font-size: 26px;
   font-weight: 800;
   color: var(--atm-text);
-}
-
-.total-sub {
-  margin: 0;
-  font-size: 13px;
-  color: #94a3b8;
 }
 
 .purchase-pay {
