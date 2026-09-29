@@ -258,18 +258,6 @@ async function fetchPlansTabData() {
   }
 }
 
-async function fetchMemberSubscriptions() {
-  plansLoading.value = true
-  try {
-    memberSubscriptions.value = await subscriptionApi.list()
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : ''
-    ElMessage.error(msg || '套餐列表加载失败')
-  } finally {
-    plansLoading.value = false
-  }
-}
-
 function findCatalogProductById(productId: number) {
   return catalogProducts.value.find((item) => item.id === productId)
 }
