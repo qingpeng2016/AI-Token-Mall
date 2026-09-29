@@ -37,7 +37,7 @@ async function prepareRouteData(
     await reloadNavMenu({ soft: soft || hasNavInMemory() })
   }
 
-  if (name === 'home') {
+  if (name === 'home' || name === 'member') {
     await reloadCatalogProducts({ soft })
   }
   if (name === 'product') {

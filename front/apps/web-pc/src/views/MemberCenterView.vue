@@ -185,7 +185,7 @@ watch(
     if (tab === prevTab) return
     if (tab === 'plans' && !tabLoadedOnce.value.plans) {
       tabLoadedOnce.value.plans = true
-      void fetchMemberSubscriptions()
+      void fetchPlansTabData()
     }
   },
   { immediate: true },
@@ -232,15 +232,44 @@ function subscriptionTagClass(status: string) {
   return `tag--${status}`
 }
 
+async function ensureCatalogReady() {
+  if (catalogProducts.value.length) return
+  await reloadCatalogProducts({ soft: true })
+}
+
+async function fetchPlansTabData() {
+  plansLoading.value = true
+  void ensureCatalogReady().catch(() => {})
+  try {
+    memberSubscriptions.value = await subscriptionApi.list()
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : ''
+    if (/unauthorized|401/i.test(msg)) {
+      ElMessage.error('登录已失效，请重新登录')
+      clearSessionUser()
+      void router.replace({ path: '/login', query: { redirect: route.fullPath } })
+    } else {
+      ElMessage.error(msg || '套餐列表加载失败')
+    }
+  } finally {
+    plansLoading.value = false
+  }
+}
+
 async function fetchMemberSubscriptions() {
   plansLoading.value = true
   try {
     memberSubscriptions.value = await subscriptionApi.list()
-  } catch {
-    ElMessage.error('套餐列表加载失败')
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : ''
+    ElMessage.error(msg || '套餐列表加载失败')
   } finally {
     plansLoading.value = false
   }
+}
+
+function findCatalogProductById(productId: number) {
+  return catalogProducts.value.find((item) => item.id === productId)
 }
 
 function logout() {
@@ -300,9 +329,7 @@ function resolveUpgradeCategoryId(sub: UserSubscriptionItem): number | null {
 }
 
 async function openUpgradeCatalog(sub: UserSubscriptionItem) {
-  if (!catalogProducts.value.length) {
-    await reloadCatalogProducts({ soft: true })
-  }
+  await ensureCatalogReady()
   const categoryId = resolveUpgradeCategoryId(sub)
   if (categoryId == null) {
     ElMessage.warning('未找到该套餐分类，请稍后重试或联系客服')
@@ -315,8 +342,9 @@ async function openUpgradeCatalog(sub: UserSubscriptionItem) {
   catalogOpen.value = true
 }
 
-function openQuotaAddon(sub: UserSubscriptionItem) {
-  const p = catalogProducts.value.find((item) => item.id === sub.product_id)
+async function openQuotaAddon(sub: UserSubscriptionItem) {
+  await ensureCatalogReady()
+  const p = findCatalogProductById(sub.product_id)
   if (!p) {
     ElMessage.warning('未找到该套餐商品，请稍后重试或联系客服')
     return
@@ -327,8 +355,9 @@ function openQuotaAddon(sub: UserSubscriptionItem) {
   purchaseOpen.value = true
 }
 
-function openRenewSubscription(sub: UserSubscriptionItem) {
-  const p = catalogProducts.value.find((item) => item.id === sub.product_id)
+async function openRenewSubscription(sub: UserSubscriptionItem) {
+  await ensureCatalogReady()
+  const p = findCatalogProductById(sub.product_id)
   if (!p) {
     ElMessage.warning('未找到该套餐商品，请稍后重试或联系客服')
     return
