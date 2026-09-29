@@ -22,7 +22,8 @@ type Router struct {
 	productHandler   *handler.ProductHandler
 	tutorialHandler    *handler.TutorialHandler
 	enterpriseHandler  *handler.EnterpriseHandler
-	orderHandler       *handler.OrderHandler
+	orderHandler         *handler.OrderHandler
+	subscriptionHandler  *handler.SubscriptionHandler
 }
 
 func NewRouter(
@@ -32,14 +33,16 @@ func NewRouter(
 	tutorialHandler *handler.TutorialHandler,
 	enterpriseHandler *handler.EnterpriseHandler,
 	orderHandler *handler.OrderHandler,
+	subscriptionHandler *handler.SubscriptionHandler,
 ) *Router {
 	return &Router{
-		setting:           setting,
-		userHandler:       userHandler,
-		productHandler:    productHandler,
-		tutorialHandler:   tutorialHandler,
-		enterpriseHandler: enterpriseHandler,
-		orderHandler:      orderHandler,
+		setting:             setting,
+		userHandler:         userHandler,
+		productHandler:      productHandler,
+		tutorialHandler:     tutorialHandler,
+		enterpriseHandler:   enterpriseHandler,
+		orderHandler:        orderHandler,
+		subscriptionHandler: subscriptionHandler,
 	}
 }
 
@@ -65,6 +68,7 @@ func (r *Router) setupRouters() *gin.Engine {
 	// 需登录；正式网关回调另开 /api/v1/payments/notify 且无鉴权
 	authGroup := engine.Group("/api/v1/mock", ginMiddleware.RequireAuth)
 	{
+		authGroup.GET("/subscriptions", r.subscriptionHandler.ListMine)
 		authGroup.POST("/orders", r.orderHandler.CreateOrder)
 		authGroup.POST("/payments/notify/:channel", r.orderHandler.PaymentNotify)
 	}

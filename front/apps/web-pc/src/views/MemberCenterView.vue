@@ -14,7 +14,8 @@ import {
   isLoggedIn,
   userAccountLabel,
 } from '@/composables/useSessionUser'
-import { userApi } from '@/api'
+import { subscriptionApi, userApi } from '@/api'
+import type { UserSubscriptionItem } from '@ai-token-mall/shared'
 import {
   formatTokens,
   memberNav,
@@ -34,7 +35,6 @@ import {
   withdrawalChannelLabel,
   withdrawalStatusLabel,
   type MemberTab,
-  type MockSubscription,
   type MockSubAccount,
   type MockTeamSubKey,
   type MockWithdrawalRecord,
@@ -49,6 +49,15 @@ const purchaseOpen = ref(false)
 const purchaseProduct = ref<CatalogProduct | null>(null)
 const purchaseOrderType = ref<OrderType>('purchase')
 const purchaseUserSubscriptionId = ref(0)
+const memberSubscriptions = ref<UserSubscriptionItem[]>([])
+const plansLoading = ref(false)
+
+const subscriptionStatusLabel: Record<string, string> = {
+  active: '使用中',
+  expired: '已过期',
+  suspended: '已暂停',
+  cancelled: '已取消',
+}
 const teamInviteOpen = ref(false)
 const apiKeyPanelTab = ref<'mine' | 'team' | 'group'>('mine')
 const teamMembers = ref<MockSubAccount[]>([...mockApiTeamMembers])
@@ -160,9 +169,18 @@ const activeTab = computed<MemberTab>(() => {
   return validTabs.has(t as MemberTab) ? (t as MemberTab) : 'overview'
 })
 
-watch(activeTab, (tab) => {
-  if (tab !== 'api-keys') apiKeyPanelTab.value = 'mine'
-  if (tab !== 'sub-accounts') inviteRebatePanelTab.value = 'details'
+watch(
+  activeTab,
+  (tab) => {
+    if (tab !== 'api-keys') apiKeyPanelTab.value = 'mine'
+    if (tab !== 'sub-accounts') inviteRebatePanelTab.value = 'details'
+    if (tab === 'plans') void fetchMemberSubscriptions()
+  },
+  { immediate: true },
+)
+
+watch(purchaseOpen, (open, prev) => {
+  if (prev && !open && activeTab.value === 'plans') void fetchMemberSubscriptions()
 })
 
 const pageTitle = computed(() => memberNav.find((n) => n.id === activeTab.value)?.label ?? '会员中心')
@@ -194,6 +212,27 @@ onBeforeMount(() => {
 
 function usagePercent(used: number, limit: number) {
   return limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0
+}
+
+function isSubscriptionActive(status: string) {
+  return status === 'active'
+}
+
+function subscriptionTagClass(status: string) {
+  if (status === 'active') return 'tag--active'
+  if (status === 'expired') return 'tag--cancelled'
+  return `tag--${status}`
+}
+
+async function fetchMemberSubscriptions() {
+  plansLoading.value = true
+  try {
+    memberSubscriptions.value = await subscriptionApi.list()
+  } catch {
+    ElMessage.error('套餐列表加载失败')
+  } finally {
+    plansLoading.value = false
+  }
 }
 
 function logout() {
@@ -230,14 +269,14 @@ function openCatalogPicker() {
   catalogOpen.value = true
 }
 
-function openUpgradeCatalog(sub: MockSubscription) {
+function openUpgradeCatalog(sub: UserSubscriptionItem) {
   purchaseOrderType.value = 'upgrade'
   purchaseUserSubscriptionId.value = sub.id
   catalogOpen.value = true
 }
 
-function openQuotaAddon(sub: MockSubscription) {
-  const p = catalogProducts.value.find((item) => item.id === sub.productId)
+function openQuotaAddon(sub: UserSubscriptionItem) {
+  const p = catalogProducts.value.find((item) => item.id === sub.product_id)
   if (!p) {
     ElMessage.warning('未找到该套餐商品，请稍后重试或联系客服')
     return
@@ -248,8 +287,8 @@ function openQuotaAddon(sub: MockSubscription) {
   purchaseOpen.value = true
 }
 
-function openRenewSubscription(sub: MockSubscription) {
-  const p = catalogProducts.value.find((item) => item.id === sub.productId)
+function openRenewSubscription(sub: UserSubscriptionItem) {
+  const p = catalogProducts.value.find((item) => item.id === sub.product_id)
   if (!p) {
     ElMessage.warning('未找到该套餐商品，请稍后重试或联系客服')
     return
@@ -708,58 +747,67 @@ function confirmAddTeamMember() {
 
             <!-- 我的套餐 -->
             <div v-else-if="activeTab === 'plans'" class="panel-body">
-            <article v-for="sub in mockSubscriptions" :key="sub.id" class="plan-card">
-              <div class="plan-card-head">
-                <div>
-                  <h2>{{ sub.productName }}</h2>
+            <p v-if="plansLoading" class="empty">加载中…</p>
+            <template v-else>
+              <article v-for="sub in memberSubscriptions" :key="sub.id" class="plan-card">
+                <div class="plan-card-head">
+                  <div>
+                    <h2>{{ sub.product_name }}</h2>
+                  </div>
+                  <span class="tag" :class="subscriptionTagClass(sub.status)">{{
+                    subscriptionStatusLabel[sub.status] ?? sub.status
+                  }}</span>
                 </div>
-                <span class="tag tag--active">使用中</span>
-              </div>
-              <div class="plan-metrics">
-                <div>
-                  <span class="metric-label">本周期额度</span>
-                  <strong>{{ formatTokens(sub.limitTokens) }} tokens</strong>
+                <div class="plan-metrics">
+                  <div>
+                    <span class="metric-label">本周期额度</span>
+                    <strong>{{ formatTokens(sub.limit_tokens) }} tokens</strong>
+                  </div>
+                  <div>
+                    <span class="metric-label">已使用</span>
+                    <strong>{{ formatTokens(sub.used_tokens) }}</strong>
+                  </div>
+                  <div>
+                    <span class="metric-label">周期截止</span>
+                    <strong>{{ sub.period_end }}</strong>
+                  </div>
+                  <div>
+                    <span class="metric-label">服务到期</span>
+                    <strong>{{ sub.expires_at }}</strong>
+                  </div>
                 </div>
-                <div>
-                  <span class="metric-label">已使用</span>
-                  <strong>{{ formatTokens(sub.usedTokens) }}</strong>
-                </div>
-                <div>
-                  <span class="metric-label">周期截止</span>
-                  <strong>{{ sub.periodEnd }}</strong>
-                </div>
-                <div>
-                  <span class="metric-label">服务到期</span>
-                  <strong>{{ sub.expiresAt }}</strong>
-                </div>
-              </div>
-              <div class="progress-track progress-track--lg">
                 <div
-                  class="progress-fill"
-                  :style="{ width: `${usagePercent(sub.usedTokens, sub.limitTokens)}%` }"
-                />
-              </div>
-              <div class="plan-actions">
-                <button
-                  type="button"
-                  class="atm-btn-primary btn-xs"
-                  @click="openRenewSubscription(sub)"
+                  class="progress-track progress-track--lg"
+                  :class="{ 'progress-track--inactive': !isSubscriptionActive(sub.status) }"
                 >
-                  续费
-                </button>
-                <button type="button" class="atm-btn-primary btn-xs" @click="openUpgradeCatalog(sub)">
-                  升档
-                </button>
-                <button
-                  type="button"
-                  class="atm-btn-primary btn-xs"
-                  @click="openQuotaAddon(sub)"
-                >
-                  加购额度
-                </button>
-              </div>
-            </article>
-            <p v-if="!mockSubscriptions.length" class="empty">暂无生效套餐，去首页选购吧。</p>
+                  <div
+                    v-if="isSubscriptionActive(sub.status)"
+                    class="progress-fill"
+                    :style="{ width: `${usagePercent(sub.used_tokens, sub.limit_tokens)}%` }"
+                  />
+                </div>
+                <div v-if="isSubscriptionActive(sub.status)" class="plan-actions">
+                  <button
+                    type="button"
+                    class="atm-btn-primary btn-xs"
+                    @click="openRenewSubscription(sub)"
+                  >
+                    续费
+                  </button>
+                  <button type="button" class="atm-btn-primary btn-xs" @click="openUpgradeCatalog(sub)">
+                    升档
+                  </button>
+                  <button
+                    type="button"
+                    class="atm-btn-primary btn-xs"
+                    @click="openQuotaAddon(sub)"
+                  >
+                    加购额度
+                  </button>
+                </div>
+              </article>
+              <p v-if="!memberSubscriptions.length" class="empty">暂无套餐记录，去首页选购吧。</p>
+            </template>
             </div>
 
             <!-- API Key -->
@@ -2124,6 +2172,10 @@ function confirmAddTeamMember() {
 .progress-track--lg {
   height: 10px;
   margin-top: 16px;
+}
+
+.progress-track--inactive {
+  background: #cbd5e1;
 }
 
 .progress-track--sm {

@@ -145,6 +145,10 @@ func (s *OrderService) HandlePaymentNotify(ctx context.Context, channel string, 
 			return errorx.ErrOrderNotPayable
 		}
 		if strings.Contains(err.Error(), "renew: no active subscription") ||
+			strings.Contains(err.Error(), "renew: subscription") && strings.Contains(err.Error(), "is not active") ||
+			strings.Contains(err.Error(), "renew: subscription not found") ||
+			strings.Contains(err.Error(), "upgrade: subscription not found") ||
+			strings.Contains(err.Error(), "upgrade: missing user_subscription_id") ||
 			strings.Contains(err.Error(), "quota_addon:") {
 			return errorx.ErrRenewNoSubscription
 		}

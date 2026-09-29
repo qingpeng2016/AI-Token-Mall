@@ -1,46 +1,15 @@
+// 支付 notify 履约：ApplyPaymentNotifySuccess 完成订单落库后，仅通过 fulfillPaidOrderByType 分发。
+// 四种 order_type 各自独立实现，勿在 switch 内写业务逻辑；新增类型请新增 fulfill_<type>.go 并在此注册。
 package mysql
 
 import (
 	"fmt"
 	"time"
 
-	"github.com/qingpeng2016/ai-token-mall/common/apikey"
 	"github.com/qingpeng2016/ai-token-mall/common/constants"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/entity"
 	"gorm.io/gorm"
 )
-
-func issueAPIKeyForSubscription(tx *gorm.DB, order *entity.UserOrder, sub *entity.UserSubscription, product *entity.Product, now time.Time) (*entity.UserAPIKey, error) {
-	if err := tx.Model(&entity.UserAPIKey{}).
-		Where("user_subscription_id = ? AND status = ?", sub.ID, "active").
-		Updates(map[string]interface{}{
-			"status":     "rotated",
-			"rotated_at": now,
-			"updated_at": now,
-		}).Error; err != nil {
-		return nil, err
-	}
-
-	_, hash, err := apikey.Generate()
-	if err != nil {
-		return nil, err
-	}
-	row := entity.UserAPIKey{
-		UserID:               order.UserID,
-		UserSubscriptionID:   sub.ID,
-		KeyHash:              hash,
-		ProductsCategoryName: product.ProductsCategoryName,
-		LimitTokens:          sub.LimitTokens,
-		UsedTokens:           0,
-		Status:               "active",
-		CreatedAt:            now,
-		UpdatedAt:            now,
-	}
-	if err := tx.Create(&row).Error; err != nil {
-		return nil, err
-	}
-	return &row, nil
-}
 
 func insertSubscriptionOrderNotification(tx *gorm.DB, order *entity.UserOrder, sub *entity.UserSubscription, apiKey *entity.UserAPIKey, templateCode string, now time.Time) error {
 	subID := sub.ID
@@ -59,6 +28,15 @@ func insertSubscriptionOrderNotification(tx *gorm.DB, order *entity.UserOrder, s
 		row.APIKeyID = &keyID
 	}
 	return tx.Create(&row).Error
+}
+
+func reactivateSubscriptionAPIKeys(tx *gorm.DB, subscriptionID uint, now time.Time) error {
+	return tx.Model(&entity.UserAPIKey{}).
+		Where("user_subscription_id = ? AND status <> ?", subscriptionID, "rotated").
+		Updates(map[string]interface{}{
+			"status":     "active",
+			"updated_at": now,
+		}).Error
 }
 
 func insertOrderPayWalletFlow(tx *gorm.DB, order *entity.UserOrder, product *entity.Product, channel string, now time.Time) error {

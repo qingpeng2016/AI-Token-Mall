@@ -19,6 +19,7 @@ type OrderRepo interface {
 	FindOrderByOutTradeNo(ctx context.Context, outTradeNo string) (*entity.UserOrder, error)
 	FindOrderByID(ctx context.Context, id uint) (*entity.UserOrder, error)
 	FindActiveSubscriptionByUserProduct(ctx context.Context, userID, productID uint) (*entity.UserSubscription, error)
+	FindLatestSubscriptionByUserProduct(ctx context.Context, userID, productID uint) (*entity.UserSubscription, error)
 	FindSubscriptionForUser(ctx context.Context, userID, subscriptionID uint) (*entity.UserSubscription, error)
 	ApplyPaymentNotifySuccess(ctx context.Context, in PaymentNotifyInput) error
 }

@@ -29,13 +29,16 @@ func resolveOrderUserSubscriptionID(
 			return 0, errorx.ErrRenewNoSubscription
 		}
 		return sub.ID, nil
-	case constants.OrderTypeUpgrade, constants.OrderTypeQuotaAddon:
+	case constants.OrderTypeUpgrade:
+		return resolveLinkedActiveSubscriptionID(ctx, orders, userID, reqSubID)
+	case constants.OrderTypeQuotaAddon:
 		return resolveLinkedActiveSubscriptionID(ctx, orders, userID, reqSubID)
 	default:
 		return 0, errorx.ErrParamsError
 	}
 }
 
+// loadRenewalSubscription 续费前置：关联套餐必须为 active。
 func loadRenewalSubscription(
 	ctx context.Context,
 	orders repository.OrderRepo,
@@ -46,7 +49,7 @@ func loadRenewalSubscription(
 		if err != nil {
 			return nil, err
 		}
-		if sub == nil || sub.Status != "active" || sub.ProductID != productID {
+		if !subscriptionIsActive(sub) || sub.ProductID != productID {
 			return nil, nil
 		}
 		return sub, nil
@@ -54,6 +57,11 @@ func loadRenewalSubscription(
 	return orders.FindActiveSubscriptionByUserProduct(ctx, userID, productID)
 }
 
+func subscriptionIsActive(sub *entity.UserSubscription) bool {
+	return sub != nil && sub.Status == "active"
+}
+
+// resolveLinkedActiveSubscriptionID 升档 / 加购额度：user_subscription_id 对应套餐必须为 active。
 func resolveLinkedActiveSubscriptionID(ctx context.Context, orders repository.OrderRepo, userID, reqSubID uint) (uint, error) {
 	if reqSubID == 0 {
 		return 0, errorx.ErrParamsError
@@ -62,7 +70,7 @@ func resolveLinkedActiveSubscriptionID(ctx context.Context, orders repository.Or
 	if err != nil {
 		return 0, errorx.ErrDbError
 	}
-	if sub == nil || sub.Status != "active" {
+	if !subscriptionIsActive(sub) {
 		return 0, errorx.ErrRenewNoSubscription
 	}
 	return sub.ID, nil

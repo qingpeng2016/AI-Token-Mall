@@ -63,6 +63,21 @@ func (r *OrderImpl) FindActiveSubscriptionByUserProduct(ctx context.Context, use
 	return &row, nil
 }
 
+func (r *OrderImpl) FindLatestSubscriptionByUserProduct(ctx context.Context, userID, productID uint) (*entity.UserSubscription, error) {
+	var row entity.UserSubscription
+	err := r.db.WithContext(ctx).
+		Where("user_id = ? AND product_id = ? AND status IN ?", userID, productID, []string{"active", "expired"}).
+		Order("id DESC").
+		First(&row).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &row, nil
+}
+
 func (r *OrderImpl) FindSubscriptionForUser(ctx context.Context, userID, subscriptionID uint) (*entity.UserSubscription, error) {
 	if subscriptionID == 0 {
 		return nil, nil
@@ -126,6 +141,7 @@ func (r *OrderImpl) ApplyPaymentNotifySuccess(ctx context.Context, in repository
 			return err
 		}
 
+		// 按 order_type 分发至 fulfill_purchase / fulfill_renewal / fulfill_upgrade / fulfill_quota_addon
 		if err := fulfillPaidOrderByType(tx, &order, &product, in.Channel, now); err != nil {
 			return err
 		}
