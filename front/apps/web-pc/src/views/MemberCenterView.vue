@@ -51,6 +51,8 @@ const purchaseOrderType = ref<OrderType>('purchase')
 const purchaseUserSubscriptionId = ref(0)
 const memberSubscriptions = ref<UserSubscriptionItem[]>([])
 const plansLoading = ref(false)
+/** 各侧栏 Tab 仅首次进入时拉取接口，关闭弹窗等不重复请求 */
+const tabLoadedOnce = ref<Partial<Record<MemberTab, boolean>>>({})
 
 const subscriptionStatusLabel: Record<string, string> = {
   active: '使用中',
@@ -171,17 +173,17 @@ const activeTab = computed<MemberTab>(() => {
 
 watch(
   activeTab,
-  (tab) => {
+  (tab, prevTab) => {
     if (tab !== 'api-keys') apiKeyPanelTab.value = 'mine'
     if (tab !== 'sub-accounts') inviteRebatePanelTab.value = 'details'
-    if (tab === 'plans') void fetchMemberSubscriptions()
+    if (tab === prevTab) return
+    if (tab === 'plans' && !tabLoadedOnce.value.plans) {
+      tabLoadedOnce.value.plans = true
+      void fetchMemberSubscriptions()
+    }
   },
   { immediate: true },
 )
-
-watch(purchaseOpen, (open, prev) => {
-  if (prev && !open && activeTab.value === 'plans') void fetchMemberSubscriptions()
-})
 
 const pageTitle = computed(() => memberNav.find((n) => n.id === activeTab.value)?.label ?? '会员中心')
 
@@ -754,9 +756,14 @@ function confirmAddTeamMember() {
                   <div>
                     <h2>{{ sub.product_name }}</h2>
                   </div>
-                  <span class="tag" :class="subscriptionTagClass(sub.status)">{{
-                    subscriptionStatusLabel[sub.status] ?? sub.status
-                  }}</span>
+                  <div class="plan-card-tags">
+                    <span v-if="isSubscriptionActive(sub.status)" class="tag tag--active">
+                      余额自动续费
+                    </span>
+                    <span class="tag" :class="subscriptionTagClass(sub.status)">{{
+                      subscriptionStatusLabel[sub.status] ?? sub.status
+                    }}</span>
+                  </div>
                 </div>
                 <div class="plan-metrics">
                   <div>
@@ -2245,12 +2252,26 @@ function confirmAddTeamMember() {
   margin: 0 0 4px;
   font-size: 18px;
   font-weight: 700;
+  color: var(--atm-text);
+}
+
+.plan-card-tags {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .plan-card-head .tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 6px 14px;
   font-size: 13px;
   font-weight: 700;
+  line-height: 1;
 }
 
 .sku {

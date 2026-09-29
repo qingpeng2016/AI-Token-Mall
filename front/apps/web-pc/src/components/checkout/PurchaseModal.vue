@@ -26,7 +26,6 @@ const emit = defineEmits<{
 
 const quantity = ref(1)
 const qtyPresets = [1, 5, 10, 20]
-const enterpriseInvoice = ref(false)
 const couponInput = ref('')
 const couponApplied = ref<{ code: string; percentOff: number } | null>(null)
 const paying = ref(false)
@@ -36,7 +35,6 @@ watch(
   (visible) => {
     if (visible) {
       quantity.value = 1
-      enterpriseInvoice.value = false
       couponInput.value = ''
       couponApplied.value = null
     }
@@ -55,18 +53,12 @@ const unitCents = computed(() => props.product?.price_cents ?? 0)
 
 const subtotalCents = computed(() => unitCents.value * quantity.value)
 
-const invoiceExtraCents = computed(() =>
-  enterpriseInvoice.value ? Math.round(subtotalCents.value * 0.06) : 0,
-)
-
 const couponOffCents = computed(() => {
   if (!couponApplied.value) return 0
   return Math.round(subtotalCents.value * (couponApplied.value.percentOff / 100))
 })
 
-const totalCents = computed(() =>
-  Math.max(0, subtotalCents.value + invoiceExtraCents.value - couponOffCents.value),
-)
+const totalCents = computed(() => Math.max(0, subtotalCents.value - couponOffCents.value))
 
 function close() {
   emit('update:open', false)
@@ -100,7 +92,7 @@ async function submitPay(channel: 'alipay' | 'paypal') {
       order_type: props.orderType,
       quantity: quantity.value,
       channel,
-      enterprise_invoice: enterpriseInvoice.value,
+      enterprise_invoice: false,
     }
     if (props.userSubscriptionId > 0) {
       body.user_subscription_id = props.userSubscriptionId
@@ -167,11 +159,6 @@ async function submitPay(channel: 'alipay' | 'paypal') {
             </div>
           </div>
 
-          <label class="purchase-check">
-            <input v-model="enterpriseInvoice" type="checkbox" />
-            <span>企业开票 (+6%)</span>
-          </label>
-
           <div class="purchase-coupon">
             <input
               v-model="couponInput"
@@ -189,7 +176,6 @@ async function submitPay(channel: 'alipay' | 'paypal') {
             </p>
             <p class="total-sub">
               {{ quantity }} 份 × {{ formatCnyFromCents(unitCents) }}
-              <template v-if="enterpriseInvoice"> · 含开票 6%</template>
               <template v-if="couponApplied"> · 优惠券 −{{ couponApplied.percentOff }}%</template>
             </p>
           </div>
@@ -403,22 +389,6 @@ async function submitPay(channel: 'alipay' | 'paypal') {
   color: #fff;
   background: var(--atm-gradient);
   border-color: transparent;
-}
-
-.purchase-check {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 18px;
-  font-size: 14px;
-  color: var(--atm-text);
-  cursor: pointer;
-}
-
-.purchase-check input {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--atm-primary);
 }
 
 .purchase-coupon {
