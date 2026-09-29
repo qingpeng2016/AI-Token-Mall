@@ -38,6 +38,26 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 	response.ResponseSuccess(c, data)
 }
 
+// MockCheckout 创建订单并模拟支付成功（一步完成）
+func (h *OrderHandler) MockCheckout(c *gin.Context) {
+	userID, ok := ginMiddleware.UserIDFromContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
+	var req request.CreateOrderReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ResponseBindErr(c, err)
+		return
+	}
+	data, err := h.orderSvc.MockCheckout(c.Request.Context(), userID, &req)
+	if err != nil {
+		response.ResponseErr(c, err)
+		return
+	}
+	response.ResponseSuccess(c, data)
+}
+
 // PaymentNotify 模拟微信/支付宝异步回调
 func (h *OrderHandler) PaymentNotify(c *gin.Context) {
 	channel := c.Param("channel")

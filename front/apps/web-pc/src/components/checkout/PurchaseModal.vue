@@ -2,7 +2,13 @@
 import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { formatCnyFromCents, formatTokenCount } from '@ai-token-mall/shared'
+import {
+  countUpgradeBillingCycles,
+  formatCnyFromCents,
+  formatSubscriptionDate,
+  parseSubscriptionDate,
+  formatTokenCount,
+} from '@ai-token-mall/shared'
 import type { OrderType, UserProfile } from '@ai-token-mall/shared'
 import { orderApi } from '@/api'
 import type { CatalogProduct } from '@/mocks/home'
@@ -16,15 +22,15 @@ const props = withDefaults(
     orderType?: OrderType
     /** 续费/升档关联 user_subscriptions.id，新购为 0 */
     userSubscriptionId?: number
-    /** 升档时展示到期预览（来自当前订阅 expires_at） */
+    /** 升档计价：当前订阅 period_end / expires_at */
+    subscriptionPeriodEnd?: string
     subscriptionExpiresAt?: string
-    subscriptionStatus?: string
   }>(),
   {
     orderType: 'purchase',
     userSubscriptionId: 0,
+    subscriptionPeriodEnd: '',
     subscriptionExpiresAt: '',
-    subscriptionStatus: '',
   },
 )
 
@@ -39,40 +45,24 @@ const couponInput = ref('')
 const couponApplied = ref<{ code: string; percentOff: number } | null>(null)
 const paying = ref(false)
 
-/** 新购、升档可选份数（份数 = 计费周期数）；续费/加购额度固定 1 */
-const showQuantityPicker = computed(
-  () => props.orderType === 'purchase' || props.orderType === 'upgrade',
+/** 仅新购可选份数；升档周期由订阅 period_end / expires_at 自动计算 */
+const showQuantityPicker = computed(() => props.orderType === 'purchase')
+
+const showTotalSub = computed(() =>
+  ['purchase', 'renewal', 'upgrade', 'quota_addon'].includes(props.orderType),
 )
 
-const showTotalSub = computed(
-  () => props.orderType === 'purchase' || props.orderType === 'upgrade',
-)
-
-function parseSubscriptionDate(s: string): Date | null {
-  const raw = s?.trim()
-  if (!raw) return null
-  const d = new Date(`${raw}T12:00:00`)
-  return Number.isNaN(d.getTime()) ? null : d
-}
-
-function addBillingPeriod(from: Date, billingPeriod: string): Date {
-  const d = new Date(from.getTime())
-  if (billingPeriod === 'year') {
-    d.setFullYear(d.getFullYear() + 1)
-  } else if (billingPeriod === 'once') {
-    d.setDate(d.getDate() + 30)
-  } else {
-    d.setMonth(d.getMonth() + 1)
+const totalSubUnit = computed(() => {
+  switch (props.orderType) {
+    case 'upgrade':
+      return '个周期'
+    case 'renewal':
+    case 'quota_addon':
+      return '份'
+    default:
+      return '份'
   }
-  return d
-}
-
-function formatSubscriptionDate(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
+})
 
 const billingPeriodUnit = computed(() => {
   const p = props.product?.billing_period
@@ -81,29 +71,23 @@ const billingPeriodUnit = computed(() => {
   return '月'
 })
 
-/** 升档：按购买周期数推算支付后服务到期（active 且 1 周期时到期不变） */
-const upgradeExpiresPreview = computed(() => {
-  if (props.orderType !== 'upgrade' || !props.product) return null
-  const qty = quantity.value
-  const period = props.product.billing_period ?? 'month'
-  const current = parseSubscriptionDate(props.subscriptionExpiresAt ?? '')
-  const isActive = props.subscriptionStatus === 'active'
+const upgradeBillingCycles = computed(() => {
+  if (props.orderType !== 'upgrade' || !props.product) return 1
+  return countUpgradeBillingCycles(
+    props.subscriptionPeriodEnd ?? '',
+    props.subscriptionExpiresAt ?? '',
+    props.product.billing_period ?? 'month',
+  )
+})
 
-  if (isActive && qty === 1 && current) {
-    return { date: formatSubscriptionDate(current), unchanged: true }
-  }
+const checkoutQuantity = computed(() =>
+  props.orderType === 'upgrade' ? upgradeBillingCycles.value : quantity.value,
+)
 
-  const now = new Date()
-  let anchor = now
-  if (isActive && current && current.getTime() > now.getTime()) {
-    anchor = current
-  }
-
-  let end = anchor
-  for (let i = 0; i < qty; i++) {
-    end = addBillingPeriod(end, period)
-  }
-  return { date: formatSubscriptionDate(end), unchanged: false }
+const upgradeExpiresLabel = computed(() => {
+  if (props.orderType !== 'upgrade') return ''
+  const exp = parseSubscriptionDate(props.subscriptionExpiresAt ?? '')
+  return exp ? formatSubscriptionDate(exp) : props.subscriptionExpiresAt
 })
 
 watch(
@@ -150,7 +134,7 @@ const planLabel = computed(() => {
 
 const unitCents = computed(() => props.product?.price_cents ?? 0)
 
-const subtotalCents = computed(() => unitCents.value * quantity.value)
+const subtotalCents = computed(() => unitCents.value * checkoutQuantity.value)
 
 const couponOffCents = computed(() => {
   if (!couponApplied.value) return 0
@@ -188,21 +172,31 @@ function applyCoupon() {
 }
 
 async function submitPay(channel: 'alipay' | 'paypal') {
-  if (!props.product || !props.user) return
+  if (!props.product) {
+    ElMessage.warning('请选择套餐')
+    return
+  }
+  if (!props.user) {
+    ElMessage.warning('请先登录后再支付')
+    return
+  }
   paying.value = true
   try {
     const body: Parameters<typeof orderApi.create>[0] = {
       product_id: props.product.id,
       order_type: props.orderType,
-      quantity: quantity.value,
+      quantity: checkoutQuantity.value,
       channel,
       enterprise_invoice: false,
     }
     if (props.userSubscriptionId > 0) {
       body.user_subscription_id = props.userSubscriptionId
     }
-    const created = await orderApi.create(body)
-    await orderApi.mockNotify(created.channel, created.out_trade_no)
+    const created = await orderApi.checkout(body)
+    if (created.status !== 'completed') {
+      ElMessage.warning(`订单 ${created.order_no} 已创建，但支付未完成，请稍后重试或联系客服`)
+      return
+    }
     ElMessage.success(
       `${channel === 'alipay' ? '支付宝' : 'PayPal'} 支付成功 · 订单 ${created.order_no}`,
     )
@@ -236,9 +230,7 @@ async function submitPay(channel: 'alipay' | 'paypal') {
           </div>
 
           <div v-if="showQuantityPicker" class="purchase-qty">
-            <span class="field-label">{{
-              orderType === 'upgrade' ? '购买周期数' : '购买数量'
-            }}</span>
+            <span class="field-label">购买数量</span>
             <div class="qty-row">
               <div class="qty-stepper">
                 <button type="button" aria-label="减少" @click="clampQty(quantity - 1)">−</button>
@@ -280,24 +272,16 @@ async function submitPay(channel: 'alipay' | 'paypal') {
             <p v-if="orderType === 'quota_addon' && quotaAddonGrantTokens > 0" class="quota-grant-line">
               新增额度 {{ formatTokenCount(quotaAddonGrantTokens) }} tokens
             </p>
-            <p
-              v-if="orderType === 'upgrade' && upgradeExpiresPreview"
-              class="upgrade-expires-line"
-            >
-              <template v-if="upgradeExpiresPreview.unchanged">
-                升档后服务到期不变 · {{ upgradeExpiresPreview.date }}
-              </template>
-              <template v-else>
-                购买 {{ quantity }} 个{{ billingPeriodUnit }}周期 · 预计服务到期
-                {{ upgradeExpiresPreview.date }}
-              </template>
+            <p v-if="orderType === 'upgrade'" class="upgrade-expires-line">
+              含 {{ upgradeBillingCycles }} 个{{ billingPeriodUnit }}计费周期（含当前周期）· 升档后服务到期
+              {{ upgradeExpiresLabel }}
             </p>
             <p class="total-line">
               合计
               <strong>{{ formatCnyFromCents(totalCents) }}</strong>
             </p>
             <p v-if="showTotalSub" class="total-sub">
-              {{ quantity }} {{ orderType === 'upgrade' ? '个周期' : '份' }} ×
+              {{ checkoutQuantity }} {{ totalSubUnit }} ×
               {{ formatCnyFromCents(unitCents) }}
               <template v-if="couponApplied"> · 优惠券 −{{ couponApplied.percentOff }}%</template>
             </p>

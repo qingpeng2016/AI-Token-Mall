@@ -21,6 +21,29 @@ func (e *RespErr) Error() string {
 	return e.Msg
 }
 
+// WithDetail 复制业务码并附加具体原因（用于 mock 支付履约等场景）。
+func (e *RespErr) WithDetail(detail string) *RespErr {
+	if detail == "" {
+		return e
+	}
+	msg := e.Msg + "：" + detail
+	hant := e.HantMsg
+	if hant != "" {
+		hant = hant + "：" + detail
+	}
+	en := e.EnMsg
+	if en != "" {
+		en = en + ": " + detail
+	}
+	return &RespErr{
+		Code:    e.Code,
+		Msg:     msg,
+		HantMsg: hant,
+		EnMsg:   en,
+		Data:    e.Data,
+	}
+}
+
 // NewRespErr 创建三语业务错误；hant 为空时回退为 zh。
 func NewRespErr(code int64, zh, hant, en string) *RespErr {
 	if hant == "" {

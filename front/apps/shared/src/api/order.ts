@@ -38,6 +38,14 @@ export function createOrderApi(options: HttpClientOptions) {
       const res = await http.post<ApiEnvelope<CreateOrderResult>>('/api/v1/mock/orders', body)
       return unwrap(res)
     },
+    /** 创建订单并模拟支付成功（推荐；避免只创建 pending 订单） */
+    async checkout(body: CreateOrderBody): Promise<CreateOrderResult> {
+      const res = await http.post<ApiEnvelope<CreateOrderResult>>(
+        '/api/v1/mock/orders/checkout',
+        body,
+      )
+      return unwrap(res)
+    },
     async mockNotify(channel: string, outTradeNo: string): Promise<void> {
       await http.post<ApiEnvelope<unknown>>(`/api/v1/mock/payments/notify/${channel}`, {
         out_trade_no: outTradeNo,

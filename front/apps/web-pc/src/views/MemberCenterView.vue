@@ -55,8 +55,8 @@ const purchaseOpen = ref(false)
 const purchaseProduct = ref<CatalogProduct | null>(null)
 const purchaseOrderType = ref<OrderType>('purchase')
 const purchaseUserSubscriptionId = ref(0)
+const purchaseSubscriptionPeriodEnd = ref('')
 const purchaseSubscriptionExpiresAt = ref('')
-const purchaseSubscriptionStatus = ref('')
 const memberSubscriptions = ref<UserSubscriptionItem[]>([])
 const plansLoading = ref(false)
 /** 各侧栏 Tab 仅首次进入时拉取接口，关闭弹窗等不重复请求 */
@@ -305,8 +305,8 @@ function goCommissionWithdrawFromOverview() {
 function openCatalogPicker() {
   purchaseOrderType.value = 'purchase'
   purchaseUserSubscriptionId.value = 0
+  purchaseSubscriptionPeriodEnd.value = ''
   purchaseSubscriptionExpiresAt.value = ''
-  purchaseSubscriptionStatus.value = ''
   catalogProductsCategoryId.value = null
   catalogUpgradeBaselineLimitTokens.value = null
   catalogOpen.value = true
@@ -341,8 +341,8 @@ async function openUpgradeCatalog(sub: UserSubscriptionItem) {
   }
   purchaseOrderType.value = 'upgrade'
   purchaseUserSubscriptionId.value = sub.id
+  purchaseSubscriptionPeriodEnd.value = sub.period_end
   purchaseSubscriptionExpiresAt.value = sub.expires_at
-  purchaseSubscriptionStatus.value = sub.status
   catalogProductsCategoryId.value = categoryId
   catalogUpgradeBaselineLimitTokens.value = sub.limit_tokens
   catalogOpen.value = true
@@ -385,6 +385,9 @@ function onCatalogBuy(p: CatalogProduct) {
 
 function onPurchasePaid() {
   catalogOpen.value = false
+  if (activeTab.value === 'plans') {
+    void fetchPlansTabData()
+  }
 }
 
 function mockAction(msg: string) {
@@ -1408,8 +1411,8 @@ function confirmAddTeamMember() {
       :user="user"
       :order-type="purchaseOrderType"
       :user-subscription-id="purchaseUserSubscriptionId"
+      :subscription-period-end="purchaseSubscriptionPeriodEnd"
       :subscription-expires-at="purchaseSubscriptionExpiresAt"
-      :subscription-status="purchaseSubscriptionStatus"
       @paid="onPurchasePaid"
     />
 

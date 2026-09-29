@@ -43,12 +43,19 @@ func (s *OrderService) CreateMockOrder(ctx context.Context, userID uint, req *re
 		return nil, errorx.ErrProductNotFound
 	}
 
-	userSubID, err := resolveOrderUserSubscriptionID(ctx, s.orders, userID, orderType, product.ID, req.UserSubscriptionID)
+	userSubID, err := resolveOrderUserSubscriptionID(ctx, s.orders, userID, orderType, product, req.UserSubscriptionID)
 	if err != nil {
 		return nil, err
 	}
 
 	qty := req.Quantity
+	if orderType == constants.OrderTypeUpgrade {
+		computed, err := upgradeOrderQuantity(ctx, s.orders, userID, userSubID, product.BillingPeriod)
+		if err != nil {
+			return nil, err
+		}
+		qty = computed
+	}
 	subtotal := product.PriceCents * int64(qty)
 	total := subtotal
 	if req.EnterpriseInvoice {
@@ -106,6 +113,23 @@ func (s *OrderService) CreateMockOrder(ctx context.Context, userID uint, req *re
 	return createOrderRespFromEntity(order), nil
 }
 
+// MockCheckout 创建订单并模拟支付成功（开发/mock 收银台一步完成，避免只落单未回调）。
+func (s *OrderService) MockCheckout(ctx context.Context, userID uint, req *request.CreateOrderReq) (*response.CreateOrderResp, error) {
+	created, err := s.CreateMockOrder(ctx, userID, req)
+	if err != nil {
+		return nil, err
+	}
+	notifyReq := &request.PaymentNotifyReq{
+		OutTradeNo:  created.OutTradeNo,
+		TradeStatus: "TRADE_SUCCESS",
+	}
+	if err := s.HandlePaymentNotify(ctx, created.Channel, notifyReq); err != nil {
+		return nil, err
+	}
+	created.Status = "completed"
+	return created, nil
+}
+
 func createOrderRespFromEntity(order *entity.UserOrder) *response.CreateOrderResp {
 	return &response.CreateOrderResp{
 		OrderNo:            order.OrderNo,
@@ -159,18 +183,23 @@ func (s *OrderService) HandlePaymentNotify(ctx context.Context, channel string, 
 		if strings.Contains(err.Error(), "not payable") {
 			return errorx.ErrOrderNotPayable
 		}
-		if strings.Contains(err.Error(), "renew: no active subscription") ||
-			strings.Contains(err.Error(), "renew: subscription") && strings.Contains(err.Error(), "is not active") ||
-			strings.Contains(err.Error(), "renew: subscription not found") ||
-			strings.Contains(err.Error(), "upgrade: subscription not found") ||
-			strings.Contains(err.Error(), "upgrade: missing user_subscription_id") ||
-			strings.Contains(err.Error(), "quota_addon:") {
+		if strings.Contains(err.Error(), "renew: subscription") && strings.Contains(err.Error(), "is not active") ||
+			strings.Contains(err.Error(), "renew: subscription not found") {
+			return errorx.ErrRenewNoSubscription
+		}
+		if strings.Contains(err.Error(), "quota_addon: subscription") && strings.Contains(err.Error(), "is not active") ||
+			strings.Contains(err.Error(), "quota_addon: subscription not found") ||
+			strings.Contains(err.Error(), "quota_addon: missing user_subscription_id") {
+			return errorx.ErrRenewNoSubscription
+		}
+		if strings.Contains(err.Error(), "upgrade: subscription not found") ||
+			strings.Contains(err.Error(), "upgrade: missing user_subscription_id") {
 			return errorx.ErrRenewNoSubscription
 		}
 		if strings.Contains(err.Error(), "unknown order_type") {
 			return errorx.ErrParamsError
 		}
-		return errorx.ErrDbError
+		return errorx.ErrPaymentFulfillFailed.WithDetail(err.Error())
 	}
 	return nil
 }

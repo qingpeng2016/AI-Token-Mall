@@ -29,6 +29,20 @@ func fulfillQuotaAddonOrderPaid(tx *gorm.DB, order *entity.UserOrder, product *e
 	}).Error; err != nil {
 		return err
 	}
+	if err := tx.First(sub, sub.ID).Error; err != nil {
+		return err
+	}
+	if err := tx.Model(&entity.UserAPIKey{}).
+		Where("user_subscription_id = ? AND status <> ?", sub.ID, "rotated").
+		Updates(map[string]interface{}{
+			"limit_tokens": gorm.Expr("limit_tokens + ?", addon),
+			"updated_at":   now,
+		}).Error; err != nil {
+		return err
+	}
+	if err := insertSubscriptionOrderNotification(tx, order, sub, nil, "subscription_quota_added", now); err != nil {
+		return err
+	}
 
 	return insertOrderPayWalletFlow(tx, order, product, payChannel, now)
 }

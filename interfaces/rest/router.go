@@ -70,6 +70,7 @@ func (r *Router) setupRouters() *gin.Engine {
 	{
 		authGroup.GET("/subscriptions", r.subscriptionHandler.ListMine)
 		authGroup.POST("/orders", r.orderHandler.CreateOrder)
+		authGroup.POST("/orders/checkout", r.orderHandler.MockCheckout)
 		authGroup.POST("/payments/notify/:channel", r.orderHandler.PaymentNotify)
 	}
 
