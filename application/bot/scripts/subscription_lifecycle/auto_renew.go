@@ -39,11 +39,14 @@ func (j *SubscriptionLifecycleJob) autoRenewSubscription(ctx context.Context, su
 			return gorm.ErrRecordNotFound
 		}
 		price := product.Price
-		balance, err := j.wallets.SumBalance(ctx, tx, sub.UserID)
+		user, err := j.users.FindByIDForUpdate(ctx, tx, sub.UserID)
 		if err != nil {
 			return err
 		}
-		if balance.LessThan(price) {
+		if user == nil {
+			return gorm.ErrRecordNotFound
+		}
+		if user.WalletBalance.LessThan(price) {
 			return nil
 		}
 
@@ -72,7 +75,6 @@ func (j *SubscriptionLifecycleJob) autoRenewSubscription(ctx context.Context, su
 			return err
 		}
 
-		balanceAfter := balance.Sub(price)
-		return j.fulfill.FulfillBalanceRenewalInTx(ctx, tx, &order, product, balanceAfter, now)
+		return j.fulfill.FulfillBalanceRenewalInTx(ctx, tx, &order, product, now)
 	})
 }

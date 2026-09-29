@@ -12,7 +12,6 @@ import (
 	"github.com/qingpeng2016/ai-token-mall/common/constants"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/entity"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/repository"
-	"github.com/shopspring/decimal"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
@@ -22,6 +21,7 @@ type OrderFulfillService struct {
 	orders        repository.UserOrdersRepo
 	products      repository.ProductsRepo
 	subs          repository.UserSubscriptionsRepo
+	users         repository.UsersRepo
 	wallets       repository.UserWalletFlowsRepo
 	notifications repository.UserNotificationsRepo
 	apiKeys       repository.UserAPIKeysRepo
@@ -34,6 +34,7 @@ func NewOrderFulfillService(
 	orders repository.UserOrdersRepo,
 	products repository.ProductsRepo,
 	subs repository.UserSubscriptionsRepo,
+	users repository.UsersRepo,
 	wallets repository.UserWalletFlowsRepo,
 	notifications repository.UserNotificationsRepo,
 	apiKeys repository.UserAPIKeysRepo,
@@ -45,6 +46,7 @@ func NewOrderFulfillService(
 		orders:        orders,
 		products:      products,
 		subs:          subs,
+		users:         users,
 		wallets:       wallets,
 		notifications: notifications,
 		apiKeys:       apiKeys,
@@ -108,7 +110,7 @@ func (s *OrderFulfillService) ApplyPaymentNotifySuccess(ctx context.Context, in 
 		order.RawNotifyJSON = notifyRaw
 		order.UpdatedAt = now
 
-		if err := s.fulfillPaidOrderByType(ctx, tx, order, product, in.Channel, now, nil); err != nil {
+		if err := s.fulfillPaidOrderByType(ctx, tx, order, product, in.Channel, now); err != nil {
 			return err
 		}
 
@@ -138,9 +140,11 @@ func (s *OrderFulfillService) FulfillBalanceRenewalInTx(
 	tx *gorm.DB,
 	order *entity.UserOrders,
 	product *entity.Products,
-	balanceAfter decimal.Decimal,
 	now time.Time,
 ) error {
+	if err := s.deductBalanceAndRecordFlow(ctx, tx, order, product, "balance", now); err != nil {
+		return err
+	}
 	sub, err := s.renewSubscriptionForOrder(ctx, tx, order, product, now)
 	if err != nil {
 		return err
@@ -148,10 +152,7 @@ func (s *OrderFulfillService) FulfillBalanceRenewalInTx(
 	if err := s.reactivateSubscriptionAPIKeys(ctx, tx, sub.ID, now); err != nil {
 		return err
 	}
-	if err := s.insertSubscriptionOrderNotification(ctx, tx, order, sub, nil, "subscription_renewed", now); err != nil {
-		return err
-	}
-	return s.insertOrderPayWalletFlowWithBalance(ctx, tx, order, product, "balance", balanceAfter, now)
+	return s.insertSubscriptionOrderNotification(ctx, tx, order, sub, nil, "subscription_renewed", now)
 }
 
 func (s *OrderFulfillService) insertCallback(ctx context.Context, tx *gorm.DB, in repository.PaymentNotifyInput, sigOK int, result string) error {
@@ -177,11 +178,10 @@ func (s *OrderFulfillService) fulfillPaidOrderByType(
 	product *entity.Products,
 	payChannel string,
 	now time.Time,
-	balanceAfter *decimal.Decimal,
 ) error {
 	switch order.OrderType {
 	case constants.OrderTypeRenewal:
-		return s.fulfillRenewalOrderPaid(ctx, tx, order, product, payChannel, now, balanceAfter)
+		return s.fulfillRenewalOrderPaid(ctx, tx, order, product, payChannel, now)
 	case constants.OrderTypeUpgrade:
 		return s.fulfillUpgradeOrderPaid(ctx, tx, order, product, payChannel, now)
 	case constants.OrderTypeQuotaAddon:
@@ -205,7 +205,7 @@ func (s *OrderFulfillService) fulfillPurchaseOrderPaid(ctx context.Context, tx *
 	if err := s.insertSubscriptionOrderNotification(ctx, tx, order, sub, apiKey, "subscription_activated", now); err != nil {
 		return err
 	}
-	return s.insertOrderPayWalletFlow(ctx, tx, order, product, payChannel, now)
+	return s.deductBalanceAndRecordFlow(ctx, tx, order, product, payChannel, now)
 }
 
 func (s *OrderFulfillService) createSubscriptionForPurchase(ctx context.Context, tx *gorm.DB, order *entity.UserOrders, product *entity.Products, now time.Time) (*entity.UserSubscriptions, error) {
@@ -263,7 +263,7 @@ func (s *OrderFulfillService) createAPIKeyForNewSubscription(ctx context.Context
 	return &row, nil
 }
 
-func (s *OrderFulfillService) fulfillRenewalOrderPaid(ctx context.Context, tx *gorm.DB, order *entity.UserOrders, product *entity.Products, payChannel string, now time.Time, balanceAfter *decimal.Decimal) error {
+func (s *OrderFulfillService) fulfillRenewalOrderPaid(ctx context.Context, tx *gorm.DB, order *entity.UserOrders, product *entity.Products, payChannel string, now time.Time) error {
 	sub, err := s.renewSubscriptionForOrder(ctx, tx, order, product, now)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -277,10 +277,7 @@ func (s *OrderFulfillService) fulfillRenewalOrderPaid(ctx context.Context, tx *g
 	if err := s.insertSubscriptionOrderNotification(ctx, tx, order, sub, nil, "subscription_renewed", now); err != nil {
 		return err
 	}
-	if balanceAfter != nil {
-		return s.insertOrderPayWalletFlowWithBalance(ctx, tx, order, product, payChannel, *balanceAfter, now)
-	}
-	return s.insertOrderPayWalletFlow(ctx, tx, order, product, payChannel, now)
+	return s.deductBalanceAndRecordFlow(ctx, tx, order, product, payChannel, now)
 }
 
 func (s *OrderFulfillService) renewSubscriptionForOrder(ctx context.Context, tx *gorm.DB, order *entity.UserOrders, product *entity.Products, now time.Time) (*entity.UserSubscriptions, error) {
@@ -355,7 +352,7 @@ func (s *OrderFulfillService) fulfillUpgradeOrderPaid(ctx context.Context, tx *g
 	if err := s.insertSubscriptionOrderNotification(ctx, tx, order, sub, nil, "subscription_upgraded", now); err != nil {
 		return err
 	}
-	return s.insertOrderPayWalletFlow(ctx, tx, order, product, payChannel, now)
+	return s.deductBalanceAndRecordFlow(ctx, tx, order, product, payChannel, now)
 }
 
 func (s *OrderFulfillService) upgradeSubscriptionForOrder(ctx context.Context, tx *gorm.DB, order *entity.UserOrders, product *entity.Products, now time.Time) (*entity.UserSubscriptions, bool, error) {
@@ -467,7 +464,7 @@ func (s *OrderFulfillService) fulfillQuotaAddonOrderPaid(ctx context.Context, tx
 	if err := s.insertSubscriptionOrderNotification(ctx, tx, order, reloaded, nil, "subscription_quota_added", now); err != nil {
 		return err
 	}
-	return s.insertOrderPayWalletFlow(ctx, tx, order, product, payChannel, now)
+	return s.deductBalanceAndRecordFlow(ctx, tx, order, product, payChannel, now)
 }
 
 func (s *OrderFulfillService) loadSubscriptionForQuotaAddon(ctx context.Context, tx *gorm.DB, order *entity.UserOrders) (*entity.UserSubscriptions, error) {
@@ -516,23 +513,15 @@ func (s *OrderFulfillService) insertSubscriptionOrderNotification(ctx context.Co
 	return s.notifications.Create(ctx, tx, &row)
 }
 
-func (s *OrderFulfillService) insertOrderPayWalletFlow(ctx context.Context, tx *gorm.DB, order *entity.UserOrders, product *entity.Products, channel string, now time.Time) error {
-	refType := "order"
-	remark := fmt.Sprintf("订单 %s · %s · %s", order.OrderNo, product.CardTitle, channel)
-	row := entity.UserWalletFlows{
-		UserID:    order.UserID,
-		Type:      "pay",
-		Amount:    order.TotalAmount.Neg(),
-		Currency:  order.Currency,
-		RefType:   &refType,
-		RefID:     &order.ID,
-		Remark:    &remark,
-		CreatedAt: now,
+// deductBalanceAndRecordFlow 仅 balance 渠道：扣 users.wallet_balance 并记流水。
+func (s *OrderFulfillService) deductBalanceAndRecordFlow(ctx context.Context, tx *gorm.DB, order *entity.UserOrders, product *entity.Products, channel string, now time.Time) error {
+	if channel != "balance" {
+		return nil
 	}
-	return s.wallets.CreateFlow(ctx, tx, &row)
-}
-
-func (s *OrderFulfillService) insertOrderPayWalletFlowWithBalance(ctx context.Context, tx *gorm.DB, order *entity.UserOrders, product *entity.Products, channel string, balanceAfter decimal.Decimal, now time.Time) error {
+	balanceAfter, err := s.users.ApplyWalletDelta(ctx, tx, order.UserID, order.TotalAmount.Neg())
+	if err != nil {
+		return err
+	}
 	refType := "order"
 	remark := fmt.Sprintf("订单 %s · %s · %s", order.OrderNo, product.CardTitle, channel)
 	bal := balanceAfter

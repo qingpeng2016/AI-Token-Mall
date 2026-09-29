@@ -24,7 +24,7 @@ type SubscriptionLifecycleJob struct {
 	tx            repository.Transactor
 	subs          repository.UserSubscriptionsRepo
 	products      repository.ProductsRepo
-	wallets       repository.UserWalletFlowsRepo
+	users         repository.UsersRepo
 	orders        repository.UserOrdersRepo
 	apiKeys       repository.UserAPIKeysRepo
 	notifications repository.UserNotificationsRepo
@@ -35,7 +35,7 @@ func NewSubscriptionLifecycleJob(
 	tx repository.Transactor,
 	subs repository.UserSubscriptionsRepo,
 	products repository.ProductsRepo,
-	wallets repository.UserWalletFlowsRepo,
+	users repository.UsersRepo,
 	orders repository.UserOrdersRepo,
 	apiKeys repository.UserAPIKeysRepo,
 	notifications repository.UserNotificationsRepo,
@@ -45,7 +45,7 @@ func NewSubscriptionLifecycleJob(
 		tx:            tx,
 		subs:          subs,
 		products:      products,
-		wallets:       wallets,
+		users:         users,
 		orders:        orders,
 		apiKeys:       apiKeys,
 		notifications: notifications,

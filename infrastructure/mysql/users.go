@@ -5,9 +5,13 @@ import (
 	"errors"
 	"time"
 
+	"fmt"
+
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/entity"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/repository"
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type UsersImpl struct {
@@ -56,6 +60,40 @@ func (r *UsersImpl) FindByID(ctx context.Context, id uint) (*entity.Users, error
 		return nil, err
 	}
 	return &u, nil
+}
+
+func (r *UsersImpl) FindByIDForUpdate(ctx context.Context, tx *gorm.DB, id uint) (*entity.Users, error) {
+	var u entity.Users
+	err := repository.GormDB(ctx, r.db, tx).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		First(&u, id).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+func (r *UsersImpl) ApplyWalletDelta(ctx context.Context, tx *gorm.DB, userID uint, delta decimal.Decimal) (decimal.Decimal, error) {
+	u, err := r.FindByIDForUpdate(ctx, tx, userID)
+	if err != nil {
+		return decimal.Zero, err
+	}
+	if u == nil {
+		return decimal.Zero, gorm.ErrRecordNotFound
+	}
+	newBal := u.WalletBalance.Add(delta)
+	if newBal.IsNegative() {
+		return decimal.Zero, fmt.Errorf("insufficient wallet balance")
+	}
+	if err := repository.GormDB(ctx, r.db, tx).Model(&entity.Users{}).
+		Where("id = ?", userID).
+		Update("wallet_balance", newBal).Error; err != nil {
+		return decimal.Zero, err
+	}
+	return newBal, nil
 }
 
 func (r *UsersImpl) UpdateLastLogin(ctx context.Context, id uint) error {
