@@ -22,7 +22,7 @@ import (
 
 func main() {
 	flag.Parse()
-	time.Local = constants.UtcLocation
+	time.Local = constants.AppLocation
 
 	container := boot.BuildContainer()
 

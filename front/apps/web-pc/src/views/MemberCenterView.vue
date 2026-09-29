@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeMount, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { formatCny, type OrderType } from '@ai-token-mall/shared'
+import { formatCny, formatNowBeijing, type OrderType } from '@ai-token-mall/shared'
 import CatalogPickerModal from '@/components/catalog/CatalogPickerModal.vue'
 import PurchaseModal from '@/components/checkout/PurchaseModal.vue'
 import MemberSidebar from '@/components/member/MemberSidebar.vue'
@@ -471,7 +471,7 @@ function confirmWithdraw() {
     amount: yuan,
     channel,
     status: 'pending',
-    createdAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
+    createdAt: formatNowBeijing('datetime'),
   })
   commissionAvailable.value -= yuan
   withdrawOpen.value = false
@@ -573,7 +573,7 @@ function confirmAssignSubKey() {
     usedTokens: 0,
     limitTokens,
     status: 'active',
-    createdAt: new Date().toISOString().slice(0, 10),
+    createdAt: formatNowBeijing('date'),
   })
 
   assignSubKeyOpen.value = false

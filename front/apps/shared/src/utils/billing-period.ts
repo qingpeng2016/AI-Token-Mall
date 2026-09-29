@@ -1,8 +1,27 @@
+/** 业务时区：北京时间 */
+export const BEIJING_TZ = 'Asia/Shanghai'
+
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/
+
+/** 北京时间当日 12:00 对应的 instant（避免跨日边界） */
+function beijingNoon(y: number, m: number, d: number): Date {
+  return new Date(Date.UTC(y, m - 1, d, 4, 0, 0))
+}
+
 export function parseSubscriptionDate(s: string): Date | null {
   const raw = s?.trim()
   if (!raw) return null
-  const d = new Date(`${raw}T12:00:00`)
-  return Number.isNaN(d.getTime()) ? null : d
+  const datePart = raw.slice(0, 10)
+  if (!DATE_ONLY.test(datePart)) {
+    const normalized =
+      raw.includes('Z') || /[+-]\d{2}:\d{2}$/.test(raw)
+        ? raw
+        : `${raw.replace(' ', 'T')}+08:00`
+    const d = new Date(normalized)
+    return Number.isNaN(d.getTime()) ? null : d
+  }
+  const [y, m, day] = datePart.split('-').map(Number)
+  return beijingNoon(y, m, day)
 }
 
 export function resolvePeriodDays(periodDays: number | undefined, billingPeriod: string): number {
@@ -13,9 +32,9 @@ export function resolvePeriodDays(periodDays: number | undefined, billingPeriod:
 }
 
 export function addPeriodDays(from: Date, periodDays: number): Date {
-  const d = new Date(from.getTime())
-  d.setDate(d.getDate() + periodDays)
-  return d
+  const ymd = formatSubscriptionDate(from)
+  const [y, m, day] = ymd.split('-').map(Number)
+  return beijingNoon(y, m, day + periodDays)
 }
 
 /** 升档计价周期：当前周期 1；expires_at 晚于 period_end 时自 period_end 按 period_days 累加。 */
@@ -39,11 +58,32 @@ export function countUpgradeBillingCycles(
   return qty
 }
 
+/** 格式化为北京时间日历日期 YYYY-MM-DD */
 export function formatSubscriptionDate(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
+  return new Intl.DateTimeFormat('en-CA', { timeZone: BEIJING_TZ }).format(d)
+}
+
+/** 当前北京时间，用于展示 */
+export function formatNowBeijing(dateStyle: 'date' | 'datetime' = 'datetime'): string {
+  const opts: Intl.DateTimeFormatOptions =
+    dateStyle === 'date'
+      ? { timeZone: BEIJING_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }
+      : {
+          timeZone: BEIJING_TZ,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        }
+  const parts = new Intl.DateTimeFormat('en-CA', opts).formatToParts(new Date())
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? ''
+  if (dateStyle === 'date') {
+    return `${get('year')}-${get('month')}-${get('day')}`
+  }
+  return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}`
 }
 
 /** @deprecated 使用 addPeriodDays / resolvePeriodDays */

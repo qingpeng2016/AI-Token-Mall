@@ -153,6 +153,6 @@ export const enterpriseFaqs = [
 
 export const enterpriseContact = {
   email: 'enterprise@aiplan.example',
-  hours: '工作日 9:30–18:30（UTC+8）',
+  hours: '工作日 9:30–18:30（北京时间）',
   wechatHint: '提交表单后顾问会通过您留下的手机 / 邮箱联系，也可备注「需加企业微信」。',
 }

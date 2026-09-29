@@ -13,7 +13,7 @@ import (
 
 func TraceRequestLog(c *gin.Context) {
 	// 记录请求开始时间
-	start := time.Now().UTC()
+	start := time.Now()
 
 	// 设置trace id
 	if c.GetHeader(trace.HeaderTraceID) == "" {

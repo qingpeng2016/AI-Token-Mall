@@ -3,10 +3,12 @@ package billing
 import (
 	"testing"
 	"time"
+
+	"github.com/qingpeng2016/ai-token-mall/common/constants"
 )
 
 func TestCountUpgradeBillingCycles(t *testing.T) {
-	loc := time.UTC
+	loc := constants.AppLocation
 	d := func(y int, m time.Month, day int) time.Time {
 		return time.Date(y, m, day, 0, 0, 0, 0, loc)
 	}

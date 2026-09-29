@@ -14,14 +14,14 @@ import (
 // 对于安全敏感场景，请使用 SecureRandom() 或 SecureRandomHex()
 func Random() string {
 	// 使用当前时间作为种子
-	source := mathrand.NewSource(time.Now().UTC().UnixNano())
+	source := mathrand.NewSource(time.Now().UnixNano())
 	r := mathrand.New(source)
 
 	// 生成一个随机整数
 	intervalMin := 1000000 // 最小的唯一数字范围
 	intervalMax := 9999999 // 最大的唯一数字范围
 	randomInt := r.Intn(mathrand.Intn(intervalMax-intervalMin+1) + intervalMin)
-	ms := time.Now().UTC().Format("060102150405.000") // 使用指定的格式进行时间格式化 20060102150405.000000000
+	ms := time.Now().Format("060102150405.000") // 北京时间
 	return strings.Replace(ms, ".", "", -1) + "" + strconv.Itoa(randomInt)
 }
 
@@ -44,7 +44,7 @@ func SecureRandom() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	ms := time.Now().UTC().Format("060102150405.000")
+	ms := time.Now().Format("060102150405.000")
 	return strings.Replace(ms, ".", "", -1) + randomHex, nil
 }
 
