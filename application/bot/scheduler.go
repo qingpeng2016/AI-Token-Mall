@@ -19,6 +19,7 @@ import (
 type Scheduler struct {
 	botScheduleConfigService *coreservice.BotScheduleConfigService
 	statsJob                 *scripts.StatsJob
+	subscriptionLifecycleJob *scripts.SubscriptionLifecycleJob
 	ns                       *gocron.Scheduler
 	jobMap                   map[string]*gocron.Job
 	configMap                map[string]float64
@@ -29,10 +30,12 @@ type Scheduler struct {
 func NewScheduler(
 	botScheduleConfigService *coreservice.BotScheduleConfigService,
 	statsJob *scripts.StatsJob,
+	subscriptionLifecycleJob *scripts.SubscriptionLifecycleJob,
 ) *Scheduler {
 	return &Scheduler{
 		botScheduleConfigService: botScheduleConfigService,
 		statsJob:                 statsJob,
+		subscriptionLifecycleJob: subscriptionLifecycleJob,
 		ns:                       gocron.NewScheduler(time.Local),
 		jobMap:                   make(map[string]*gocron.Job),
 		configMap:                make(map[string]float64),
@@ -107,6 +110,8 @@ func (s *Scheduler) runTask(ctx context.Context, cfg entity2.BotScheduleConfig) 
 	switch cfg.TaskName {
 	case scripts.TaskUserStats:
 		s.statsJob.Run(ctx)
+	case scripts.TaskSubscriptionLifecycle:
+		s.subscriptionLifecycleJob.Run(ctx)
 	default:
 		logger.WarnZ(ctx, "bot-unknown-task", zap.String("module", cfg.Module), zap.String("task", cfg.TaskName))
 	}

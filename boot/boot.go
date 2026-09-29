@@ -47,6 +47,7 @@ func BuildContainer() *dig.Container {
 
 	// Bot
 	_ = c.Provide(scripts.NewStatsJob)
+	_ = c.Provide(scripts.NewSubscriptionLifecycleJob)
 	_ = c.Provide(bot.NewScheduler)
 	_ = c.Provide(bot.NewEntry)
 
