@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/qingpeng2016/ai-token-mall/common/billing"
 	"github.com/qingpeng2016/ai-token-mall/common/constants"
 	"github.com/qingpeng2016/ai-token-mall/common/money"
 	"github.com/qingpeng2016/ai-token-mall/common/errorx"
@@ -51,7 +52,7 @@ func (s *OrderService) CreateMockOrder(ctx context.Context, userID uint, req *re
 
 	qty := req.Quantity
 	if orderType == constants.OrderTypeUpgrade {
-		computed, err := upgradeOrderQuantity(ctx, s.orders, userID, userSubID, product.BillingPeriod)
+		computed, err := upgradeOrderQuantity(ctx, s.orders, userID, userSubID, billing.PeriodDays(product.PeriodDays, product.BillingPeriod))
 		if err != nil {
 			return nil, err
 		}

@@ -25,6 +25,8 @@ export interface Product {
   tpm_limit?: number | null
   allowed_models: string[]
   billing_period: BillingPeriod
+  /** 每个计费周期天数（订阅到期/续费/升档计算依据） */
+  period_days?: number
   /** 售价（元，两位小数） */
   price: number | string
   currency: string

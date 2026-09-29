@@ -2,20 +2,43 @@ package billing
 
 import "time"
 
-// AddPeriod 按商品 billing_period 推进一个计费周期（与 infrastructure/mysql 履约一致）。
-func AddPeriod(from time.Time, billingPeriod string) time.Time {
+const DefaultPeriodDays = 30
+
+// PeriodDays 商品计费周期天数；period_days<=0 时按 billing_period 兜底。
+func PeriodDays(periodDays int, billingPeriod string) int {
+	if periodDays > 0 {
+		return periodDays
+	}
 	switch billingPeriod {
 	case "year":
-		return from.AddDate(1, 0, 0)
+		return 365
 	case "once":
-		return from.AddDate(0, 0, 30)
+		return 30
 	default:
-		return from.AddDate(0, 1, 0)
+		return DefaultPeriodDays
 	}
 }
 
-// CountUpgradeBillingCycles 升档计价周期数：当前周期计 1；若 expires_at 晚于 period_end，自 period_end 起按周期累加直至覆盖 expires_at。
-func CountUpgradeBillingCycles(periodEnd, expiresAt time.Time, billingPeriod string) int {
+// AddPeriod 从 from 起推进一个计费周期（按天）。
+func AddPeriod(from time.Time, periodDays int) time.Time {
+	d := periodDays
+	if d <= 0 {
+		d = DefaultPeriodDays
+	}
+	return from.AddDate(0, 0, d)
+}
+
+// AddPeriods 推进 n 个计费周期。
+func AddPeriods(from time.Time, periodDays, count int) time.Time {
+	t := from
+	for i := 0; i < count; i++ {
+		t = AddPeriod(t, periodDays)
+	}
+	return t
+}
+
+// CountUpgradeBillingCycles 升档计价周期数：当前周期计 1；expires_at 晚于 period_end 时自 period_end 按 period_days 累加。
+func CountUpgradeBillingCycles(periodEnd, expiresAt time.Time, periodDays int) int {
 	const maxQty = 99
 	qty := 1
 	if !expiresAt.After(periodEnd) {
@@ -23,7 +46,7 @@ func CountUpgradeBillingCycles(periodEnd, expiresAt time.Time, billingPeriod str
 	}
 	cursor := periodEnd
 	for cursor.Before(expiresAt) && qty < maxQty {
-		cursor = AddPeriod(cursor, billingPeriod)
+		cursor = AddPeriod(cursor, periodDays)
 		qty++
 	}
 	return qty

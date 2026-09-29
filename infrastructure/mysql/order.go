@@ -239,13 +239,3 @@ func (r *OrderImpl) insertCallback(tx *gorm.DB, in repository.PaymentNotifyInput
 	return tx.Create(&row).Error
 }
 
-func addBillingPeriod(from time.Time, billingPeriod string) time.Time {
-	switch billingPeriod {
-	case "year":
-		return from.AddDate(1, 0, 0)
-	case "once":
-		return from.AddDate(0, 0, 30)
-	default:
-		return from.AddDate(0, 1, 0)
-	}
-}

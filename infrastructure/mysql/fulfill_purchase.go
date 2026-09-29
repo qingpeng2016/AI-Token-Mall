@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/qingpeng2016/ai-token-mall/common/apikey"
+	"github.com/qingpeng2016/ai-token-mall/common/billing"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/entity"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -28,7 +29,12 @@ func fulfillPurchaseOrderPaid(tx *gorm.DB, order *entity.UserOrder, product *ent
 
 func createSubscriptionForPurchase(tx *gorm.DB, order *entity.UserOrder, product *entity.Product, now time.Time) (*entity.UserSubscription, error) {
 	tokenGrant := product.LimitTokens * int64(order.Quantity)
-	periodEnd := addBillingPeriod(now, product.BillingPeriod)
+	days := billing.PeriodDays(product.PeriodDays, product.BillingPeriod)
+	qty := order.Quantity
+	if qty < 1 {
+		qty = 1
+	}
+	periodEnd := billing.AddPeriods(now, days, qty)
 	ordersJSON, _ := json.Marshal([]uint{order.ID})
 
 	row := entity.UserSubscription{

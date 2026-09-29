@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/qingpeng2016/ai-token-mall/common/billing"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/entity"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -64,12 +65,17 @@ func upgradeSubscriptionForOrder(tx *gorm.DB, order *entity.UserOrder, product *
 	if wasActive {
 		// period_start / period_end / started_at / expires_at 保持不变
 	} else {
-		periodEnd := addBillingPeriod(now, product.BillingPeriod)
+		days := billing.PeriodDays(product.PeriodDays, product.BillingPeriod)
+		qty := order.Quantity
+		if qty < 1 {
+			qty = 1
+		}
+		periodEnd := billing.AddPeriods(now, days, qty)
 		updates["used_tokens"] = 0
 		updates["started_at"] = now
 		updates["expires_at"] = periodEnd
 		updates["period_start"] = now
-		updates["period_end"] = addBillingPeriod(now, product.BillingPeriod)
+		updates["period_end"] = periodEnd
 		updates["status"] = "active"
 	}
 

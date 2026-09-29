@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/qingpeng2016/ai-token-mall/common/billing"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/entity"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -46,10 +47,16 @@ func renewSubscriptionForOrder(tx *gorm.DB, order *entity.UserOrder, product *en
 	orderIDs = append(orderIDs, order.ID)
 	ordersJSON, _ := json.Marshal(orderIDs)
 
-	newExpires := addBillingPeriod(now, product.BillingPeriod)
+	days := billing.PeriodDays(product.PeriodDays, product.BillingPeriod)
+	anchor := now
 	if sub.ExpiresAt.After(now) {
-		newExpires = addBillingPeriod(sub.ExpiresAt, product.BillingPeriod)
+		anchor = sub.ExpiresAt
 	}
+	qty := order.Quantity
+	if qty < 1 {
+		qty = 1
+	}
+	newExpires := billing.AddPeriods(anchor, days, qty)
 
 	updates := map[string]interface{}{
 		"orders":     datatypes.JSON(ordersJSON),

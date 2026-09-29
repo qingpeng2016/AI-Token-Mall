@@ -89,6 +89,7 @@ type Product struct {
 	TPMLimit            *int           `gorm:"column:tpm_limit"`
 	AllowedModels       datatypes.JSON `gorm:"column:allowed_models;type:json;not null"`
 	BillingPeriod       string         `gorm:"column:billing_period;size:16;not null;default:month"`
+	PeriodDays          int            `gorm:"column:period_days;not null;default:30"`
 	Price               decimal.Decimal `gorm:"column:price;type:decimal(16,2);not null"`
 	Currency            string         `gorm:"column:currency;size:3;not null;default:CNY"`
 	IsHot               int            `gorm:"column:is_hot;not null;default:0"`

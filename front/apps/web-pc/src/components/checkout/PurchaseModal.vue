@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   countUpgradeBillingCycles,
+  resolvePeriodDays,
   formatCny,
   parseMoney,
   formatSubscriptionDate,
@@ -74,10 +75,14 @@ const billingPeriodUnit = computed(() => {
 
 const upgradeBillingCycles = computed(() => {
   if (props.orderType !== 'upgrade' || !props.product) return 1
+  const days = resolvePeriodDays(
+    props.product.period_days,
+    props.product.billing_period ?? 'month',
+  )
   return countUpgradeBillingCycles(
     props.subscriptionPeriodEnd ?? '',
     props.subscriptionExpiresAt ?? '',
-    props.product.billing_period ?? 'month',
+    days,
   )
 })
 

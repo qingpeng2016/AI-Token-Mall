@@ -40,7 +40,7 @@ func upgradeOrderQuantity(
 	ctx context.Context,
 	orders repository.OrderRepo,
 	userID, userSubID uint,
-	targetProductBillingPeriod string,
+	targetPeriodDays int,
 ) (int, error) {
 	sub, err := orders.FindSubscriptionForUser(ctx, userID, userSubID)
 	if err != nil {
@@ -49,7 +49,7 @@ func upgradeOrderQuantity(
 	if sub == nil || !subscriptionIsActive(sub) {
 		return 0, errorx.ErrRenewNoSubscription
 	}
-	return billing.CountUpgradeBillingCycles(sub.PeriodEnd, sub.ExpiresAt, targetProductBillingPeriod), nil
+	return billing.CountUpgradeBillingCycles(sub.PeriodEnd, sub.ExpiresAt, targetPeriodDays), nil
 }
 
 // resolveRenewalActiveSubscriptionID 续费：必传 user_subscription_id，订阅 active 且 product_id 与订单一致。

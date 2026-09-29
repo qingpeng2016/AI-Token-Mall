@@ -29,6 +29,7 @@ type ProductItemResp struct {
 	TPMLimit             *int     `json:"tpm_limit,omitempty"`
 	AllowedModels        []string `json:"allowed_models"`
 	BillingPeriod        string   `json:"billing_period"`
+	PeriodDays           int      `json:"period_days"`
 	Price                Money    `json:"price"`
 	Currency             string   `json:"currency"`
 	HotTagName           string   `json:"hot_tag_name,omitempty"`

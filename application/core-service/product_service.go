@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/qingpeng2016/ai-token-mall/common/billing"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/entity"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/repository"
 	"github.com/qingpeng2016/ai-token-mall/domain/rest/response"
@@ -92,6 +93,7 @@ func mapProductItem(p *entity.Product) response.ProductItemResp {
 		TPMLimit:             p.TPMLimit,
 		AllowedModels:        decodeStringJSONArray(p.AllowedModels),
 		BillingPeriod:        p.BillingPeriod,
+		PeriodDays:           billing.PeriodDays(p.PeriodDays, p.BillingPeriod),
 		Price:                response.MoneyFrom(p.Price),
 		Currency:             p.Currency,
 		HotTagName:           strings.TrimSpace(p.HotTagName),
