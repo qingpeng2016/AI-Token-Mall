@@ -2,7 +2,10 @@ package boot
 
 import (
 	bot "github.com/qingpeng2016/ai-token-mall/application/bot"
+	"github.com/qingpeng2016/ai-token-mall/application/bot/scripts"
 	coreservice "github.com/qingpeng2016/ai-token-mall/application/core-service"
+	log2 "github.com/qingpeng2016/ai-token-mall/common/dederi/logger"
+	"github.com/qingpeng2016/ai-token-mall/common/notification"
 	"github.com/qingpeng2016/ai-token-mall/conf"
 	"github.com/qingpeng2016/ai-token-mall/infrastructure/http"
 	"github.com/qingpeng2016/ai-token-mall/infrastructure/http/alipay"
@@ -10,8 +13,6 @@ import (
 	"github.com/qingpeng2016/ai-token-mall/infrastructure/redis"
 	"github.com/qingpeng2016/ai-token-mall/interfaces/handler"
 	"github.com/qingpeng2016/ai-token-mall/interfaces/rest"
-	log2 "github.com/qingpeng2016/ai-token-mall/common/dederi/logger"
-	"github.com/qingpeng2016/ai-token-mall/common/notification"
 
 	"go.uber.org/dig"
 	"go.uber.org/zap/zapcore"
@@ -45,7 +46,7 @@ func BuildContainer() *dig.Container {
 	_ = c.Provide(coreservice.NewBotScheduleConfigService)
 
 	// Bot
-	_ = c.Provide(bot.NewStatsJob)
+	_ = c.Provide(scripts.NewStatsJob)
 	_ = c.Provide(bot.NewScheduler)
 	_ = c.Provide(bot.NewEntry)
 

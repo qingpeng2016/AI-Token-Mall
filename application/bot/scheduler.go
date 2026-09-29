@@ -2,6 +2,7 @@ package bot
 
 import (
 	"context"
+	"github.com/qingpeng2016/ai-token-mall/application/bot/scripts"
 	"runtime/debug"
 	"sync"
 	"time"
@@ -17,7 +18,7 @@ import (
 
 type Scheduler struct {
 	botScheduleConfigService *coreservice.BotScheduleConfigService
-	statsJob                 *StatsJob
+	statsJob                 *scripts.StatsJob
 	ns                       *gocron.Scheduler
 	jobMap                   map[string]*gocron.Job
 	configMap                map[string]float64
@@ -27,7 +28,7 @@ type Scheduler struct {
 
 func NewScheduler(
 	botScheduleConfigService *coreservice.BotScheduleConfigService,
-	statsJob *StatsJob,
+	statsJob *scripts.StatsJob,
 ) *Scheduler {
 	return &Scheduler{
 		botScheduleConfigService: botScheduleConfigService,
@@ -56,9 +57,9 @@ func (s *Scheduler) Handle() {
 	}
 
 	where := map[string]interface{}{
-		"module IN ?":              []string{ModuleAITokenMall},
-		"is_enabled = ?":           1,
-		"is_strategy_enabled = ?":  1,
+		"module IN ?":             []string{scripts.ModuleAITokenMall},
+		"is_enabled = ?":          1,
+		"is_strategy_enabled = ?": 1,
 	}
 	_, configs, err := s.botScheduleConfigService.GetAllConfigs(ctx, where)
 	if err != nil {
@@ -104,7 +105,7 @@ func (s *Scheduler) Handle() {
 
 func (s *Scheduler) runTask(ctx context.Context, cfg entity2.BotScheduleConfig) {
 	switch cfg.TaskName {
-	case TaskUserStats:
+	case scripts.TaskUserStats:
 		s.statsJob.Run(ctx)
 	default:
 		logger.WarnZ(ctx, "bot-unknown-task", zap.String("module", cfg.Module), zap.String("task", cfg.TaskName))
