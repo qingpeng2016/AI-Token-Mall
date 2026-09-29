@@ -3,7 +3,7 @@ package handler
 import (
 	"net/http"
 
-	coreservice "github.com/qingpeng2016/ai-token-mall/application/core-service"
+	"github.com/qingpeng2016/ai-token-mall/application/core-service/order"
 	ginMiddleware "github.com/qingpeng2016/ai-token-mall/common/dederi/gin/middleware"
 	"github.com/qingpeng2016/ai-token-mall/common/dederi/gin/response"
 	"github.com/qingpeng2016/ai-token-mall/domain/rest/request"
@@ -11,10 +11,10 @@ import (
 )
 
 type OrderHandler struct {
-	orderSvc *coreservice.OrderService
+	orderSvc *order.OrderService
 }
 
-func NewOrderHandler(orderSvc *coreservice.OrderService) *OrderHandler {
+func NewOrderHandler(orderSvc *order.OrderService) *OrderHandler {
 	return &OrderHandler{orderSvc: orderSvc}
 }
 

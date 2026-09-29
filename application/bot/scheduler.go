@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/qingpeng2016/ai-token-mall/application/bot/scripts"
-	coreservice "github.com/qingpeng2016/ai-token-mall/application/core-service"
+	subscriptionlifecycle "github.com/qingpeng2016/ai-token-mall/application/bot/scripts/subscription_lifecycle"
+	botscheduleconfig "github.com/qingpeng2016/ai-token-mall/application/core-service/bot_schedule_config"
 	"github.com/qingpeng2016/ai-token-mall/common/dederi/logger"
 	"github.com/qingpeng2016/ai-token-mall/common/notification"
 	"github.com/qingpeng2016/ai-token-mall/conf"
@@ -20,8 +20,8 @@ import (
 
 // Scheduler Bot 调度器
 type Scheduler struct {
-	botScheduleConfigService *coreservice.BotScheduleConfigService
-	subscriptionLifecycleJob *scripts.SubscriptionLifecycleJob
+	botScheduleConfigService *botscheduleconfig.BotScheduleConfigService
+	subscriptionLifecycleJob *subscriptionlifecycle.SubscriptionLifecycleJob
 	ns                       *gocron.Scheduler
 	jobMap                   map[string]*gocron.Job
 	configMap                map[string]float64
@@ -31,8 +31,8 @@ type Scheduler struct {
 
 // NewScheduler 创建调度器
 func NewScheduler(
-	botScheduleConfigService *coreservice.BotScheduleConfigService,
-	subscriptionLifecycleJob *scripts.SubscriptionLifecycleJob,
+	botScheduleConfigService *botscheduleconfig.BotScheduleConfigService,
+	subscriptionLifecycleJob *subscriptionlifecycle.SubscriptionLifecycleJob,
 ) *Scheduler {
 	return &Scheduler{
 		botScheduleConfigService: botScheduleConfigService,
@@ -72,7 +72,7 @@ func (s *Scheduler) Handle(configIDs ...uint) {
 	if hasConfigIDs {
 		where["id IN ?"] = configIDs
 	} else {
-		where["module IN ?"] = []string{scripts.ModuleAITokenMall}
+		where["module IN ?"] = []string{subscriptionlifecycle.ModuleAITokenMall}
 		where["is_enabled = ?"] = 1
 		where["is_strategy_enabled = ?"] = 1
 	}
@@ -209,7 +209,7 @@ func (s *Scheduler) Stop() error {
 
 func (s *Scheduler) getHandleFunc(module, taskName string) func() {
 	switch module {
-	case scripts.ModuleAITokenMall:
+	case subscriptionlifecycle.ModuleAITokenMall:
 		return s.getAITokenMallHandleFunc(taskName)
 	}
 	return nil
@@ -217,7 +217,7 @@ func (s *Scheduler) getHandleFunc(module, taskName string) func() {
 
 func (s *Scheduler) getAITokenMallHandleFunc(taskName string) func() {
 	switch taskName {
-	case scripts.TaskSubscriptionLifecycle:
+	case subscriptionlifecycle.TaskSubscriptionLifecycle:
 		return func() {
 			s.subscriptionLifecycleJob.Run(context.Background())
 		}

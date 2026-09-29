@@ -4,17 +4,17 @@ import (
 	"errors"
 	"net/http"
 
-	coreservice "github.com/qingpeng2016/ai-token-mall/application/core-service"
+	"github.com/qingpeng2016/ai-token-mall/application/core-service/enterprise"
 	"github.com/qingpeng2016/ai-token-mall/common/dederi/gin/response"
 	"github.com/qingpeng2016/ai-token-mall/domain/rest/request"
 	"github.com/gin-gonic/gin"
 )
 
 type EnterpriseHandler struct {
-	enterpriseSvc *coreservice.EnterpriseService
+	enterpriseSvc *enterprise.EnterpriseService
 }
 
-func NewEnterpriseHandler(enterpriseSvc *coreservice.EnterpriseService) *EnterpriseHandler {
+func NewEnterpriseHandler(enterpriseSvc *enterprise.EnterpriseService) *EnterpriseHandler {
 	return &EnterpriseHandler{enterpriseSvc: enterpriseSvc}
 }
 
@@ -41,7 +41,7 @@ func (h *EnterpriseHandler) GetProduct(c *gin.Context) {
 	code := c.Param("code")
 	data, err := h.enterpriseSvc.GetProduct(c.Request.Context(), code)
 	if err != nil {
-		if errors.Is(err, coreservice.ErrEnterpriseProductNotFound) {
+		if errors.Is(err, enterprise.ErrEnterpriseProductNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"code": 404, "msg": "enterprise product not found"})
 			return
 		}

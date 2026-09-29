@@ -2,13 +2,20 @@ package boot
 
 import (
 	bot "github.com/qingpeng2016/ai-token-mall/application/bot"
-	"github.com/qingpeng2016/ai-token-mall/application/bot/scripts"
-	coreservice "github.com/qingpeng2016/ai-token-mall/application/core-service"
+	subscriptionlifecycle "github.com/qingpeng2016/ai-token-mall/application/bot/scripts/subscription_lifecycle"
+	alipaysvc "github.com/qingpeng2016/ai-token-mall/application/core-service/alipay"
+	botscheduleconfig "github.com/qingpeng2016/ai-token-mall/application/core-service/bot_schedule_config"
+	"github.com/qingpeng2016/ai-token-mall/application/core-service/enterprise"
+	"github.com/qingpeng2016/ai-token-mall/application/core-service/order"
+	productsvc "github.com/qingpeng2016/ai-token-mall/application/core-service/product"
+	"github.com/qingpeng2016/ai-token-mall/application/core-service/subscription"
+	"github.com/qingpeng2016/ai-token-mall/application/core-service/tutorial"
+	"github.com/qingpeng2016/ai-token-mall/application/core-service/user"
 	log2 "github.com/qingpeng2016/ai-token-mall/common/dederi/logger"
 	"github.com/qingpeng2016/ai-token-mall/common/notification"
 	"github.com/qingpeng2016/ai-token-mall/conf"
 	"github.com/qingpeng2016/ai-token-mall/infrastructure/http"
-	"github.com/qingpeng2016/ai-token-mall/infrastructure/http/alipay"
+	payinfra "github.com/qingpeng2016/ai-token-mall/infrastructure/http/alipay"
 	"github.com/qingpeng2016/ai-token-mall/infrastructure/mysql"
 	"github.com/qingpeng2016/ai-token-mall/infrastructure/redis"
 	"github.com/qingpeng2016/ai-token-mall/interfaces/handler"
@@ -36,32 +43,42 @@ func BuildContainer() *dig.Container {
 	_ = c.Provide(handler.NewEnterpriseHandler)
 	_ = c.Provide(handler.NewOrderHandler)
 	_ = c.Provide(handler.NewSubscriptionHandler)
-	_ = c.Provide(coreservice.NewUserService)
-	_ = c.Provide(coreservice.NewProductService)
-	_ = c.Provide(coreservice.NewTutorialService)
-	_ = c.Provide(coreservice.NewEnterpriseService)
-	_ = c.Provide(coreservice.NewOrderService)
-	_ = c.Provide(coreservice.NewSubscriptionService)
-	_ = c.Provide(coreservice.NewAlipayService)
-	_ = c.Provide(coreservice.NewBotScheduleConfigService)
+	_ = c.Provide(user.NewUserService)
+	_ = c.Provide(productsvc.NewProductService)
+	_ = c.Provide(tutorial.NewTutorialService)
+	_ = c.Provide(enterprise.NewEnterpriseService)
+	_ = c.Provide(order.NewOrderFulfillService)
+	_ = c.Provide(order.NewOrderService)
+	_ = c.Provide(subscription.NewSubscriptionService)
+	_ = c.Provide(alipaysvc.NewAlipayService)
+	_ = c.Provide(botscheduleconfig.NewBotScheduleConfigService)
 
 	// Bot
-	_ = c.Provide(scripts.NewSubscriptionLifecycleJob)
+	_ = c.Provide(subscriptionlifecycle.NewSubscriptionLifecycleJob)
 	_ = c.Provide(bot.NewScheduler)
 	_ = c.Provide(bot.NewEntry)
 
 	// Infra
 	_ = c.Provide(NewDBClient)
-	_ = c.Provide(mysql.NewUserImpl)
-	_ = c.Provide(mysql.NewProductImpl)
-	_ = c.Provide(mysql.NewTutorialImpl)
-	_ = c.Provide(mysql.NewEnterpriseImpl)
-	_ = c.Provide(mysql.NewOrderImpl)
-	_ = c.Provide(mysql.NewSubscriptionImpl)
+	_ = c.Provide(mysql.NewUsersImpl)
+	_ = c.Provide(mysql.NewProductsCategoryImpl)
+	_ = c.Provide(mysql.NewProductsImpl)
+	_ = c.Provide(mysql.NewTutorialCategoryImpl)
+	_ = c.Provide(mysql.NewTutorialArticleImpl)
+	_ = c.Provide(mysql.NewEnterpriseInquiryImpl)
+	_ = c.Provide(mysql.NewEnterpriseProductsImpl)
+	_ = c.Provide(mysql.NewUserOrdersImpl)
+	_ = c.Provide(mysql.NewUserSubscriptionsImpl)
+	_ = c.Provide(mysql.NewUserWalletFlowsImpl)
+	_ = c.Provide(mysql.NewUserNotificationsImpl)
+	_ = c.Provide(mysql.NewUserAPIKeysImpl)
+	_ = c.Provide(mysql.NewPaymentCallbacksImpl)
+	_ = c.Provide(mysql.NewUserInvoicesImpl)
+	_ = c.Provide(mysql.NewTransactorImpl)
 	_ = c.Provide(mysql.NewBotScheduleConfigImpl)
 	_ = c.Provide(redis.NewClient)
 	_ = c.Provide(http.NewHTTPClient)
-	_ = c.Provide(alipay.NewClient)
+	_ = c.Provide(payinfra.NewClient)
 
 	_ = c.Provide(notification.NewNotificationManager)
 

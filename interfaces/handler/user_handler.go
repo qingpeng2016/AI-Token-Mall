@@ -3,7 +3,7 @@ package handler
 import (
 	"net/http"
 
-	coreservice "github.com/qingpeng2016/ai-token-mall/application/core-service"
+	"github.com/qingpeng2016/ai-token-mall/application/core-service/user"
 	"github.com/qingpeng2016/ai-token-mall/common/constants"
 	"github.com/qingpeng2016/ai-token-mall/common/dederi/gin/response"
 	"github.com/qingpeng2016/ai-token-mall/domain/rest/request"
@@ -11,10 +11,10 @@ import (
 )
 
 type UserHandler struct {
-	userSvc *coreservice.UserService
+	userSvc *user.UserService
 }
 
-func NewUserHandler(userSvc *coreservice.UserService) *UserHandler {
+func NewUserHandler(userSvc *user.UserService) *UserHandler {
 	return &UserHandler{userSvc: userSvc}
 }
 

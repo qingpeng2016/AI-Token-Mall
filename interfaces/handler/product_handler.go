@@ -5,16 +5,16 @@ import (
 	"net/http"
 	"strconv"
 
-	coreservice "github.com/qingpeng2016/ai-token-mall/application/core-service"
+	productsvc "github.com/qingpeng2016/ai-token-mall/application/core-service/product"
 	"github.com/qingpeng2016/ai-token-mall/common/dederi/gin/response"
 	"github.com/gin-gonic/gin"
 )
 
 type ProductHandler struct {
-	productSvc *coreservice.ProductService
+	productSvc *productsvc.ProductService
 }
 
-func NewProductHandler(productSvc *coreservice.ProductService) *ProductHandler {
+func NewProductHandler(productSvc *productsvc.ProductService) *ProductHandler {
 	return &ProductHandler{productSvc: productSvc}
 }
 
@@ -52,7 +52,7 @@ func (h *ProductHandler) DetailBySlug(c *gin.Context) {
 	slug := c.Param("slug")
 	data, err := h.productSvc.DetailBySlug(c.Request.Context(), slug)
 	if err != nil {
-		if errors.Is(err, coreservice.ErrProductNotFound) {
+		if errors.Is(err, productsvc.ErrProductNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"code": 404, "msg": "product not found"})
 			return
 		}

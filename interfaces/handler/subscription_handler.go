@@ -3,17 +3,17 @@ package handler
 import (
 	"net/http"
 
-	coreservice "github.com/qingpeng2016/ai-token-mall/application/core-service"
+	"github.com/qingpeng2016/ai-token-mall/application/core-service/subscription"
 	ginMiddleware "github.com/qingpeng2016/ai-token-mall/common/dederi/gin/middleware"
 	"github.com/qingpeng2016/ai-token-mall/common/dederi/gin/response"
 	"github.com/gin-gonic/gin"
 )
 
 type SubscriptionHandler struct {
-	subSvc *coreservice.SubscriptionService
+	subSvc *subscription.SubscriptionService
 }
 
-func NewSubscriptionHandler(subSvc *coreservice.SubscriptionService) *SubscriptionHandler {
+func NewSubscriptionHandler(subSvc *subscription.SubscriptionService) *SubscriptionHandler {
 	return &SubscriptionHandler{subSvc: subSvc}
 }
 

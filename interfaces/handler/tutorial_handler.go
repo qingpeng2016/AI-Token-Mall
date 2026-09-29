@@ -4,16 +4,16 @@ import (
 	"errors"
 	"net/http"
 
-	coreservice "github.com/qingpeng2016/ai-token-mall/application/core-service"
+	"github.com/qingpeng2016/ai-token-mall/application/core-service/tutorial"
 	"github.com/qingpeng2016/ai-token-mall/common/dederi/gin/response"
 	"github.com/gin-gonic/gin"
 )
 
 type TutorialHandler struct {
-	tutorialSvc *coreservice.TutorialService
+	tutorialSvc *tutorial.TutorialService
 }
 
-func NewTutorialHandler(tutorialSvc *coreservice.TutorialService) *TutorialHandler {
+func NewTutorialHandler(tutorialSvc *tutorial.TutorialService) *TutorialHandler {
 	return &TutorialHandler{tutorialSvc: tutorialSvc}
 }
 
@@ -37,7 +37,7 @@ func (h *TutorialHandler) Detail(c *gin.Context) {
 	}
 	data, err := h.tutorialSvc.Detail(c.Request.Context(), slug)
 	if err != nil {
-		if errors.Is(err, coreservice.ErrTutorialNotFound) {
+		if errors.Is(err, tutorial.ErrTutorialNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"code": 404, "msg": "tutorial not found"})
 			return
 		}
