@@ -224,6 +224,10 @@ func tryExpireSubscription(ctx context.Context, db *gorm.DB, subID uint, now tim
 			return err
 		}
 
+		if err := insertSubscriptionLifecycleNotification(tx, sub.UserID, &sub, "subscription_expired", now); err != nil {
+			return err
+		}
+
 		return tx.Model(&entity.UserAPIKey{}).
 			Where("user_subscription_id = ? AND status <> ?", sub.ID, "rotated").
 			Updates(map[string]interface{}{
@@ -235,6 +239,21 @@ func tryExpireSubscription(ctx context.Context, db *gorm.DB, subID uint, now tim
 
 func subscriptionTimeEqual(a, b time.Time) bool {
 	return a.Unix() == b.Unix()
+}
+
+func insertSubscriptionLifecycleNotification(tx *gorm.DB, userID uint, sub *entity.UserSubscription, templateCode string, now time.Time) error {
+	subID := sub.ID
+	sentAt := now
+	row := entity.UserNotification{
+		UserID:             userID,
+		UserSubscriptionID: &subID,
+		Channel:            "in_app",
+		TemplateCode:       templateCode,
+		Status:             "sent",
+		SentAt:             &sentAt,
+		CreatedAt:          now,
+	}
+	return tx.Create(&row).Error
 }
 
 func insertOrderPayWalletFlowWithBalance(tx *gorm.DB, order *entity.UserOrder, product *entity.Product, channel string, balanceAfter decimal.Decimal, now time.Time) error {
