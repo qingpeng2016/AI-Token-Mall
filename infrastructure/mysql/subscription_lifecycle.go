@@ -90,6 +90,9 @@ func tryAutoRenewSubscription(ctx context.Context, db *gorm.DB, subID uint, now 
 			return err
 		}
 
+		if !now.Before(sub.ExpiresAt) {
+			return nil
+		}
 		lead := sub.ExpiresAt.Add(-autoRenewLeadDays * 24 * time.Hour)
 		if now.Before(lead) {
 			return nil
