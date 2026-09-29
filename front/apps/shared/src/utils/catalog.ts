@@ -43,7 +43,12 @@ export function flattenCatalogProducts(
   catalog: ProductCatalogResponse,
 ): CatalogProduct[] {
   return catalog.categories.flatMap((c) =>
-    c.products.map((p) => normalizeCatalogProduct(p)),
+    c.products.map((p) =>
+      normalizeCatalogProduct({
+        ...p,
+        products_category_id: p.products_category_id ?? c.id,
+      }),
+    ),
   )
 }
 

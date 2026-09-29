@@ -95,7 +95,6 @@ const openFaqs = ref<string[]>([])
             </li>
           </ul>
           <button type="button" class="buy-card-cta" @click="onBuy(product)">立即购买</button>
-          <RouterLink to="/login" class="buy-card-after">买完前往「会员中心」→</RouterLink>
         </aside>
       </section>
 
@@ -331,15 +330,6 @@ const openFaqs = ref<string[]>([])
   border: none;
   border-radius: 14px;
   box-shadow: 0 4px 16px rgba(124, 58, 237, 0.35);
-}
-
-.buy-card-after {
-  display: block;
-  margin-top: 12px;
-  font-size: 12px;
-  color: var(--atm-primary);
-  text-align: center;
-  text-decoration: none;
 }
 
 .section {

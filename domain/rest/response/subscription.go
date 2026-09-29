@@ -9,5 +9,6 @@ type UserSubscriptionItem struct {
 	UsedTokens   int64  `json:"used_tokens"`
 	PeriodEnd    string `json:"period_end"`
 	ExpiresAt    string `json:"expires_at"`
-	SKUProductName string `json:"sku_product_name"`
+	SKUProductName         string `json:"sku_product_name"`
+	ProductsCategoryName   string `json:"products_category_name"`
 }

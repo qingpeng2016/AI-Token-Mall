@@ -38,7 +38,8 @@ func (s *SubscriptionService) ListMine(ctx context.Context, userID uint) ([]resp
 			UsedTokens:     row.UsedTokens,
 			PeriodEnd:      formatSubscriptionDate(row.PeriodEnd),
 			ExpiresAt:      formatSubscriptionDate(row.ExpiresAt),
-			SKUProductName: row.SKUProductName,
+			SKUProductName:       row.SKUProductName,
+			ProductsCategoryName: row.ProductsCategoryName,
 		})
 	}
 	sortSubscriptionsForDisplay(items)

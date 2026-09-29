@@ -7,7 +7,10 @@ import CatalogPickerModal from '@/components/catalog/CatalogPickerModal.vue'
 import PurchaseModal from '@/components/checkout/PurchaseModal.vue'
 import MemberSidebar from '@/components/member/MemberSidebar.vue'
 import type { CatalogProduct } from '@/mocks/home'
-import { useCatalogProducts } from '@/composables/useCatalogProducts'
+import {
+  reloadCatalogProducts,
+  useCatalogProducts,
+} from '@/composables/useCatalogProducts'
 import {
   clearSessionUser,
   getSessionUser,
@@ -43,8 +46,11 @@ import {
 const router = useRouter()
 const route = useRoute()
 const user = ref(getSessionUser())
-const { products: catalogProducts } = useCatalogProducts()
+const { categories: catalogCategories, products: catalogProducts } = useCatalogProducts()
 const catalogOpen = ref(false)
+/** 非空时目录弹窗只展示该 products_category_id（升档） */
+const catalogProductsCategoryId = ref<number | null>(null)
+const catalogUpgradeBaselineLimitTokens = ref<number | null>(null)
 const purchaseOpen = ref(false)
 const purchaseProduct = ref<CatalogProduct | null>(null)
 const purchaseOrderType = ref<OrderType>('purchase')
@@ -268,12 +274,44 @@ function goCommissionWithdrawFromOverview() {
 function openCatalogPicker() {
   purchaseOrderType.value = 'purchase'
   purchaseUserSubscriptionId.value = 0
+  catalogProductsCategoryId.value = null
+  catalogUpgradeBaselineLimitTokens.value = null
   catalogOpen.value = true
 }
 
-function openUpgradeCatalog(sub: UserSubscriptionItem) {
+function resolveUpgradeCategoryId(sub: UserSubscriptionItem): number | null {
+  const byProduct = catalogProducts.value.find((item) => item.id === sub.product_id)
+  if (byProduct?.products_category_id != null && byProduct.products_category_id > 0) {
+    return byProduct.products_category_id
+  }
+  for (const cat of catalogCategories.value) {
+    if (cat.products.some((p) => p.id === sub.product_id)) {
+      return cat.id
+    }
+  }
+  const catName = sub.products_category_name?.trim()
+  if (catName) {
+    const cat = catalogCategories.value.find((c) =>
+      c.products.some((p) => p.products_category_name === catName),
+    )
+    if (cat) return cat.id
+  }
+  return null
+}
+
+async function openUpgradeCatalog(sub: UserSubscriptionItem) {
+  if (!catalogProducts.value.length) {
+    await reloadCatalogProducts({ soft: true })
+  }
+  const categoryId = resolveUpgradeCategoryId(sub)
+  if (categoryId == null) {
+    ElMessage.warning('未找到该套餐分类，请稍后重试或联系客服')
+    return
+  }
   purchaseOrderType.value = 'upgrade'
   purchaseUserSubscriptionId.value = sub.id
+  catalogProductsCategoryId.value = categoryId
+  catalogUpgradeBaselineLimitTokens.value = sub.limit_tokens
   catalogOpen.value = true
 }
 
@@ -307,8 +345,11 @@ function onCatalogBuy(p: CatalogProduct) {
     purchaseUserSubscriptionId.value = 0
   }
   purchaseProduct.value = p
-  catalogOpen.value = false
   purchaseOpen.value = true
+}
+
+function onPurchasePaid() {
+  catalogOpen.value = false
 }
 
 function mockAction(msg: string) {
@@ -1320,13 +1361,19 @@ function confirmAddTeamMember() {
       </div>
     </div>
 
-    <CatalogPickerModal v-model:open="catalogOpen" @buy="onCatalogBuy" />
+    <CatalogPickerModal
+      v-model:open="catalogOpen"
+      :products-category-id="catalogProductsCategoryId"
+      :upgrade-baseline-limit-tokens="catalogUpgradeBaselineLimitTokens"
+      @buy="onCatalogBuy"
+    />
     <PurchaseModal
       v-model:open="purchaseOpen"
       :product="purchaseProduct"
       :user="user"
       :order-type="purchaseOrderType"
       :user-subscription-id="purchaseUserSubscriptionId"
+      @paid="onPurchasePaid"
     />
 
     <Teleport to="body">

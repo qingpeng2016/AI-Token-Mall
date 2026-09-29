@@ -11,6 +11,7 @@ export type UserSubscriptionItem = {
   period_end: string
   expires_at: string
   sku_product_name: string
+  products_category_name: string
 }
 
 function unwrap<T>(envelope: ApiEnvelope<T>): T {

@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { formatCnyFromCents } from '@ai-token-mall/shared'
+import { formatCnyFromCents, formatTokenCount } from '@ai-token-mall/shared'
 import type { OrderType, UserProfile } from '@ai-token-mall/shared'
 import { orderApi } from '@/api'
 import type { CatalogProduct } from '@/mocks/home'
@@ -22,6 +22,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
+  paid: []
 }>()
 
 const quantity = ref(1)
@@ -29,6 +30,9 @@ const qtyPresets = [1, 5, 10, 20]
 const couponInput = ref('')
 const couponApplied = ref<{ code: string; percentOff: number } | null>(null)
 const paying = ref(false)
+
+/** 仅新购可选份数；续费/升档/加购额度固定 1 */
+const showQuantityPicker = computed(() => props.orderType === 'purchase')
 
 watch(
   () => props.open,
@@ -40,6 +44,29 @@ watch(
     }
   },
 )
+
+watch(
+  () => props.orderType,
+  () => {
+    if (!showQuantityPicker.value) {
+      quantity.value = 1
+    }
+  },
+)
+
+const dialogTitle = computed(() => {
+  const title = props.product?.card_title ?? '套餐'
+  switch (props.orderType) {
+    case 'renewal':
+      return `续购 - ${title}`
+    case 'quota_addon':
+      return `加购额度 - ${title}`
+    case 'upgrade':
+      return `升档 - ${title}`
+    default:
+      return title
+  }
+})
 
 const planLabel = computed(() => {
   const p = props.product
@@ -59,6 +86,11 @@ const couponOffCents = computed(() => {
 })
 
 const totalCents = computed(() => Math.max(0, subtotalCents.value - couponOffCents.value))
+
+const quotaAddonGrantTokens = computed(() => {
+  if (props.orderType !== 'quota_addon' || !props.product) return 0
+  return props.product.limit_tokens * quantity.value
+})
 
 function close() {
   emit('update:open', false)
@@ -102,6 +134,7 @@ async function submitPay(channel: 'alipay' | 'paypal') {
     ElMessage.success(
       `${channel === 'alipay' ? '支付宝' : 'PayPal'} 支付成功 · 订单 ${created.order_no}`,
     )
+    emit('paid')
     close()
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : '下单失败')
@@ -115,9 +148,9 @@ async function submitPay(channel: 'alipay' | 'paypal') {
   <Teleport to="body">
     <Transition name="purchase-fade">
       <div v-if="open && product" class="purchase-overlay" @click.self="close">
-        <div class="purchase-dialog" role="dialog" aria-modal="true" :aria-label="product.card_title">
+        <div class="purchase-dialog" role="dialog" aria-modal="true" :aria-label="dialogTitle">
           <header class="purchase-head">
-            <h2 class="purchase-title">{{ product.card_title }}</h2>
+            <h2 class="purchase-title">{{ dialogTitle }}</h2>
             <button type="button" class="purchase-close" aria-label="关闭" @click="close">×</button>
           </header>
 
@@ -130,7 +163,7 @@ async function submitPay(channel: 'alipay' | 'paypal') {
             </label>
           </div>
 
-          <div class="purchase-qty">
+          <div v-if="showQuantityPicker" class="purchase-qty">
             <span class="field-label">购买数量</span>
             <div class="qty-row">
               <div class="qty-stepper">
@@ -170,12 +203,18 @@ async function submitPay(channel: 'alipay' | 'paypal') {
           </div>
 
           <div class="purchase-total">
+            <p v-if="orderType === 'quota_addon' && quotaAddonGrantTokens > 0" class="quota-grant-line">
+              新增额度 {{ formatTokenCount(quotaAddonGrantTokens) }} tokens
+            </p>
             <p class="total-line">
               合计
               <strong>{{ formatCnyFromCents(totalCents) }}</strong>
             </p>
-            <p class="total-sub">
-              {{ quantity }} 份 × {{ formatCnyFromCents(unitCents) }}
+            <p v-if="showQuantityPicker" class="total-sub">
+              <template v-if="showQuantityPicker">
+                {{ quantity }} 份 × {{ formatCnyFromCents(unitCents) }}
+              </template>
+              <template v-else>{{ formatCnyFromCents(unitCents) }}</template>
               <template v-if="couponApplied"> · 优惠券 −{{ couponApplied.percentOff }}%</template>
             </p>
           </div>
@@ -422,6 +461,13 @@ async function submitPay(channel: 'alipay' | 'paypal') {
 
 .purchase-total {
   margin-bottom: 20px;
+}
+
+.quota-grant-line {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--atm-text);
 }
 
 .total-line {

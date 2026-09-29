@@ -9,9 +9,16 @@ import { productDetailPath } from '@/mocks/productRoutes'
 
 type FilterKey = 'all' | string
 
-const props = defineProps<{
-  open: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    open: boolean
+    /** 升档等场景：只展示该分类商品，并隐藏顶部分类 pill */
+    productsCategoryId?: number | null
+    /** 升档：仅展示 limit_tokens 严格大于该值的商品（同分类内比档位） */
+    upgradeBaselineLimitTokens?: number | null
+  }>(),
+  { productsCategoryId: null, upgradeBaselineLimitTokens: null },
+)
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
@@ -37,12 +44,42 @@ const activePillStyle = computed(() => {
   return { background: pill.activeBg, color: '#fff' }
 })
 
+const categoryLocked = computed(
+  () => props.productsCategoryId != null && props.productsCategoryId > 0,
+)
+
+const upgradeMode = computed(
+  () =>
+    categoryLocked.value &&
+    props.upgradeBaselineLimitTokens != null &&
+    props.upgradeBaselineLimitTokens >= 0,
+)
+
+const modalTitle = computed(() =>
+  categoryLocked.value ? '选择升级档位' : '全部套餐',
+)
+
+const emptyHint = computed(() => {
+  if (upgradeMode.value) {
+    return '没有更高套餐，请联系管理员手动处理。'
+  }
+  return '该品牌暂无套餐'
+})
+
 const filteredProducts = computed(() => {
   let list = [...catalogProducts.value]
-  if (filter.value !== 'all') {
+  if (categoryLocked.value) {
+    list = list.filter((p) => p.products_category_id === props.productsCategoryId)
+  } else if (filter.value !== 'all') {
     list = list.filter((p) => p.products_category_id === Number(filter.value))
   }
-  list.sort((a, b) => a.sort - b.sort)
+  if (upgradeMode.value) {
+    const baseline = props.upgradeBaselineLimitTokens ?? 0
+    list = list.filter((p) => p.limit_tokens > baseline)
+    list.sort((a, b) => a.limit_tokens - b.limit_tokens || a.sort - b.sort)
+  } else {
+    list.sort((a, b) => a.sort - b.sort)
+  }
   return list
 })
 
@@ -58,7 +95,7 @@ watch(
 watch(
   () => props.open,
   (visible) => {
-    if (visible) {
+    if (visible && !categoryLocked.value) {
       filter.value = 'all'
     }
   },
@@ -101,13 +138,13 @@ function onKeydown(e: KeyboardEvent) {
           aria-labelledby="catalog-picker-title"
         >
           <header class="catalog-modal-head">
-            <h2 id="catalog-picker-title">全部套餐</h2>
+            <h2 id="catalog-picker-title">{{ modalTitle }}</h2>
             <button type="button" class="catalog-modal-close" aria-label="关闭" @click="close">
               ×
             </button>
           </header>
 
-          <div class="catalog-pills">
+          <div v-if="!categoryLocked" class="catalog-pills">
             <button
               v-for="pill in catalogFilterPills"
               :key="pill.label"
@@ -143,7 +180,7 @@ function onKeydown(e: KeyboardEvent) {
               </template>
             </div>
             <p v-if="!catalogLoading && !filteredProducts.length" class="catalog-empty">
-              该品牌暂无套餐
+              {{ emptyHint }}
             </p>
           </div>
         </div>

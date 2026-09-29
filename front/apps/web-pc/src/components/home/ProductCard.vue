@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
 import { formatCnyFromCents } from '@ai-token-mall/shared'
 import type { CatalogProduct } from '@/mocks/home'
 
@@ -35,7 +34,6 @@ const emit = defineEmits<{
       </li>
     </ul>
     <button type="button" class="sku-buy" @click.stop="emit('buy', product)">立即购买</button>
-    <RouterLink to="/login" class="sku-after" @click.stop>买完前往「会员中心 · 查看额度」→</RouterLink>
   </article>
 </template>
 
@@ -142,15 +140,5 @@ const emit = defineEmits<{
 }
 .sku-buy:hover {
   filter: brightness(1.04);
-}
-.sku-after {
-  margin-top: 12px;
-  font-size: 12px;
-  color: var(--atm-primary);
-  text-align: center;
-  text-decoration: none;
-}
-.sku-after:hover {
-  text-decoration: underline;
 }
 </style>
