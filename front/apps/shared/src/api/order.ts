@@ -22,7 +22,7 @@ export type CreateOrderResult = {
   user_subscription_id: number
   channel: string
   status: string
-  total_amount_cents: number
+  total_amount: number | string
   currency: string
 }
 

@@ -92,7 +92,7 @@ func mapProductItem(p *entity.Product) response.ProductItemResp {
 		TPMLimit:             p.TPMLimit,
 		AllowedModels:        decodeStringJSONArray(p.AllowedModels),
 		BillingPeriod:        p.BillingPeriod,
-		PriceCents:           p.PriceCents,
+		Price:                response.MoneyFrom(p.Price),
 		Currency:             p.Currency,
 		HotTagName:           strings.TrimSpace(p.HotTagName),
 		Sort:                 p.SortOrder,

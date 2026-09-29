@@ -4,7 +4,8 @@ import { RouterLink } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   countUpgradeBillingCycles,
-  formatCnyFromCents,
+  formatCny,
+  parseMoney,
   formatSubscriptionDate,
   parseSubscriptionDate,
   formatTokenCount,
@@ -116,7 +117,7 @@ const dialogTitle = computed(() => {
     case 'renewal':
       return `续购 - ${title}`
     case 'quota_addon':
-      return `加购额度 - ${title}`
+      return `加本期额度 - ${title}`
     case 'upgrade':
       return `升档 - ${title}`
     default:
@@ -132,16 +133,18 @@ const planLabel = computed(() => {
   return '单次'
 })
 
-const unitCents = computed(() => props.product?.price_cents ?? 0)
+const unitPrice = computed(() => parseMoney(props.product?.price))
 
-const subtotalCents = computed(() => unitCents.value * checkoutQuantity.value)
+const subtotalAmount = computed(() => unitPrice.value * checkoutQuantity.value)
 
-const couponOffCents = computed(() => {
+const couponOffAmount = computed(() => {
   if (!couponApplied.value) return 0
-  return Math.round(subtotalCents.value * (couponApplied.value.percentOff / 100))
+  return Math.round(subtotalAmount.value * (couponApplied.value.percentOff / 100) * 100) / 100
 })
 
-const totalCents = computed(() => Math.max(0, subtotalCents.value - couponOffCents.value))
+const totalAmount = computed(() =>
+  Math.max(0, Math.round((subtotalAmount.value - couponOffAmount.value) * 100) / 100),
+)
 
 const quotaAddonGrantTokens = computed(() => {
   if (props.orderType !== 'quota_addon' || !props.product) return 0
@@ -225,7 +228,7 @@ async function submitPay(channel: 'alipay' | 'paypal') {
               <span class="plan-radio" aria-hidden="true" />
               <span class="plan-name">{{ planLabel }}</span>
               <span class="plan-stock">库存充足</span>
-              <span class="plan-price">{{ formatCnyFromCents(product.price_cents) }}</span>
+              <span class="plan-price">{{ formatCny(product.price) }}</span>
             </label>
           </div>
 
@@ -278,11 +281,11 @@ async function submitPay(channel: 'alipay' | 'paypal') {
             </p>
             <p class="total-line">
               合计
-              <strong>{{ formatCnyFromCents(totalCents) }}</strong>
+              <strong>{{ formatCny(totalAmount) }}</strong>
             </p>
             <p v-if="showTotalSub" class="total-sub">
               {{ checkoutQuantity }} {{ totalSubUnit }} ×
-              {{ formatCnyFromCents(unitCents) }}
+              {{ formatCny(unitPrice) }}
               <template v-if="couponApplied"> · 优惠券 −{{ couponApplied.percentOff }}%</template>
             </p>
           </div>

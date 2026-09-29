@@ -42,7 +42,7 @@ export type MockOrder = {
   orderNo: string
   productName: string
   quantity: number
-  totalCents: number
+  totalAmount: number
   status: 'pending_payment' | 'completed' | 'failed' | 'cancelled'
   createdAt: string
   enterpriseInvoice: boolean
@@ -51,7 +51,7 @@ export type MockOrder = {
 export type MockWalletTx = {
   id: string
   type: 'recharge' | 'pay' | 'refund'
-  amountCents: number
+  amount: number
   remark: string
   createdAt: string
 }
@@ -60,7 +60,7 @@ export type MockInvoice = {
   id: number
   orderNo: string
   title: string
-  amountCents: number
+  amount: number
   status: 'pending' | 'issued' | 'failed'
   createdAt: string
 }
@@ -98,21 +98,21 @@ export type MockInviteRebateRecord = {
   inviteeEmail: string
   orderNo: string
   productName: string
-  orderAmountCents: number
-  /** 返利金额，已计入佣金 */
-  rebateCents: number
+  orderAmount: number
+  /** 返利金额（元），已计入佣金 */
+  rebateAmount: number
   createdAt: string
 }
 
 export const mockMemberOverview = {
-  balanceCents: 12800,
-  /** 邀请返利累计佣金（可提现 / 抵扣，演示） */
-  commissionCents: 3560,
+  balance: 128,
+  /** 邀请返利累计佣金（元，可提现 / 抵扣，演示） */
+  commission: 35.6,
 }
 
 export type MockWithdrawalRecord = {
   id: number
-  amountCents: number
+  amount: number
   channel: 'alipay' | 'wechat'
   status: 'pending' | 'completed' | 'failed'
   createdAt: string
@@ -121,7 +121,7 @@ export type MockWithdrawalRecord = {
 export const mockWithdrawalRecords: MockWithdrawalRecord[] = [
   {
     id: 1,
-    amountCents: 2000,
+    amount: 20,
     channel: 'alipay',
     status: 'completed',
     createdAt: '2026-03-20 16:08',
@@ -188,8 +188,8 @@ export const mockInviteRebateRecords: MockInviteRebateRecord[] = [
     inviteeEmail: 'teama@example.com',
     orderNo: 'AP202603270001',
     productName: 'ChatGPT Plus 月卡',
-    orderAmountCents: 17800,
-    rebateCents: 890,
+    orderAmount: 178,
+    rebateAmount: 8.9,
     createdAt: '2026-03-27 14:25',
   },
   {
@@ -198,8 +198,8 @@ export const mockInviteRebateRecords: MockInviteRebateRecord[] = [
     inviteeEmail: 'userb@example.com',
     orderNo: 'AP202603200015',
     productName: 'GPT Go 月卡',
-    orderAmountCents: 8900,
-    rebateCents: 445,
+    orderAmount: 89,
+    rebateAmount: 4.45,
     createdAt: '2026-03-20 11:02',
   },
   {
@@ -208,8 +208,8 @@ export const mockInviteRebateRecords: MockInviteRebateRecord[] = [
     inviteeEmail: 'userb@example.com',
     orderNo: 'AP202603150032',
     productName: 'Claude Pro 月卡',
-    orderAmountCents: 21900,
-    rebateCents: 1095,
+    orderAmount: 219,
+    rebateAmount: 10.95,
     createdAt: '2026-03-15 09:12',
   },
 ]
@@ -250,7 +250,7 @@ export const mockOrders: MockOrder[] = [
     orderNo: 'AP202603270001',
     productName: 'ChatGPT Plus 月卡',
     quantity: 1,
-    totalCents: 17800,
+    totalAmount: 178,
     status: 'completed',
     createdAt: '2026-03-27 14:20',
     enterpriseInvoice: false,
@@ -259,7 +259,7 @@ export const mockOrders: MockOrder[] = [
     orderNo: 'AP202603150032',
     productName: 'Claude Pro 月卡',
     quantity: 1,
-    totalCents: 21900,
+    totalAmount: 219,
     status: 'completed',
     createdAt: '2026-03-15 09:08',
     enterpriseInvoice: true,
@@ -268,7 +268,7 @@ export const mockOrders: MockOrder[] = [
     orderNo: 'AP202603280008',
     productName: 'GPT Go 月卡',
     quantity: 1,
-    totalCents: 8900,
+    totalAmount: 89,
     status: 'pending_payment',
     createdAt: '2026-03-28 10:00',
     enterpriseInvoice: false,
@@ -279,21 +279,21 @@ export const mockWalletTx: MockWalletTx[] = [
   {
     id: 'tx1',
     type: 'recharge',
-    amountCents: 50000,
+    amount: 500,
     remark: '支付宝充值',
     createdAt: '2026-03-10 11:30',
   },
   {
     id: 'tx2',
     type: 'pay',
-    amountCents: -17800,
+    amount: -178,
     remark: '订单 AP202603270001',
     createdAt: '2026-03-27 14:21',
   },
   {
     id: 'tx3',
     type: 'pay',
-    amountCents: -21900,
+    amount: -219,
     remark: '订单 AP202603150032',
     createdAt: '2026-03-15 09:09',
   },
@@ -304,7 +304,7 @@ export const mockInvoices: MockInvoice[] = [
     id: 1,
     orderNo: 'AP202603150032',
     title: '某某科技有限公司',
-    amountCents: 23214,
+    amount: 232.14,
     status: 'issued',
     createdAt: '2026-03-16',
   },

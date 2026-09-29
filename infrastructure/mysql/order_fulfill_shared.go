@@ -45,7 +45,7 @@ func insertOrderPayWalletFlow(tx *gorm.DB, order *entity.UserOrder, product *ent
 	row := entity.UserWalletFlow{
 		UserID:      order.UserID,
 		Type:        "pay",
-		AmountCents: -order.TotalAmountCents,
+		Amount: order.TotalAmount.Neg(),
 		Currency:    order.Currency,
 		RefType:     &refType,
 		RefID:       &order.ID,

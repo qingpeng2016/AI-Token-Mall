@@ -1,5 +1,23 @@
+export function parseMoney(v: number | string | undefined | null): number {
+  if (v == null || v === '') return 0
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0
+  const n = parseFloat(String(v).replace(/,/g, ''))
+  return Number.isFinite(n) ? n : 0
+}
+
+/** 格式化为人民币展示（元，最多两位小数） */
+export function formatCny(amount: number | string): string {
+  const n = parseMoney(amount)
+  const cents = Math.round(n * 100)
+  if (cents % 100 === 0) {
+    return `¥${Math.trunc(n)}`
+  }
+  return `¥${n.toFixed(2)}`
+}
+
+/** @deprecated 使用 formatCny（金额已为元） */
 export function formatCnyFromCents(cents: number): string {
-  return `¥${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`
+  return formatCny(cents / 100)
 }
 
 export function formatTokenCount(n: number): string {

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/qingpeng2016/ai-token-mall/common/constants"
+	"github.com/qingpeng2016/ai-token-mall/common/money"
 	"github.com/qingpeng2016/ai-token-mall/common/errorx"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/entity"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/repository"
@@ -56,10 +57,10 @@ func (s *OrderService) CreateMockOrder(ctx context.Context, userID uint, req *re
 		}
 		qty = computed
 	}
-	subtotal := product.PriceCents * int64(qty)
+	subtotal := money.MulQty(product.Price, qty)
 	total := subtotal
 	if req.EnterpriseInvoice {
-		total += (subtotal * 6) / 100
+		total = money.AddInvoiceSurcharge(subtotal, 6)
 	}
 
 	now := time.Now()
@@ -73,9 +74,9 @@ func (s *OrderService) CreateMockOrder(ctx context.Context, userID uint, req *re
 		OrderType:          orderType,
 		UserSubscriptionID: userSubID,
 		Quantity:           qty,
-		UnitPriceCents:    product.PriceCents,
+		UnitPrice:         product.Price,
 		Status:            "pending_payment",
-		TotalAmountCents:  total,
+		TotalAmount:       total,
 		Currency:          product.Currency,
 		EnterpriseInvoice: boolToInt(req.EnterpriseInvoice),
 		ExpireAt:          now.Add(30 * time.Minute),
@@ -139,7 +140,7 @@ func createOrderRespFromEntity(order *entity.UserOrder) *response.CreateOrderRes
 		UserSubscriptionID: order.UserSubscriptionID,
 		Channel:            order.PayChannel,
 		Status:             order.Status,
-		TotalAmountCents:   order.TotalAmountCents,
+		TotalAmount:        response.MoneyFrom(order.TotalAmount),
 		Currency:           order.Currency,
 	}
 }

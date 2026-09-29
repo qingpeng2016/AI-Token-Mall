@@ -25,7 +25,8 @@ export interface Product {
   tpm_limit?: number | null
   allowed_models: string[]
   billing_period: BillingPeriod
-  price_cents: number
+  /** 售价（元，两位小数） */
+  price: number | string
   currency: string
   /** 卡片右上角标签，空则不显示 */
   hot_tag_name?: string

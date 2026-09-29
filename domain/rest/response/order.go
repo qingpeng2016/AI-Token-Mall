@@ -8,6 +8,6 @@ type CreateOrderResp struct {
 	UserSubscriptionID uint   `json:"user_subscription_id"`
 	Channel            string `json:"channel"`
 	Status           string `json:"status"`
-	TotalAmountCents int64  `json:"total_amount_cents"`
+	TotalAmount Money `json:"total_amount"`
 	Currency         string `json:"currency"`
 }

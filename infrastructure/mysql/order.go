@@ -209,7 +209,7 @@ func (r *OrderImpl) ApplyPaymentNotifySuccess(ctx context.Context, in repository
 				UserID:      order.UserID,
 				InvoiceType: "enterprise_vat",
 				Title:       "企业开票信息待补充",
-				AmountCents: order.TotalAmountCents,
+				Amount: order.TotalAmount,
 				Status:      "pending",
 				CreatedAt:   now,
 				UpdatedAt:   now,

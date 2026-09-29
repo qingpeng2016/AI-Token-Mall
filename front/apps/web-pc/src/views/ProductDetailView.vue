@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { formatCnyFromCents } from '@ai-token-mall/shared'
+import { formatCny } from '@ai-token-mall/shared'
 import PurchaseModal from '@/components/checkout/PurchaseModal.vue'
 import {
   getSessionUser,
@@ -86,7 +86,7 @@ const openFaqs = ref<string[]>([])
 
         <aside id="buy-card" class="buy-card">
           <h2 class="buy-card-title">{{ product.card_title }}</h2>
-          <p class="buy-card-price">{{ formatCnyFromCents(product.price_cents) }}</p>
+          <p class="buy-card-price">{{ formatCny(product.price) }}</p>
           <p class="buy-card-desc">{{ product.card_subtitle }}</p>
           <ul class="buy-card-features">
             <li v-for="(f, i) in product.card_features" :key="i">

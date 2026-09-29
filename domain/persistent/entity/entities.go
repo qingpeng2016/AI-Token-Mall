@@ -3,6 +3,7 @@ package entity
 import (
 	"time"
 
+	"github.com/shopspring/decimal"
 	"gorm.io/datatypes"
 )
 
@@ -88,7 +89,7 @@ type Product struct {
 	TPMLimit            *int           `gorm:"column:tpm_limit"`
 	AllowedModels       datatypes.JSON `gorm:"column:allowed_models;type:json;not null"`
 	BillingPeriod       string         `gorm:"column:billing_period;size:16;not null;default:month"`
-	PriceCents          int64          `gorm:"column:price_cents;not null"`
+	Price               decimal.Decimal `gorm:"column:price;type:decimal(16,2);not null"`
 	Currency            string         `gorm:"column:currency;size:3;not null;default:CNY"`
 	IsHot               int            `gorm:"column:is_hot;not null;default:0"`
 	HotTagName          string         `gorm:"column:hot_tag_name;size:32"`
@@ -127,9 +128,9 @@ type UserOrder struct {
 	OrderType          string `gorm:"column:order_type;size:32;not null;default:purchase"`
 	UserSubscriptionID uint   `gorm:"column:user_subscription_id;not null;default:0"`
 	Quantity           int    `gorm:"column:quantity;not null;default:1"`
-	UnitPriceCents    int64      `gorm:"column:unit_price_cents;not null"`
-	Status            string     `gorm:"column:status;size:32;not null"`
-	TotalAmountCents  int64      `gorm:"column:total_amount_cents;not null"`
+	UnitPrice         decimal.Decimal `gorm:"column:unit_price;type:decimal(16,2);not null"`
+	Status            string          `gorm:"column:status;size:32;not null"`
+	TotalAmount       decimal.Decimal `gorm:"column:total_amount;type:decimal(16,2);not null"`
 	Currency          string     `gorm:"column:currency;size:3;not null;default:CNY"`
 	EnterpriseInvoice int            `gorm:"column:enterprise_invoice;not null;default:0"`
 	PayChannel        string         `gorm:"column:pay_channel;size:32"`
@@ -163,8 +164,8 @@ type UserWalletFlow struct {
 	ID                uint      `gorm:"primaryKey;column:id"`
 	UserID            uint      `gorm:"column:user_id;not null"`
 	Type              string    `gorm:"column:type;size:32;not null"`
-	AmountCents       int64     `gorm:"column:amount_cents;not null"`
-	BalanceAfterCents *int64    `gorm:"column:balance_after_cents"`
+	Amount            decimal.Decimal  `gorm:"column:amount;type:decimal(16,2);not null"`
+	BalanceAfter      *decimal.Decimal `gorm:"column:balance_after;type:decimal(16,2)"`
 	Currency          string    `gorm:"column:currency;size:3;not null;default:CNY"`
 	RefType           *string   `gorm:"column:ref_type;size:32"`
 	RefID             *uint     `gorm:"column:ref_id"`
@@ -178,12 +179,12 @@ type UserRefund struct {
 	ID          uint       `gorm:"primaryKey;column:id"`
 	OrderID     uint       `gorm:"column:order_id;not null"`
 	RefundNo    string     `gorm:"column:refund_no;size:64;not null"`
-	AmountCents int64      `gorm:"column:amount_cents;not null"`
-	Reason      *string    `gorm:"column:reason;size:512"`
-	Status      string     `gorm:"column:status;size:32;not null"`
-	RefundedAt  *time.Time `gorm:"column:refunded_at"`
-	CreatedAt   time.Time  `gorm:"column:created_at"`
-	UpdatedAt   time.Time  `gorm:"column:updated_at"`
+	Amount      decimal.Decimal `gorm:"column:amount;type:decimal(16,2);not null"`
+	Reason      *string         `gorm:"column:reason;size:512"`
+	Status      string          `gorm:"column:status;size:32;not null"`
+	RefundedAt  *time.Time      `gorm:"column:refunded_at"`
+	CreatedAt   time.Time       `gorm:"column:created_at"`
+	UpdatedAt   time.Time       `gorm:"column:updated_at"`
 }
 
 func (UserRefund) TableName() string { return "user_refunds" }
@@ -195,12 +196,12 @@ type UserInvoice struct {
 	InvoiceType string     `gorm:"column:invoice_type;size:32;not null"`
 	Title       string     `gorm:"column:title;size:256;not null"`
 	TaxNo       *string    `gorm:"column:tax_no;size:64"`
-	AmountCents int64      `gorm:"column:amount_cents;not null"`
-	Status      string     `gorm:"column:status;size:32;not null"`
-	FileURL     *string    `gorm:"column:file_url;size:512"`
-	IssuedAt    *time.Time `gorm:"column:issued_at"`
-	CreatedAt   time.Time  `gorm:"column:created_at"`
-	UpdatedAt   time.Time  `gorm:"column:updated_at"`
+	Amount      decimal.Decimal `gorm:"column:amount;type:decimal(16,2);not null"`
+	Status      string          `gorm:"column:status;size:32;not null"`
+	FileURL     *string         `gorm:"column:file_url;size:512"`
+	IssuedAt    *time.Time      `gorm:"column:issued_at"`
+	CreatedAt   time.Time       `gorm:"column:created_at"`
+	UpdatedAt   time.Time       `gorm:"column:updated_at"`
 }
 
 func (UserInvoice) TableName() string { return "user_invoices" }

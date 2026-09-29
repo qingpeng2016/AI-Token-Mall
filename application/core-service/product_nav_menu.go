@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/shopspring/decimal"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/entity"
 	"github.com/qingpeng2016/ai-token-mall/domain/rest/response"
 )
@@ -53,7 +54,7 @@ func mapProductToNavItem(p *entity.Product) response.NavPlanItemResp {
 	}
 	return response.NavPlanItemResp{
 		Label: label,
-		Price: formatNavPrice(p.PriceCents, p.BillingPeriod),
+		Price: formatNavPrice(p.Price, p.BillingPeriod),
 		Href:  productDetailHref(p.SKUCode),
 	}
 }
@@ -65,8 +66,8 @@ func productDetailHref(skuCode string) string {
 	return "/p/" + strings.ToLower(strings.ReplaceAll(skuCode, "_", "-"))
 }
 
-func formatNavPrice(cents int64, billingPeriod string) string {
-	yuan := formatCnyFromCents(cents)
+func formatNavPrice(price decimal.Decimal, billingPeriod string) string {
+	yuan := formatCnyYuan(price)
 	switch billingPeriod {
 	case "month":
 		return yuan + "/月"
@@ -79,9 +80,9 @@ func formatNavPrice(cents int64, billingPeriod string) string {
 	}
 }
 
-func formatCnyFromCents(cents int64) string {
-	if cents%100 == 0 {
-		return fmt.Sprintf("¥%d", cents/100)
+func formatCnyYuan(price decimal.Decimal) string {
+	if price.Equal(price.Truncate(0)) {
+		return fmt.Sprintf("¥%s", price.StringFixed(0))
 	}
-	return fmt.Sprintf("¥%.2f", float64(cents)/100)
+	return fmt.Sprintf("¥%s", price.StringFixed(2))
 }

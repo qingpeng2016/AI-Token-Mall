@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeMount, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { formatCnyFromCents, type OrderType } from '@ai-token-mall/shared'
+import { formatCny, type OrderType } from '@ai-token-mall/shared'
 import CatalogPickerModal from '@/components/catalog/CatalogPickerModal.vue'
 import PurchaseModal from '@/components/checkout/PurchaseModal.vue'
 import MemberSidebar from '@/components/member/MemberSidebar.vue'
@@ -74,7 +74,7 @@ const teamMembers = ref<MockSubAccount[]>([...mockApiTeamMembers])
 const addTeamMemberOpen = ref(false)
 const addTeamMemberInvitedId = ref<number | null>(null)
 const inviteRebatePanelTab = ref<'details' | 'members' | 'rebates' | 'withdrawals'>('details')
-const commissionAvailableCents = ref(mockMemberOverview.commissionCents)
+const commissionAvailable = ref(mockMemberOverview.commission)
 const withdrawalRecords = ref<MockWithdrawalRecord[]>([...mockWithdrawalRecords])
 const payoutQr = reactive({ alipay: '', wechat: '' })
 const payoutQrSetupOpen = ref(false)
@@ -453,8 +453,7 @@ function confirmWithdraw() {
     ElMessage.warning('请输入有效的提现金额')
     return
   }
-  const amountCents = Math.round(yuan * 100)
-  if (amountCents > commissionAvailableCents.value) {
+  if (yuan > commissionAvailable.value) {
     ElMessage.warning('提现金额不能超过可提现佣金')
     return
   }
@@ -469,12 +468,12 @@ function confirmWithdraw() {
   }
   withdrawalRecords.value.unshift({
     id: Date.now(),
-    amountCents,
+    amount: yuan,
     channel,
     status: 'pending',
     createdAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
   })
-  commissionAvailableCents.value -= amountCents
+  commissionAvailable.value -= yuan
   withdrawOpen.value = false
   ElMessage.success('提现申请已提交')
 }
@@ -758,7 +757,7 @@ function confirmAddTeamMember() {
                 <div class="stat-main">
                   <span class="stat-label">余额</span>
                   <strong class="stat-value">{{
-                    formatCnyFromCents(mockMemberOverview.balanceCents)
+                    formatCny(mockMemberOverview.balance)
                   }}</strong>
                 </div>
                 <button type="button" class="stat-link" @click="mockRecharge">充值</button>
@@ -767,7 +766,7 @@ function confirmAddTeamMember() {
                 <div class="stat-main">
                   <span class="stat-label">佣金</span>
                   <strong class="stat-value">{{
-                    formatCnyFromCents(commissionAvailableCents)
+                    formatCny(commissionAvailable)
                   }}</strong>
                 </div>
                 <button type="button" class="stat-link" @click="goCommissionWithdrawFromOverview">
@@ -814,7 +813,7 @@ function confirmAddTeamMember() {
                   <tr v-for="o in mockOrders.slice(0, 3)" :key="o.orderNo">
                     <td>{{ o.orderNo }}</td>
                     <td>{{ o.productName }}</td>
-                    <td>{{ formatCnyFromCents(o.totalCents) }}</td>
+                    <td>{{ formatCny(o.totalAmount) }}</td>
                     <td>
                       <span class="tag" :class="`tag--${o.status}`">{{
                         orderStatusLabel[o.status]
@@ -888,7 +887,7 @@ function confirmAddTeamMember() {
                     class="atm-btn-primary btn-xs"
                     @click="openQuotaAddon(sub)"
                   >
-                    加购额度
+                    加本期额度
                   </button>
                 </div>
               </article>
@@ -1065,7 +1064,7 @@ function confirmAddTeamMember() {
                     <td class="mono">{{ o.orderNo }}</td>
                     <td>{{ o.productName }}</td>
                     <td>{{ o.quantity }}</td>
-                    <td>{{ formatCnyFromCents(o.totalCents) }}</td>
+                    <td>{{ formatCny(o.totalAmount) }}</td>
                     <td>{{ o.enterpriseInvoice ? '企业' : '—' }}</td>
                     <td>
                       <span class="tag" :class="`tag--${o.status}`">{{
@@ -1112,9 +1111,9 @@ function confirmAddTeamMember() {
                             : '消费'
                       }}
                     </td>
-                    <td :class="tx.amountCents > 0 ? 'amount-plus' : 'amount-minus'">
-                      {{ tx.amountCents > 0 ? '+' : ''
-                      }}{{ formatCnyFromCents(Math.abs(tx.amountCents)) }}
+                    <td :class="tx.amount > 0 ? 'amount-plus' : 'amount-minus'">
+                      {{ tx.amount > 0 ? '+' : ''
+                      }}{{ formatCny(Math.abs(tx.amount)) }}
                     </td>
                     <td>{{ tx.remark }}</td>
                     <td class="muted">{{ tx.createdAt }}</td>
@@ -1141,7 +1140,7 @@ function confirmAddTeamMember() {
                   <tr v-for="inv in mockInvoices" :key="inv.id">
                     <td class="mono">{{ inv.orderNo }}</td>
                     <td>{{ inv.title }}</td>
-                    <td>{{ formatCnyFromCents(inv.amountCents) }}</td>
+                    <td>{{ formatCny(inv.amount) }}</td>
                     <td>
                       <span class="tag tag--completed">{{
                         inv.status === 'issued' ? '已开具' : '处理中'
@@ -1280,8 +1279,8 @@ function confirmAddTeamMember() {
                       </td>
                       <td class="mono">{{ r.orderNo }}</td>
                       <td>{{ r.productName }}</td>
-                      <td>{{ formatCnyFromCents(r.orderAmountCents) }}</td>
-                      <td class="amount-plus">+{{ formatCnyFromCents(r.rebateCents) }}</td>
+                      <td>{{ formatCny(r.orderAmount) }}</td>
+                      <td class="amount-plus">+{{ formatCny(r.rebateAmount) }}</td>
                       <td class="muted">{{ r.createdAt }}</td>
                     </tr>
                   </tbody>
@@ -1296,7 +1295,7 @@ function confirmAddTeamMember() {
                 <div class="withdraw-toolbar">
                   <span class="withdraw-balance">
                     可提现佣金
-                    <strong>{{ formatCnyFromCents(commissionAvailableCents) }}</strong>
+                    <strong>{{ formatCny(commissionAvailable) }}</strong>
                   </span>
                   <button type="button" class="atm-btn-primary btn-xs" @click="openWithdrawModal">
                     提现
@@ -1347,7 +1346,7 @@ function confirmAddTeamMember() {
                   </thead>
                   <tbody>
                     <tr v-for="w in withdrawalRecords" :key="w.id">
-                      <td>{{ formatCnyFromCents(w.amountCents) }}</td>
+                      <td>{{ formatCny(w.amount) }}</td>
                       <td>{{ withdrawalChannelLabel[w.channel] }}</td>
                       <td>
                         <span
@@ -1539,7 +1538,7 @@ function confirmAddTeamMember() {
             </button>
           </header>
           <p class="team-invite-lead">
-            可提现 {{ formatCnyFromCents(commissionAvailableCents) }}，提现将打款至所选渠道的收款码。
+            可提现 {{ formatCny(commissionAvailable) }}，提现将打款至所选渠道的收款码。
           </p>
           <label class="team-invite-field">
             <span class="metric-label">到账方式</span>

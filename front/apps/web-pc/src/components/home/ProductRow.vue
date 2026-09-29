@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
   UPSTREAM_LABEL,
-  formatCnyFromCents,
+  formatCny,
   type ProductsCategoryName,
 } from '@ai-token-mall/shared'
 import type { CatalogProduct } from '@/mocks/home'
@@ -32,7 +32,7 @@ const emit = defineEmits<{
       </ul>
     </div>
     <div class="row-side">
-      <p class="price">{{ formatCnyFromCents(product.price_cents) }}</p>
+      <p class="price">{{ formatCny(product.price) }}</p>
       <p class="sku">{{ product.sku_code }}</p>
       <button type="button" class="buy" @click="emit('buy', product)">购买</button>
     </div>

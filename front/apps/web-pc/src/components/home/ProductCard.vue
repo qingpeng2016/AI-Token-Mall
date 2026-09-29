@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatCnyFromCents } from '@ai-token-mall/shared'
+import { formatCny } from '@ai-token-mall/shared'
 import type { CatalogProduct } from '@/mocks/home'
 
 defineProps<{
@@ -25,7 +25,7 @@ const emit = defineEmits<{
   >
     <span v-if="product.hot_tag_name" class="sku-badge">{{ product.hot_tag_name }}</span>
     <h3 class="sku-title">{{ product.card_title }}</h3>
-    <p class="sku-price">{{ formatCnyFromCents(product.price_cents) }}</p>
+    <p class="sku-price">{{ formatCny(product.price) }}</p>
     <p class="sku-desc">{{ product.card_subtitle }}</p>
     <ul class="sku-features">
       <li v-for="(f, i) in product.card_features" :key="i">
