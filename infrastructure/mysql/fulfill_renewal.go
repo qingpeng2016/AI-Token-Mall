@@ -67,14 +67,11 @@ func renewSubscriptionForOrder(tx *gorm.DB, order *entity.UserOrder, product *en
 }
 
 func findSubscriptionForRenewal(tx *gorm.DB, order *entity.UserOrder) (*entity.UserSubscription, error) {
-	var sub entity.UserSubscription
-	var err error
-	if order.UserSubscriptionID > 0 {
-		err = tx.Where("id = ? AND user_id = ?", order.UserSubscriptionID, order.UserID).First(&sub).Error
-	} else {
-		err = tx.Where("user_id = ? AND product_id = ?", order.UserID, order.ProductID).
-			Order("id DESC").First(&sub).Error
+	if order.UserSubscriptionID == 0 {
+		return nil, fmt.Errorf("renew: missing user_subscription_id on order %s", order.OrderNo)
 	}
+	var sub entity.UserSubscription
+	err := tx.Where("id = ? AND user_id = ?", order.UserSubscriptionID, order.UserID).First(&sub).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, gorm.ErrRecordNotFound
 	}

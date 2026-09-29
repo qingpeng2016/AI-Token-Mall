@@ -7,7 +7,7 @@ export type CreateOrderBody = {
   product_id: number
   /** 默认 purchase；会员中心续费传 renewal */
   order_type?: OrderType
-  /** 续费/升档必填，新购传 0 或不传 */
+  /** 续费/升档/加购额度必填，新购传 0 或不传 */
   user_subscription_id?: number
   quantity: number
   channel: 'alipay' | 'wechat' | 'paypal'
