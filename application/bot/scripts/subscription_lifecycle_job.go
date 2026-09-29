@@ -12,6 +12,8 @@ import (
 const (
 	ModuleAITokenMall         = "ai_token_mall"
 	TaskSubscriptionLifecycle = "subscription_lifecycle"
+	// lifecycleBatchSize 每组 active 订阅数量，组内并发执行
+	lifecycleBatchSize = 100
 )
 
 type SubscriptionLifecycleJob struct {
@@ -23,7 +25,7 @@ func NewSubscriptionLifecycleJob(db *gorm.DB) *SubscriptionLifecycleJob {
 }
 
 func (j *SubscriptionLifecycleJob) Run(ctx context.Context) {
-	if err := mysql.RunSubscriptionLifecycle(ctx, j.db); err != nil {
+	if err := mysql.RunSubscriptionLifecycle(ctx, j.db, lifecycleBatchSize); err != nil {
 		logger.ErrorZ(ctx, "subscription-lifecycle-run-failed", zap.Error(err))
 		return
 	}

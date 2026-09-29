@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/qingpeng2016/ai-token-mall/common/billing"
@@ -18,16 +19,58 @@ import (
 
 const autoRenewLeadDays = 7
 
+const defaultLifecycleBatchSize = 100
+
 // RunSubscriptionLifecycle 扫描 active 订阅，依次执行：自动续费、周期重置、过期处理。
-func RunSubscriptionLifecycle(ctx context.Context, db *gorm.DB) error {
+// batchSize：每组 active 订阅数量，组内 goroutine 并发；<=0 时使用 defaultLifecycleBatchSize。
+func RunSubscriptionLifecycle(ctx context.Context, db *gorm.DB, batchSize int) error {
+	if batchSize <= 0 {
+		batchSize = defaultLifecycleBatchSize
+	}
 	now := time.Now()
-	if err := runAutoRenewPhase(ctx, db, now); err != nil {
+	if err := runAutoRenewPhase(ctx, db, now, batchSize); err != nil {
 		return err
 	}
-	if err := runPeriodResetPhase(ctx, db, now); err != nil {
+	if err := runPeriodResetPhase(ctx, db, now, batchSize); err != nil {
 		return err
 	}
-	return runExpirePhase(ctx, db, now)
+	return runExpirePhase(ctx, db, now, batchSize)
+}
+
+type subscriptionLifecycleHandler func(ctx context.Context, db *gorm.DB, subID uint, now time.Time) error
+
+func runActiveSubscriptionsByBatch(
+	ctx context.Context,
+	db *gorm.DB,
+	now time.Time,
+	batchSize int,
+	logKey string,
+	handler subscriptionLifecycleHandler,
+) error {
+	ids, err := listActiveSubscriptionIDs(ctx, db)
+	if err != nil {
+		return err
+	}
+	for start := 0; start < len(ids); start += batchSize {
+		end := start + batchSize
+		if end > len(ids) {
+			end = len(ids)
+		}
+		batch := ids[start:end]
+		var wg sync.WaitGroup
+		for _, id := range batch {
+			wg.Add(1)
+			subID := id
+			go func() {
+				defer wg.Done()
+				if err := handler(ctx, db, subID, now); err != nil {
+					logger.ErrorZ(ctx, logKey, zap.Uint("subscription_id", subID), zap.Error(err))
+				}
+			}()
+		}
+		wg.Wait()
+	}
+	return nil
 }
 
 func listActiveSubscriptionIDs(ctx context.Context, db *gorm.DB) ([]uint, error) {
@@ -39,43 +82,16 @@ func listActiveSubscriptionIDs(ctx context.Context, db *gorm.DB) ([]uint, error)
 	return ids, err
 }
 
-func runAutoRenewPhase(ctx context.Context, db *gorm.DB, now time.Time) error {
-	ids, err := listActiveSubscriptionIDs(ctx, db)
-	if err != nil {
-		return err
-	}
-	for _, id := range ids {
-		if err := tryAutoRenewSubscription(ctx, db, id, now); err != nil {
-			logger.ErrorZ(ctx, "subscription-auto-renew-failed", zap.Uint("subscription_id", id), zap.Error(err))
-		}
-	}
-	return nil
+func runAutoRenewPhase(ctx context.Context, db *gorm.DB, now time.Time, batchSize int) error {
+	return runActiveSubscriptionsByBatch(ctx, db, now, batchSize, "subscription-auto-renew-failed", tryAutoRenewSubscription)
 }
 
-func runPeriodResetPhase(ctx context.Context, db *gorm.DB, now time.Time) error {
-	ids, err := listActiveSubscriptionIDs(ctx, db)
-	if err != nil {
-		return err
-	}
-	for _, id := range ids {
-		if err := tryPeriodResetSubscription(ctx, db, id, now); err != nil {
-			logger.ErrorZ(ctx, "subscription-period-reset-failed", zap.Uint("subscription_id", id), zap.Error(err))
-		}
-	}
-	return nil
+func runPeriodResetPhase(ctx context.Context, db *gorm.DB, now time.Time, batchSize int) error {
+	return runActiveSubscriptionsByBatch(ctx, db, now, batchSize, "subscription-period-reset-failed", tryPeriodResetSubscription)
 }
 
-func runExpirePhase(ctx context.Context, db *gorm.DB, now time.Time) error {
-	ids, err := listActiveSubscriptionIDs(ctx, db)
-	if err != nil {
-		return err
-	}
-	for _, id := range ids {
-		if err := tryExpireSubscription(ctx, db, id, now); err != nil {
-			logger.ErrorZ(ctx, "subscription-expire-failed", zap.Uint("subscription_id", id), zap.Error(err))
-		}
-	}
-	return nil
+func runExpirePhase(ctx context.Context, db *gorm.DB, now time.Time, batchSize int) error {
+	return runActiveSubscriptionsByBatch(ctx, db, now, batchSize, "subscription-expire-failed", tryExpireSubscription)
 }
 
 func tryAutoRenewSubscription(ctx context.Context, db *gorm.DB, subID uint, now time.Time) error {
