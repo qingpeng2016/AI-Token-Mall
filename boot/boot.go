@@ -16,6 +16,7 @@ import (
 	"github.com/qingpeng2016/ai-token-mall/common/notification"
 	"github.com/qingpeng2016/ai-token-mall/conf"
 	"github.com/qingpeng2016/ai-token-mall/infrastructure/http"
+	"github.com/qingpeng2016/ai-token-mall/infrastructure/http/invoicelookup"
 	payinfra "github.com/qingpeng2016/ai-token-mall/infrastructure/http/alipay"
 	"github.com/qingpeng2016/ai-token-mall/infrastructure/mysql"
 	"github.com/qingpeng2016/ai-token-mall/infrastructure/redis"
@@ -47,6 +48,8 @@ func BuildContainer() *dig.Container {
 	_ = c.Provide(handler.NewInvoiceConfigHandler)
 	_ = c.Provide(user.NewUserService)
 	_ = c.Provide(invoicesvc.NewInvoiceConfigService)
+	_ = c.Provide(invoicelookup.NewClient)
+	_ = c.Provide(invoicesvc.NewEnterpriseLookup)
 	_ = c.Provide(productsvc.NewProductService)
 	_ = c.Provide(tutorial.NewTutorialService)
 	_ = c.Provide(enterprise.NewEnterpriseService)

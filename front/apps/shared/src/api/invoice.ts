@@ -31,6 +31,20 @@ export type InvoiceConfigItem = {
   updated_at: string
 }
 
+export type EnterpriseInvoiceLookupItem = {
+  title: string
+  tax_no: string
+  bank_name?: string
+  bank_account?: string
+  address?: string
+  phone?: string
+}
+
+export type EnterpriseInvoiceLookupResult = {
+  match: EnterpriseInvoiceLookupItem
+  candidates?: EnterpriseInvoiceLookupItem[]
+}
+
 export type SaveInvoiceConfigBody = {
   profile_type?: 'enterprise' | 'personal'
   title: string
@@ -63,6 +77,13 @@ export function createInvoiceApi(options: HttpClientOptions) {
       const res = await http.get<ApiEnvelope<InvoiceConfigItem[]>>('/api/v1/users/invoice-configs')
       return unwrap(res)
     },
+    async lookupEnterprise(keyword: string): Promise<EnterpriseInvoiceLookupResult> {
+      const q = encodeURIComponent(keyword.trim())
+      const res = await http.get<ApiEnvelope<EnterpriseInvoiceLookupResult>>(
+        `/api/v1/users/invoice-configs/enterprise-lookup?keyword=${q}`,
+      )
+      return unwrap(res)
+    },
     async createConfig(body: SaveInvoiceConfigBody): Promise<InvoiceConfigItem> {
       const res = await http.post<ApiEnvelope<InvoiceConfigItem>>(
         '/api/v1/users/invoice-configs',
@@ -76,6 +97,23 @@ export function createInvoiceApi(options: HttpClientOptions) {
         body,
       )
       return unwrap(res)
+    },
+    async setDefaultConfig(id: number, body: SaveInvoiceConfigBody): Promise<InvoiceConfigItem> {
+      try {
+        await http.post<ApiEnvelope<null>>(
+          `/api/v1/users/invoice-configs/${id}/set-default`,
+          {},
+        )
+        const list = await this.listConfigs()
+        const hit = list.find((i) => i.id === id)
+        if (hit) return hit
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : ''
+        const useFallback =
+          /404|not found|Invalid JSON/i.test(msg) || msg.includes('无法')
+        if (!useFallback) throw err
+      }
+      return this.updateConfig(id, { ...body, is_default: true })
     },
   }
 }

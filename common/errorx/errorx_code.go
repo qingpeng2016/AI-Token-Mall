@@ -16,4 +16,5 @@ var (
 	ErrOrderNotPayable   = NewRespErr(100304, "订单状态不可支付", "訂單狀態不可支付", "Order is not payable.")
 	ErrRenewNoSubscription = NewRespErr(100305, "没有可续费的套餐", "沒有可續費的套餐", "No active subscription to renew.")
 	ErrPaymentFulfillFailed = NewRespErr(100306, "支付处理失败", "支付處理失敗", "Payment fulfillment failed.")
+	ErrInvoiceLookupNotFound = NewRespErr(100307, "未查询到企业开票信息，请核对名称或税号", "未查詢到企業開票資訊，請核對名稱或稅號", "Enterprise invoice profile not found.")
 )

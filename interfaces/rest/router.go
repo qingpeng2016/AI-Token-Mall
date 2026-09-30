@@ -74,8 +74,10 @@ func (r *Router) setupRouters() *gin.Engine {
 		userAuth.GET("/users/wallet-flows", r.userHandler.ListWalletFlows)
 		userAuth.GET("/users/invoices", r.userHandler.ListInvoices)
 		userAuth.GET("/users/invoice-configs", r.invoiceConfigHandler.ListMine)
+		userAuth.GET("/users/invoice-configs/enterprise-lookup", r.invoiceConfigHandler.LookupEnterprise)
 		userAuth.POST("/users/invoice-configs", r.invoiceConfigHandler.Create)
 		userAuth.PUT("/users/invoice-configs/:id", r.invoiceConfigHandler.Update)
+		userAuth.POST("/users/invoice-configs/:id/set-default", r.invoiceConfigHandler.SetDefault)
 	}
 
 	// 需登录；正式网关回调另开 /api/v1/payments/notify 且无鉴权

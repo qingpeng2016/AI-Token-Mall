@@ -64,9 +64,13 @@ func (s *InvoiceConfigService) Update(ctx context.Context, userID, id uint, req 
 		_ = s.configs.ClearDefaultForUser(ctx, userID, id)
 	}
 	now := time.Now()
+	title := strings.TrimSpace(req.Title)
+	if title == "" && req.TaxNo != nil {
+		title = strings.TrimSpace(*req.TaxNo)
+	}
 	fields := map[string]interface{}{
 		"profile_type": normalizeProfileType(req.ProfileType),
-		"title":        strings.TrimSpace(req.Title),
+		"title":        title,
 		"tax_no":       trimOptional(req.TaxNo),
 		"bank_name":    trimOptional(req.BankName),
 		"bank_account": trimOptional(req.BankAccount),
@@ -86,24 +90,58 @@ func (s *InvoiceConfigService) Update(ctx context.Context, userID, id uint, req 
 	return &item, nil
 }
 
-func validateInvoiceConfigReq(req *request.SaveInvoiceConfigReq) error {
-	if strings.TrimSpace(req.Title) == "" {
+func (s *InvoiceConfigService) SetDefault(ctx context.Context, userID, id uint) error {
+	existed, err := s.configs.FindByIDForUser(ctx, userID, id)
+	if err != nil {
+		return errorx.ErrDbError
+	}
+	if existed == nil {
 		return errorx.ErrParamsError
 	}
+	if existed.IsDefault == 1 {
+		return nil
+	}
+	if err := s.configs.ClearDefaultForUser(ctx, userID, id); err != nil {
+		return errorx.ErrDbError
+	}
+	now := time.Now()
+	if err := s.configs.Update(ctx, id, map[string]interface{}{
+		"is_default": 1,
+		"updated_at": now,
+	}); err != nil {
+		return errorx.ErrDbError
+	}
+	return nil
+}
+
+func validateInvoiceConfigReq(req *request.SaveInvoiceConfigReq) error {
 	pt := normalizeProfileType(req.ProfileType)
-	if pt == "enterprise" {
-		if req.TaxNo == nil || strings.TrimSpace(*req.TaxNo) == "" {
+	title := strings.TrimSpace(req.Title)
+	taxNo := ""
+	if req.TaxNo != nil {
+		taxNo = strings.TrimSpace(*req.TaxNo)
+	}
+	if pt == "personal" {
+		if title == "" {
 			return errorx.ErrParamsError
 		}
+		return nil
+	}
+	if title == "" && taxNo == "" {
+		return errorx.ErrParamsError
 	}
 	return nil
 }
 
 func entityFromSaveReq(userID uint, req *request.SaveInvoiceConfigReq, now time.Time) entity.UserInvoiceConfig {
+	title := strings.TrimSpace(req.Title)
+	if title == "" && req.TaxNo != nil {
+		title = strings.TrimSpace(*req.TaxNo)
+	}
 	row := entity.UserInvoiceConfig{
 		UserID:      userID,
 		ProfileType: normalizeProfileType(req.ProfileType),
-		Title:       strings.TrimSpace(req.Title),
+		Title:       title,
 		TaxNo:       trimOptional(req.TaxNo),
 		BankName:    trimOptional(req.BankName),
 		BankAccount: trimOptional(req.BankAccount),

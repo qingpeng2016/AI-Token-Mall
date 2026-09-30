@@ -23,11 +23,19 @@ func Get_RUN_CONF() string {
 }
 
 type Config struct {
-	ServerConf       *Server       `mapstructure:"server"`
-	MysqlMasterConf  *Mysql        `mapstructure:"db"`
-	RedisConf        *Redis        `mapstructure:"redis"`
-	NotificationConf *Notification `mapstructure:"notification"`
-	AlipayConf       *Alipay       `mapstructure:"alipay"`
+	ServerConf        *Server        `mapstructure:"server"`
+	MysqlMasterConf   *Mysql         `mapstructure:"db"`
+	RedisConf         *Redis         `mapstructure:"redis"`
+	NotificationConf  *Notification  `mapstructure:"notification"`
+	AlipayConf        *Alipay        `mapstructure:"alipay"`
+	InvoiceLookupConf *InvoiceLookup `mapstructure:"invoice_lookup"`
+}
+
+// InvoiceLookup 企业开票抬头外部查询（诚数 API 支持名称/税号；Mgtv 发票抬头库按名称模糊查）。
+type InvoiceLookup struct {
+	ChengshuAPIKey          string `mapstructure:"chengshu_api_key"`
+	MgtvBaseURL             string `mapstructure:"mgtv_base_url"`
+	InsecureSkipTLSVerify   bool   `mapstructure:"insecure_skip_tls_verify"`
 }
 
 type Server struct {
