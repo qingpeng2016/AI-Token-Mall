@@ -20,9 +20,6 @@ func isRegistrationInviteConfigErr(err error) bool {
 		errors.Is(err, errRegistrationVipDomainBusy)
 }
 
-const vipDomainRandomLen = 6
-const vipDomainAssignMaxTries = 12
-
 // rootDomainFromHost 取 host 最后两段作为根域，如 www.niceboxs.com → niceboxs.com。
 func rootDomainFromHost(host string) string {
 	host = normalizeRegistrationHost(host)
@@ -137,28 +134,65 @@ func (s *UserService) generateAssignedVipDomain(ctx context.Context) (string, er
 	if len(pool) == 0 {
 		return "", errRegistrationNoVipDomainPool
 	}
-	for try := 0; try < vipDomainAssignMaxTries; try++ {
+
+	tryWithPrefix := func(prefix string) (string, bool, error) {
 		base, err := pickRandomVipDomainBase(pool)
+		if err != nil {
+			return "", false, err
+		}
+		candidate := buildVipSubdomain(prefix, base.Domain)
+		taken, err := s.isVipDomainTaken(ctx, candidate)
+		if err != nil {
+			return "", false, err
+		}
+		if !taken {
+			return candidate, true, nil
+		}
+		return "", false, nil
+	}
+
+	for try := 0; try < vipDomainPinyinMaxTries; try++ {
+		prefix, err := randomPinyinPrefix()
 		if err != nil {
 			return "", err
 		}
+		if candidate, ok, err := tryWithPrefix(prefix); err != nil {
+			return "", err
+		} else if ok {
+			return candidate, nil
+		}
+	}
+
+	for try := 0; try < vipDomainLetterMaxTries; try++ {
 		prefix, err := randomAlphaLower(vipDomainRandomLen)
 		if err != nil {
 			return "", err
 		}
-		candidate := prefix + "." + strings.TrimPrefix(strings.ToLower(strings.TrimSpace(base.Domain)), ".")
-		existing, err := s.users.FindByVipDomain(ctx, candidate)
-		if err != nil {
-			if isMissingSchemaErr(err) {
-				return candidate, nil
-			}
+		if candidate, ok, err := tryWithPrefix(prefix); err != nil {
 			return "", err
-		}
-		if existing == nil {
+		} else if ok {
 			return candidate, nil
 		}
 	}
+
 	return "", errRegistrationVipDomainBusy
+}
+
+func buildVipSubdomain(prefix, baseDomain string) string {
+	baseDomain = strings.TrimPrefix(strings.ToLower(strings.TrimSpace(baseDomain)), ".")
+	prefix = strings.ToLower(strings.TrimSpace(prefix))
+	return prefix + "." + baseDomain
+}
+
+func (s *UserService) isVipDomainTaken(ctx context.Context, vipDomain string) (bool, error) {
+	existing, err := s.users.FindByVipDomain(ctx, vipDomain)
+	if err != nil {
+		if isMissingSchemaErr(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return existing != nil, nil
 }
 
 func pickRandomVipDomainBase(pool []entity.VipDomainConfig) (*entity.VipDomainConfig, error) {
