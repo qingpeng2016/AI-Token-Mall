@@ -12,6 +12,13 @@ type UserProfileResp struct {
 	LastLoginAt       string `json:"last_login_at,omitempty"`
 }
 
+type UserWalletFlowListPageResp struct {
+	Items    []UserWalletFlowItem `json:"items"`
+	Total    int64                `json:"total"`
+	Page     int                  `json:"page"`
+	PageSize int                  `json:"page_size"`
+}
+
 type UserWalletFlowItem struct {
 	ID        uint   `json:"id"`
 	Type      string `json:"type"`

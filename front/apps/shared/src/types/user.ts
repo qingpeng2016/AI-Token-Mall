@@ -20,6 +20,13 @@ export type UserWalletFlowItem = {
   created_at: string
 }
 
+export type UserWalletFlowListPage = {
+  items: UserWalletFlowItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
 export interface RegisterRequest {
   email?: string
   phone?: string

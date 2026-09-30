@@ -28,14 +28,13 @@ import {
   setSessionUser,
   userAccountLabel,
 } from '@/composables/useSessionUser'
-import { orderApi, subscriptionApi, userApi } from '@/api'
-import type { UserOrderItem, UserSubscriptionItem } from '@ai-token-mall/shared'
+import { invoiceApi, orderApi, subscriptionApi, userApi } from '@/api'
+import type { UserInvoiceItem, UserOrderItem, UserSubscriptionItem } from '@ai-token-mall/shared'
 import {
   formatTokens,
   memberNav,
   mockApiTeamMembers,
   mockInvitedUsers,
-  mockInvoices,
   mockInviteRebatePolicy,
   mockInviteRebateRecords,
   mockPromoDomainBase,
@@ -69,9 +68,17 @@ const memberSubscriptions = ref<UserSubscriptionItem[]>([])
 const recentOrders = ref<UserOrderItem[]>([])
 const memberOrders = ref<UserOrderItem[]>([])
 const ordersPage = ref(1)
-const ordersPageSize = 2
+const ordersPageSize = 9
 const ordersTotal = ref(0)
 const walletFlows = ref<UserWalletFlowItem[]>([])
+const walletFlowsPage = ref(1)
+const walletFlowsPageSize = 9
+const walletFlowsTotal = ref(0)
+const memberInvoices = ref<UserInvoiceItem[]>([])
+const invoicesPage = ref(1)
+const invoicesPageSize = 9
+const invoicesTotal = ref(0)
+const invoicesLoaded = ref(false)
 const walletBalance = ref(0)
 const plansLoaded = ref(false)
 const ordersLoaded = ref(false)
@@ -217,9 +224,11 @@ watch(
       tabLoadedOnce.value.profile = true
       void fetchMemberProfile()
     }
-    if (tab === 'account' && !tabLoadedOnce.value.account) {
-      tabLoadedOnce.value.account = true
+    if (tab === 'account') {
       void fetchWalletFlowsTabData()
+    }
+    if (tab === 'invoices') {
+      void fetchInvoicesTabData()
     }
   },
   { immediate: true },
@@ -369,13 +378,59 @@ async function fetchMemberProfile() {
 async function fetchWalletFlowsTabData() {
   await withTopLoading(async () => {
     try {
-      walletFlows.value = await userApi.walletFlows()
+      const data = await userApi.walletFlows({
+        page: walletFlowsPage.value,
+        page_size: walletFlowsPageSize,
+      })
+      walletFlows.value = data.items
+      walletFlowsTotal.value = data.total
+      walletFlowsPage.value = data.page
     } catch (e) {
       handleMemberAuthError(e, '资金流水加载失败')
     } finally {
       walletFlowsLoaded.value = true
     }
   })
+}
+
+function onWalletFlowsPageChange(page: number) {
+  walletFlowsPage.value = page
+  void fetchWalletFlowsTabData()
+}
+
+async function fetchInvoicesTabData() {
+  await withTopLoading(async () => {
+    try {
+      const data = await invoiceApi.list({
+        page: invoicesPage.value,
+        page_size: invoicesPageSize,
+      })
+      memberInvoices.value = data.items
+      invoicesTotal.value = data.total
+      invoicesPage.value = data.page
+    } catch (e) {
+      handleMemberAuthError(e, '发票列表加载失败')
+    } finally {
+      invoicesLoaded.value = true
+    }
+  })
+}
+
+function onInvoicesPageChange(page: number) {
+  invoicesPage.value = page
+  void fetchInvoicesTabData()
+}
+
+function invoiceStatusLabel(status: string) {
+  if (status === 'issued') return '已开具'
+  if (status === 'failed') return '失败'
+  return '处理中'
+}
+
+function invoiceStatusTagClass(status: string) {
+  if (status === 'issued') return 'tag--completed'
+  if (status === 'failed') return 'tag--cancelled'
+  return 'tag--pending_payment'
 }
 
 function walletFlowTypeLabel(type: string) {
@@ -1251,11 +1306,21 @@ function confirmAddTeamMember() {
               </table>
             </div>
             <p v-else-if="walletFlowsLoaded" class="empty">暂无流水</p>
+            <div v-if="walletFlowsTotal > walletFlowsPageSize" class="orders-pagination">
+              <el-pagination
+                v-model:current-page="walletFlowsPage"
+                :page-size="walletFlowsPageSize"
+                :total="walletFlowsTotal"
+                layout="total, prev, pager, next"
+                background
+                @current-change="onWalletFlowsPageChange"
+              />
+            </div>
             </div>
 
             <!-- 发票 -->
             <div v-else-if="activeTab === 'invoices'" class="panel-body">
-            <div class="table-wrap">
+            <div v-if="memberInvoices.length" class="table-wrap">
               <table class="data-table">
                 <thead>
                   <tr>
@@ -1267,19 +1332,30 @@ function confirmAddTeamMember() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="inv in mockInvoices" :key="inv.id">
-                    <td class="mono">{{ inv.orderNo }}</td>
+                  <tr v-for="inv in memberInvoices" :key="inv.id">
+                    <td class="mono">{{ inv.order_no }}</td>
                     <td>{{ inv.title }}</td>
                     <td>{{ formatCny(inv.amount) }}</td>
                     <td>
-                      <span class="tag tag--completed">{{
-                        inv.status === 'issued' ? '已开具' : '处理中'
+                      <span class="tag" :class="invoiceStatusTagClass(inv.status)">{{
+                        invoiceStatusLabel(inv.status)
                       }}</span>
                     </td>
-                    <td class="muted">{{ inv.createdAt }}</td>
+                    <td class="muted">{{ inv.created_at }}</td>
                   </tr>
                 </tbody>
               </table>
+            </div>
+            <p v-else-if="invoicesLoaded" class="empty">暂无发票记录</p>
+            <div v-if="invoicesTotal > invoicesPageSize" class="orders-pagination">
+              <el-pagination
+                v-model:current-page="invoicesPage"
+                :page-size="invoicesPageSize"
+                :total="invoicesTotal"
+                layout="total, prev, pager, next"
+                background
+                @current-change="onInvoicesPageChange"
+              />
             </div>
             </div>
 

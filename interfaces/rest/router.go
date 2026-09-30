@@ -69,6 +69,7 @@ func (r *Router) setupRouters() *gin.Engine {
 	{
 		userAuth.GET("/users/me", r.userHandler.Me)
 		userAuth.GET("/users/wallet-flows", r.userHandler.ListWalletFlows)
+		userAuth.GET("/users/invoices", r.userHandler.ListInvoices)
 	}
 
 	// 需登录；正式网关回调另开 /api/v1/payments/notify 且无鉴权

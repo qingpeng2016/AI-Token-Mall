@@ -4,7 +4,7 @@ import type {
   LoginResponse,
   RegisterRequest,
   UserProfile,
-  UserWalletFlowItem,
+  UserWalletFlowListPage,
 } from '../types/user'
 import { createHttpClient, type HttpClientOptions } from './http'
 
@@ -31,8 +31,13 @@ export function createUserApi(options: HttpClientOptions) {
       const res = await http.get<ApiEnvelope<UserProfile>>('/api/v1/users/me')
       return unwrap(res)
     },
-    async walletFlows(): Promise<UserWalletFlowItem[]> {
-      const res = await http.get<ApiEnvelope<UserWalletFlowItem[]>>('/api/v1/users/wallet-flows')
+    async walletFlows(params?: { page?: number; page_size?: number }): Promise<UserWalletFlowListPage> {
+      const search = new URLSearchParams()
+      if (params?.page != null) search.set('page', String(params.page))
+      if (params?.page_size != null) search.set('page_size', String(params.page_size))
+      const qs = search.toString()
+      const path = qs ? `/api/v1/users/wallet-flows?${qs}` : '/api/v1/users/wallet-flows'
+      const res = await http.get<ApiEnvelope<UserWalletFlowListPage>>(path)
       return unwrap(res)
     },
   }

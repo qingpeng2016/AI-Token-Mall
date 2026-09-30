@@ -23,12 +23,17 @@ import (
 var cnPhonePattern = regexp.MustCompile(`^1\d{10}$`)
 
 type UserService struct {
-	users   repository.UsersRepo
-	wallets repository.UserWalletFlowsRepo
+	users    repository.UsersRepo
+	wallets  repository.UserWalletFlowsRepo
+	invoices repository.UserInvoicesRepo
 }
 
-func NewUserService(users repository.UsersRepo, wallets repository.UserWalletFlowsRepo) *UserService {
-	return &UserService{users: users, wallets: wallets}
+func NewUserService(
+	users repository.UsersRepo,
+	wallets repository.UserWalletFlowsRepo,
+	invoices repository.UserInvoicesRepo,
+) *UserService {
+	return &UserService{users: users, wallets: wallets, invoices: invoices}
 }
 
 func (s *UserService) GetProfile(ctx context.Context, userID uint) (*response.UserProfileResp, error) {
@@ -42,8 +47,25 @@ func (s *UserService) GetProfile(ctx context.Context, userID uint) (*response.Us
 	return toUserProfile(u), nil
 }
 
-func (s *UserService) ListWalletFlows(ctx context.Context, userID uint) ([]response.UserWalletFlowItem, error) {
-	rows, err := s.wallets.ListByUserID(ctx, userID, 100)
+func (s *UserService) ListWalletFlows(ctx context.Context, userID uint, q *request.ListWalletFlowsQuery) (*response.UserWalletFlowListPageResp, error) {
+	page := q.Page
+	if page < 1 {
+		page = 1
+	}
+	pageSize := q.PageSize
+	if pageSize < 1 {
+		pageSize = 9
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	offset := (page - 1) * pageSize
+
+	total, err := s.wallets.CountByUserID(ctx, userID)
+	if err != nil {
+		return nil, errorx.ErrDbError
+	}
+	rows, err := s.wallets.ListByUserID(ctx, userID, offset, pageSize)
 	if err != nil {
 		return nil, errorx.ErrDbError
 	}
@@ -61,7 +83,53 @@ func (s *UserService) ListWalletFlows(ctx context.Context, userID uint) ([]respo
 			CreatedAt: formatUserDateTime(row.CreatedAt),
 		})
 	}
-	return items, nil
+	return &response.UserWalletFlowListPageResp{
+		Items:    items,
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
+	}, nil
+}
+
+func (s *UserService) ListInvoices(ctx context.Context, userID uint, q *request.ListInvoicesQuery) (*response.UserInvoiceListPageResp, error) {
+	page := q.Page
+	if page < 1 {
+		page = 1
+	}
+	pageSize := q.PageSize
+	if pageSize < 1 {
+		pageSize = 9
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	offset := (page - 1) * pageSize
+
+	total, err := s.invoices.CountByUserID(ctx, userID)
+	if err != nil {
+		return nil, errorx.ErrDbError
+	}
+	rows, err := s.invoices.ListByUserID(ctx, userID, offset, pageSize)
+	if err != nil {
+		return nil, errorx.ErrDbError
+	}
+	items := make([]response.UserInvoiceListItem, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, response.UserInvoiceListItem{
+			ID:        row.ID,
+			OrderNo:   row.OrderNo,
+			Title:     row.Title,
+			Amount:    response.MoneyFrom(row.Amount),
+			Status:    row.Status,
+			CreatedAt: formatUserDateTime(row.CreatedAt),
+		})
+	}
+	return &response.UserInvoiceListPageResp{
+		Items:    items,
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
+	}, nil
 }
 
 func (s *UserService) Register(ctx context.Context, req *request.RegisterUserReq) (*response.LoginUserResp, error) {

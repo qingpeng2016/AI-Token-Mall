@@ -91,7 +91,26 @@ func (h *UserHandler) ListWalletFlows(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "unauthorized", "data": nil})
 		return
 	}
-	data, err := h.userSvc.ListWalletFlows(c.Request.Context(), userID)
+	var q request.ListWalletFlowsQuery
+	_ = c.ShouldBindQuery(&q)
+	data, err := h.userSvc.ListWalletFlows(c.Request.Context(), userID, &q)
+	if err != nil {
+		response.ResponseErr(c, err)
+		return
+	}
+	response.ResponseSuccess(c, data)
+}
+
+// ListInvoices 当前用户发票列表（会员中心 · 发票管理）
+func (h *UserHandler) ListInvoices(c *gin.Context) {
+	userID, ok := ginMiddleware.UserIDFromContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
+	var q request.ListInvoicesQuery
+	_ = c.ShouldBindQuery(&q)
+	data, err := h.userSvc.ListInvoices(c.Request.Context(), userID, &q)
 	if err != nil {
 		response.ResponseErr(c, err)
 		return
