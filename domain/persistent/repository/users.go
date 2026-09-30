@@ -10,6 +10,8 @@ import (
 
 type UsersRepo interface {
 	Create(ctx context.Context, tx *gorm.DB, u *entity.Users) error
+	// CreateRegister withInvite=false 时不写入邀请/VIP 列，兼容未跑 invite 迁移的 users 表。
+	CreateRegister(ctx context.Context, tx *gorm.DB, u *entity.Users, withInviteFields bool) error
 	FindByEmail(ctx context.Context, email string) (*entity.Users, error)
 	FindByPhone(ctx context.Context, phone string) (*entity.Users, error)
 	FindByID(ctx context.Context, id uint) (*entity.Users, error)

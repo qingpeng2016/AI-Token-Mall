@@ -66,6 +66,9 @@ func (s *UserService) resolveRegistrationInviteProfile(ctx context.Context, regi
 
 	cfg, err := s.vipDomains.FindByDomain(ctx, root)
 	if err != nil {
+		if isMissingSchemaErr(err) {
+			return &registrationInviteProfile{Apply: false}, nil
+		}
 		return nil, err
 	}
 	if cfg == nil {
@@ -78,6 +81,9 @@ func (s *UserService) resolveRegistrationInviteProfile(ctx context.Context, regi
 	} else {
 		parent, err := s.users.FindByVipDomain(ctx, host)
 		if err != nil {
+			if isMissingSchemaErr(err) {
+				return &registrationInviteProfile{Apply: false}, nil
+			}
 			return nil, err
 		}
 		if parent == nil {
@@ -109,6 +115,9 @@ func (s *UserService) buildDefaultRegistrationInviteProfile(ctx context.Context,
 func (s *UserService) defaultVipConfigID(ctx context.Context) (uint, error) {
 	row, err := s.vipConfigs.FindDefault(ctx)
 	if err != nil {
+		if isMissingSchemaErr(err) {
+			return 1, nil
+		}
 		return 0, err
 	}
 	if row != nil {
@@ -120,6 +129,9 @@ func (s *UserService) defaultVipConfigID(ctx context.Context) (uint, error) {
 func (s *UserService) generateAssignedVipDomain(ctx context.Context) (string, error) {
 	pool, err := s.vipDomains.ListNonOfficial(ctx)
 	if err != nil {
+		if isMissingSchemaErr(err) {
+			return "", errRegistrationNoVipDomainPool
+		}
 		return "", err
 	}
 	if len(pool) == 0 {
@@ -137,6 +149,9 @@ func (s *UserService) generateAssignedVipDomain(ctx context.Context) (string, er
 		candidate := prefix + "." + strings.TrimPrefix(strings.ToLower(strings.TrimSpace(base.Domain)), ".")
 		existing, err := s.users.FindByVipDomain(ctx, candidate)
 		if err != nil {
+			if isMissingSchemaErr(err) {
+				return candidate, nil
+			}
 			return "", err
 		}
 		if existing == nil {

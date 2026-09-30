@@ -4,10 +4,16 @@ import (
 	"context"
 	"errors"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/entity"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/repository"
 	"gorm.io/gorm"
 )
+
+var vipConfigBaseSelect = []string{
+	"id", "level_label", "min_valid_invites", "rate_percent",
+	"sort_order", "enabled", "created_at", "updated_at",
+}
 
 type VipConfigImpl struct {
 	db *gorm.DB
@@ -19,7 +25,7 @@ func NewVipConfigImpl(db *gorm.DB) repository.VipConfigRepo {
 
 func (r *VipConfigImpl) FindByID(ctx context.Context, id uint) (*entity.VipConfig, error) {
 	var row entity.VipConfig
-	err := r.db.WithContext(ctx).First(&row, id).Error
+	err := r.db.WithContext(ctx).Select(vipConfigBaseSelect).First(&row, id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
@@ -30,15 +36,22 @@ func (r *VipConfigImpl) FindByID(ctx context.Context, id uint) (*entity.VipConfi
 }
 
 func (r *VipConfigImpl) FindDefault(ctx context.Context) (*entity.VipConfig, error) {
-	var row entity.VipConfig
-	err := r.db.WithContext(ctx).Where("is_default = ?", true).First(&row).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
-	}
+	var id uint
+	err := r.db.WithContext(ctx).Table(entity.VipConfig{}.TableName()).
+		Where("is_default = ?", true).Limit(1).Pluck("id", &id).Error
 	if err != nil {
-		return nil, err
+		var me *mysql.MySQLError
+		if errors.As(err, &me) && me.Number == 1054 {
+			return r.FindByID(ctx, 1)
+		}
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
+		}
 	}
-	return &row, nil
+	if id == 0 {
+		return r.FindByID(ctx, 1)
+	}
+	return r.FindByID(ctx, id)
 }
 
 func (r *VipConfigImpl) ListEnabled(ctx context.Context) ([]entity.VipConfig, error) {

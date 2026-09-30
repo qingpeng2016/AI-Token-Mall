@@ -11,11 +11,13 @@ import (
 	"github.com/go-sql-driver/mysql"
 
 	"github.com/qingpeng2016/ai-token-mall/common/auth"
+	"github.com/qingpeng2016/ai-token-mall/common/dederi/logger"
 	"github.com/qingpeng2016/ai-token-mall/common/errorx"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/entity"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/repository"
 	"github.com/qingpeng2016/ai-token-mall/domain/rest/request"
 	"github.com/qingpeng2016/ai-token-mall/domain/rest/response"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -229,11 +231,23 @@ func (s *UserService) Register(ctx context.Context, req *request.RegisterUserReq
 		u.VipConfigID = 1
 	}
 
-	if err := s.users.Create(ctx, nil, u); err != nil {
+	withInvite := inviteProfile.Apply
+	if err := s.users.CreateRegister(ctx, nil, u, withInvite); err != nil {
 		var mysqlErr *mysql.MySQLError
 		if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
 			return nil, errorx.ErrUserExists
 		}
+		if withInvite && isMissingSchemaErr(err) {
+			fallbackErr := s.users.CreateRegister(ctx, nil, u, false)
+			if fallbackErr == nil {
+				logger.WarnZ(ctx, "users-register-invite-columns-missing-fallback",
+					zap.String("registration_host", req.RegistrationHost),
+					zap.Error(err))
+				return s.loginUserResp(u)
+			}
+			err = fallbackErr
+		}
+		logger.ErrorZ(ctx, "users-register-create-failed", zap.Error(err))
 		return nil, errorx.ErrDbError
 	}
 	return s.loginUserResp(u)

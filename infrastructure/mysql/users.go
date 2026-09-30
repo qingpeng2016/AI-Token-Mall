@@ -23,10 +23,18 @@ func NewUsersImpl(db *gorm.DB) repository.UsersRepo {
 }
 
 func (r *UsersImpl) Create(ctx context.Context, tx *gorm.DB, u *entity.Users) error {
+	return r.CreateRegister(ctx, tx, u, true)
+}
+
+func (r *UsersImpl) CreateRegister(ctx context.Context, tx *gorm.DB, u *entity.Users, withInviteFields bool) error {
 	if tx == nil {
 		tx = r.db
 	}
-	return tx.WithContext(ctx).Create(u).Error
+	q := tx.WithContext(ctx)
+	if !withInviteFields {
+		q = q.Omit("parent_user_id", "vip_config_id", "vip_domain", "invite_valid_at")
+	}
+	return q.Create(u).Error
 }
 
 func (r *UsersImpl) FindByEmail(ctx context.Context, email string) (*entity.Users, error) {
