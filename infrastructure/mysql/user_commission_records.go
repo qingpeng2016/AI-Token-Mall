@@ -21,9 +21,9 @@ func (r *UserCommissionRecordsImpl) Create(ctx context.Context, tx *gorm.DB, row
 	return repository.GormDB(ctx, r.db, tx).Create(row).Error
 }
 
-func (r *UserCommissionRecordsImpl) FindByOrderID(ctx context.Context, orderID uint) (*entity.UserCommissionRecords, error) {
+func (r *UserCommissionRecordsImpl) FindByOrderID(ctx context.Context, tx *gorm.DB, orderID uint) (*entity.UserCommissionRecords, error) {
 	var row entity.UserCommissionRecords
-	err := r.db.WithContext(ctx).Where("order_id = ?", orderID).First(&row).Error
+	err := repository.GormDB(ctx, r.db, tx).Where("order_id = ?", orderID).First(&row).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}

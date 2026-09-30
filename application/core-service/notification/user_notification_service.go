@@ -75,6 +75,12 @@ var notificationTemplates = map[string]templateView{
 		Body:     "佣金提现申请已受理，打款后将更新状态，可在「邀请返利 → 提现记录」查看。",
 		LinkTab:  "sub-accounts",
 	},
+	"commission_rebate_earned": {
+		Category: "finance",
+		Title:    "邀请返利到账",
+		Body:     "下级订单支付成功，返利已计入您的佣金，可在「邀请返利 → 返利记录」查看。",
+		LinkTab:  "sub-accounts",
+	},
 }
 
 type UserNotificationService struct {

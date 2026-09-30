@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/qingpeng2016/ai-token-mall/application/core-service/invite_rebate"
 	"github.com/qingpeng2016/ai-token-mall/common/apikey"
 	"github.com/qingpeng2016/ai-token-mall/common/billing"
 	"github.com/qingpeng2016/ai-token-mall/common/constants"
@@ -27,6 +28,7 @@ type OrderFulfillService struct {
 	apiKeys       repository.UserAPIKeysRepo
 	callbacks     repository.PaymentCallbacksRepo
 	invoices      repository.UserInvoicesRepo
+	inviteRebate  *invite_rebate.Service
 }
 
 func NewOrderFulfillService(
@@ -40,6 +42,7 @@ func NewOrderFulfillService(
 	apiKeys repository.UserAPIKeysRepo,
 	callbacks repository.PaymentCallbacksRepo,
 	invoices repository.UserInvoicesRepo,
+	inviteRebate *invite_rebate.Service,
 ) *OrderFulfillService {
 	return &OrderFulfillService{
 		tx:            tx,
@@ -52,6 +55,7 @@ func NewOrderFulfillService(
 		apiKeys:       apiKeys,
 		callbacks:     callbacks,
 		invoices:      invoices,
+		inviteRebate:  inviteRebate,
 	}
 }
 
@@ -111,6 +115,10 @@ func (s *OrderFulfillService) ApplyPaymentNotifySuccess(ctx context.Context, in 
 		order.UpdatedAt = now
 
 		if err := s.fulfillPaidOrderByType(ctx, tx, order, product, in.Channel, now); err != nil {
+			return err
+		}
+
+		if err := s.inviteRebate.AccrueInviteRebateForPaidOrder(ctx, tx, order, product, now); err != nil {
 			return err
 		}
 
