@@ -1587,18 +1587,27 @@ function confirmAddTeamMember() {
                     </button>
                   </div>
                 </div>
-                <div class="rebate-details-section">
-                  <span class="metric-label">您当前的返佣比例</span>
-                  <p class="rebate-rate-value">
-                    {{ parseMoney(inviteRebateOverview?.current_rate_percent ?? 0)
-                    }}<span class="rebate-rate-unit">%</span>
-                  </p>
-                </div>
-                <div class="rebate-details-section">
-                  <span class="metric-label">下级累计消费（已完成订单）</span>
-                  <p class="rebate-rate-value">
-                    {{ formatCny(inviteRebateOverview?.invitee_paid_total ?? 0) }}
-                  </p>
+                <div class="rebate-details-section rebate-details-metrics-row">
+                  <div class="rebate-details-metric">
+                    <span class="metric-label">您当前的返佣比例</span>
+                    <p class="rebate-rate-value">
+                      {{ parseMoney(inviteRebateOverview?.current_rate_percent ?? 0)
+                      }}<span class="rebate-rate-unit">%</span>
+                    </p>
+                  </div>
+                  <div class="rebate-details-metric">
+                    <span class="metric-label">累积邀请用户</span>
+                    <p class="rebate-rate-value">
+                      {{ inviteRebateOverview?.valid_invite_count ?? 0
+                      }}<span class="rebate-rate-unit"> 人</span>
+                    </p>
+                  </div>
+                  <div class="rebate-details-metric">
+                    <span class="metric-label">下级累计消费（已完成订单）</span>
+                    <p class="rebate-rate-value">
+                      {{ formatCny(inviteRebateOverview?.invitee_paid_total ?? 0) }}
+                    </p>
+                  </div>
                 </div>
               </article>
 
@@ -2570,6 +2579,19 @@ function confirmAddTeamMember() {
   border-top: 1px solid rgba(124, 58, 237, 0.1);
 }
 
+.rebate-details-metrics-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 32px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.rebate-details-metric {
+  flex: 1 1 0;
+  min-width: min(100%, 160px);
+}
+
 .promo-domain-row {
   display: flex;
   flex-wrap: wrap;
@@ -2583,7 +2605,7 @@ function confirmAddTeamMember() {
   min-width: 0;
   margin: 0;
   padding: 0;
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 600;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   color: var(--atm-primary-dark);
@@ -2594,16 +2616,16 @@ function confirmAddTeamMember() {
 
 .rebate-rate-value {
   margin: 6px 0 0;
-  font-size: 40px;
+  font-size: 32px;
   font-weight: 800;
-  line-height: 1;
-  letter-spacing: -0.03em;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
   color: var(--atm-primary-dark);
 }
 
 .rebate-rate-unit {
   margin-left: 2px;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
 }
 
