@@ -800,7 +800,6 @@ function confirmAddTeamMember() {
       <div class="member-hero-bg" aria-hidden="true" />
       <div class="atm-container member-hero-inner">
         <div class="member-hero-copy">
-          <span class="member-hero-badge">AI Plan · 会员中心</span>
           <h1 class="member-hero-title">
             <span class="member-hero-greeting">你好</span>
             <span class="member-hero-account">{{ displayName }}</span>
@@ -1513,7 +1512,7 @@ function confirmAddTeamMember() {
                 <h3 class="withdraw-section-title">佣金提现</h3>
                 <div class="withdraw-toolbar">
                   <span class="withdraw-balance">
-                    可提现佣金
+                    <span class="withdraw-payout-name">可提现佣金</span>
                     <strong>{{ formatCny(commissionAvailable) }}</strong>
                   </span>
                   <button type="button" class="atm-btn-primary btn-xs" @click="openWithdrawModal">
@@ -1524,7 +1523,7 @@ function confirmAddTeamMember() {
                 <h3 class="withdraw-section-title withdraw-section-title--sub">收款方式</h3>
                 <div class="withdraw-payout-list">
                   <article class="withdraw-payout-row">
-                    <strong class="withdraw-payout-name">支付宝</strong>
+                    <span class="withdraw-payout-name">支付宝</span>
                     <p class="withdraw-payout-status muted">
                       {{ payoutQr.alipay ? '收款码已配置' : '未设置收款码' }}
                     </p>
@@ -1537,7 +1536,7 @@ function confirmAddTeamMember() {
                     </button>
                   </article>
                   <article class="withdraw-payout-row">
-                    <strong class="withdraw-payout-name">微信</strong>
+                    <span class="withdraw-payout-name">微信</span>
                     <p class="withdraw-payout-status muted">
                       {{ payoutQr.wechat ? '收款码已配置' : '未设置收款码' }}
                     </p>
@@ -1942,19 +1941,6 @@ function confirmAddTeamMember() {
   gap: 24px 32px;
 }
 
-.member-hero-badge {
-  display: inline-block;
-  margin-bottom: 14px;
-  padding: 6px 14px;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.92);
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 999px;
-}
-
 .member-hero-title {
   margin: 0 0 10px;
   font-weight: 700;
@@ -2168,12 +2154,14 @@ function confirmAddTeamMember() {
 }
 
 .withdraw-balance {
-  font-size: 14px;
-  color: var(--atm-text-muted);
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
 }
 
 .withdraw-balance strong {
-  margin-left: 6px;
+  margin-left: 0;
   font-size: 18px;
   font-weight: 800;
   color: var(--atm-text);
@@ -2197,16 +2185,18 @@ function confirmAddTeamMember() {
   flex-shrink: 0;
   min-width: 56px;
   font-size: 15px;
-  font-weight: 700;
-  color: var(--atm-text);
+  font-weight: 600;
+  color: var(--atm-text-muted);
 }
 
 .withdraw-payout-status {
   flex: 1;
   min-width: 0;
   margin: 0;
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 400;
   line-height: 1.5;
+  color: var(--atm-text-muted);
 }
 
 .withdraw-payout-btn {
