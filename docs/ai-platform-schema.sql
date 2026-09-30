@@ -301,7 +301,7 @@ CREATE TABLE IF NOT EXISTS `user_notifications` (
   `api_key_id`      BIGINT UNSIGNED DEFAULT NULL,
   `channel`         VARCHAR(32)  NOT NULL COMMENT 'email|in_app|sms',
   `template_code`   VARCHAR(64)  NOT NULL COMMENT 'subscription_activated|subscription_renewed|subscription_upgraded|subscription_quota_added|key_issued|renew_reminder 等',
-  `status`          VARCHAR(32)  NOT NULL COMMENT 'pending|sent|failed',
+  `status`          VARCHAR(32)  NOT NULL COMMENT 'email/sms: pending|sent|failed；in_app 收件: sent=未读 read=已读',
   `sent_at`         DATETIME     DEFAULT NULL,
   `created_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),

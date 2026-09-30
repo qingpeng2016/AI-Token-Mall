@@ -13,6 +13,7 @@ import CatalogPickerModal from '@/components/catalog/CatalogPickerModal.vue'
 import PurchaseModal from '@/components/checkout/PurchaseModal.vue'
 import ChangePasswordModal from '@/components/member/ChangePasswordModal.vue'
 import InvoiceConfigModal from '@/components/member/InvoiceConfigModal.vue'
+import MemberMessagesPanel from '@/components/member/MemberMessagesPanel.vue'
 import MemberSidebar from '@/components/member/MemberSidebar.vue'
 import type { CatalogProduct } from '@/mocks/home'
 import {
@@ -200,7 +201,7 @@ const myApiKeyRows = computed<MyApiKeyRow[]>(() => {
   return [...mains, ...teams]
 })
 
-const validTabs = new Set(memberNav.map((n) => n.id))
+const validTabs = new Set<MemberTab>([...memberNav.map((n) => n.id), 'messages'])
 
 const activeTab = computed<MemberTab>(() => {
   const q = route.query.tab
@@ -238,7 +239,10 @@ watch(
   { immediate: true },
 )
 
-const pageTitle = computed(() => memberNav.find((n) => n.id === activeTab.value)?.label ?? '会员中心')
+const pageTitle = computed(() => {
+  if (activeTab.value === 'messages') return '站内消息'
+  return memberNav.find((n) => n.id === activeTab.value)?.label ?? '会员中心'
+})
 
 const displayName = computed(() =>
   user.value ? userAccountLabel(user.value) : '会员',
@@ -1001,6 +1005,11 @@ function confirmAddTeamMember() {
             <p v-if="recentOrders.length" class="overview-orders-more muted">
               <RouterLink :to="{ path: '/member', query: { tab: 'orders' } }">查看全部订单 →</RouterLink>
             </p>
+            </div>
+
+            <!-- 站内消息（演示 UI，mock 数据） -->
+            <div v-else-if="activeTab === 'messages'" class="panel-body">
+              <MemberMessagesPanel />
             </div>
 
             <!-- 我的套餐 -->

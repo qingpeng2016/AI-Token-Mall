@@ -123,6 +123,7 @@ const emit = defineEmits<{
 .member-nav-item {
   display: flex;
   align-items: center;
+  gap: 8px;
   min-height: 44px;
   padding: 10px 14px 10px 11px;
   font-size: 14px;

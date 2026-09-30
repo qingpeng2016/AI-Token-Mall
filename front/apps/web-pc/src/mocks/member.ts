@@ -2,6 +2,7 @@
 
 export type MemberTab =
   | 'overview'
+  | 'messages'
   | 'plans'
   | 'api-keys'
   | 'orders'

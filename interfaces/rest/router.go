@@ -24,7 +24,8 @@ type Router struct {
 	enterpriseHandler  *handler.EnterpriseHandler
 	orderHandler          *handler.OrderHandler
 	subscriptionHandler   *handler.SubscriptionHandler
-	invoiceConfigHandler  *handler.InvoiceConfigHandler
+	invoiceConfigHandler       *handler.InvoiceConfigHandler
+	userNotificationHandler    *handler.UserNotificationHandler
 }
 
 func NewRouter(
@@ -36,16 +37,18 @@ func NewRouter(
 	orderHandler *handler.OrderHandler,
 	subscriptionHandler *handler.SubscriptionHandler,
 	invoiceConfigHandler *handler.InvoiceConfigHandler,
+	userNotificationHandler *handler.UserNotificationHandler,
 ) *Router {
 	return &Router{
-		setting:              setting,
-		userHandler:          userHandler,
-		productHandler:       productHandler,
-		tutorialHandler:      tutorialHandler,
-		enterpriseHandler:    enterpriseHandler,
-		orderHandler:         orderHandler,
-		subscriptionHandler:  subscriptionHandler,
-		invoiceConfigHandler: invoiceConfigHandler,
+		setting:                   setting,
+		userHandler:               userHandler,
+		productHandler:            productHandler,
+		tutorialHandler:           tutorialHandler,
+		enterpriseHandler:         enterpriseHandler,
+		orderHandler:              orderHandler,
+		subscriptionHandler:       subscriptionHandler,
+		invoiceConfigHandler:      invoiceConfigHandler,
+		userNotificationHandler:   userNotificationHandler,
 	}
 }
 
@@ -72,6 +75,10 @@ func (r *Router) setupRouters() *gin.Engine {
 	{
 		userAuth.GET("/users/me", r.userHandler.Me)
 		userAuth.POST("/users/me/password", r.userHandler.ChangePassword)
+		userAuth.GET("/users/notifications", r.userNotificationHandler.ListMine)
+		userAuth.GET("/users/notifications/unread-count", r.userNotificationHandler.UnreadCount)
+		userAuth.POST("/users/notifications/read-all", r.userNotificationHandler.MarkAllRead)
+		userAuth.POST("/users/notifications/:id/read", r.userNotificationHandler.MarkRead)
 		userAuth.GET("/users/wallet-flows", r.userHandler.ListWalletFlows)
 		userAuth.GET("/users/invoices", r.userHandler.ListInvoices)
 		userAuth.GET("/users/invoice-configs", r.invoiceConfigHandler.ListMine)

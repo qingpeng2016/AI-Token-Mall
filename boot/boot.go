@@ -7,6 +7,7 @@ import (
 	botscheduleconfig "github.com/qingpeng2016/ai-token-mall/application/core-service/bot_schedule_config"
 	"github.com/qingpeng2016/ai-token-mall/application/core-service/enterprise"
 	invoicesvc "github.com/qingpeng2016/ai-token-mall/application/core-service/invoice"
+	notificationsvc "github.com/qingpeng2016/ai-token-mall/application/core-service/notification"
 	"github.com/qingpeng2016/ai-token-mall/application/core-service/order"
 	productsvc "github.com/qingpeng2016/ai-token-mall/application/core-service/product"
 	"github.com/qingpeng2016/ai-token-mall/application/core-service/subscription"
@@ -46,7 +47,9 @@ func BuildContainer() *dig.Container {
 	_ = c.Provide(handler.NewOrderHandler)
 	_ = c.Provide(handler.NewSubscriptionHandler)
 	_ = c.Provide(handler.NewInvoiceConfigHandler)
+	_ = c.Provide(handler.NewUserNotificationHandler)
 	_ = c.Provide(user.NewUserService)
+	_ = c.Provide(notificationsvc.NewUserNotificationService)
 	_ = c.Provide(invoicesvc.NewInvoiceConfigService)
 	_ = c.Provide(invoicelookup.NewClient)
 	_ = c.Provide(invoicesvc.NewEnterpriseLookup)

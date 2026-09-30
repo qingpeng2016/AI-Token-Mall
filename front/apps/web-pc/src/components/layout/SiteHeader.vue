@@ -6,6 +6,7 @@ import { isLoggedIn } from '@/composables/useSessionUser'
 import NavMegaMenuSkeleton from '@/components/layout/NavMegaMenuSkeleton.vue'
 import { reloadNavMenu, useNavMenu } from '@/composables/useNavMenu'
 import { isNavDropdown, type NavMenuEntry } from '@/mocks/nav'
+import SiteNotificationBell from '@/components/layout/SiteNotificationBell.vue'
 
 const { megaMenu, brandMenus, loading: navLoading } = useNavMenu()
 
@@ -188,6 +189,7 @@ function isSpaNav(href: string) {
 
       <div class="actions">
         <template v-if="loggedIn">
+          <SiteNotificationBell />
           <RouterLink to="/member" class="atm-btn-primary btn-sm">会员中心</RouterLink>
         </template>
         <template v-else>
