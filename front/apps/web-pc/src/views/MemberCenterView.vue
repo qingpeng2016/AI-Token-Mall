@@ -5,7 +5,9 @@ import { ElMessage } from 'element-plus'
 import {
   formatCny,
   formatNowBeijing,
+  formatSignedCny,
   parseMoney,
+  signedMoneyClass,
   type OrderType,
   type UserWalletFlowItem,
 } from '@ai-token-mall/shared'
@@ -1505,13 +1507,8 @@ function confirmAddTeamMember() {
                 <tbody>
                   <tr v-for="tx in walletFlows" :key="tx.id">
                     <td>{{ walletFlowTypeLabel(tx.type) }}</td>
-                    <td
-                      :class="
-                        parseMoney(tx.amount) > 0 ? 'amount-plus' : 'amount-minus'
-                      "
-                    >
-                      {{ parseMoney(tx.amount) > 0 ? '+' : ''
-                      }}{{ formatCny(Math.abs(parseMoney(tx.amount))) }}
+                    <td :class="signedMoneyClass(tx.amount)">
+                      {{ formatSignedCny(tx.amount) }}
                     </td>
                     <td>{{ tx.remark }}</td>
                     <td class="muted">{{ tx.created_at }}</td>
@@ -2989,7 +2986,7 @@ function confirmAddTeamMember() {
 }
 
 .amount-minus {
-  color: var(--atm-text);
+  color: #b91c1c;
   font-weight: 600;
 }
 

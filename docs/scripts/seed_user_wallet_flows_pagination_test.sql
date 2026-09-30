@@ -28,6 +28,7 @@ SELECT
     WHEN 'withdraw' THEN -50.00
     WHEN 'recharge' THEN 500.00
     WHEN 'refund' THEN 89.00
+    WHEN 'commission' THEN -12.50
     ELSE 12.50
   END AS `amount`,
   9000.00 + (`n` * 0.01) AS `balance_after`,

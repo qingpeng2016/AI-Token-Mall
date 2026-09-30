@@ -15,6 +15,22 @@ export function formatCny(amount: number | string): string {
   return `¥${n.toFixed(2)}`
 }
 
+/** 资金流水等：正数带 +，负数带 -，零不带符号 */
+export function formatSignedCny(amount: number | string): string {
+  const n = parseMoney(amount)
+  const absText = formatCny(Math.abs(n))
+  if (n > 0) return `+ ${absText}`
+  if (n < 0) return `- ${absText}`
+  return absText
+}
+
+export function signedMoneyClass(amount: number | string): 'amount-plus' | 'amount-minus' | 'amount-zero' {
+  const n = parseMoney(amount)
+  if (n > 0) return 'amount-plus'
+  if (n < 0) return 'amount-minus'
+  return 'amount-zero'
+}
+
 /** @deprecated 使用 formatCny（金额已为元） */
 export function formatCnyFromCents(cents: number): string {
   return formatCny(cents / 100)
