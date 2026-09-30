@@ -6,6 +6,7 @@ import (
 	alipaysvc "github.com/qingpeng2016/ai-token-mall/application/core-service/alipay"
 	botscheduleconfig "github.com/qingpeng2016/ai-token-mall/application/core-service/bot_schedule_config"
 	"github.com/qingpeng2016/ai-token-mall/application/core-service/enterprise"
+	inviteRebateSvc "github.com/qingpeng2016/ai-token-mall/application/core-service/invite_rebate"
 	invoicesvc "github.com/qingpeng2016/ai-token-mall/application/core-service/invoice"
 	notificationsvc "github.com/qingpeng2016/ai-token-mall/application/core-service/notification"
 	"github.com/qingpeng2016/ai-token-mall/application/core-service/order"
@@ -48,6 +49,8 @@ func BuildContainer() *dig.Container {
 	_ = c.Provide(handler.NewSubscriptionHandler)
 	_ = c.Provide(handler.NewInvoiceConfigHandler)
 	_ = c.Provide(handler.NewUserNotificationHandler)
+	_ = c.Provide(handler.NewInviteRebateHandler)
+	_ = c.Provide(inviteRebateSvc.NewService)
 	_ = c.Provide(user.NewUserService)
 	_ = c.Provide(notificationsvc.NewUserNotificationService)
 	_ = c.Provide(invoicesvc.NewInvoiceConfigService)

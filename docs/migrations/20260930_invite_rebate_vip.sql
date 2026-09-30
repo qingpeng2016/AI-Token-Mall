@@ -30,7 +30,6 @@ ALTER TABLE `users`
   ADD COLUMN `parent_user_id` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '上级用户 ID，0 表示无上级' AFTER `nickname`,
   ADD COLUMN `vip_config_id`  BIGINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '当前 VIP 档位 vip_config.id' AFTER `parent_user_id`,
   ADD COLUMN `vip_domain`     VARCHAR(255) DEFAULT NULL COMMENT '专属推广独立域名' AFTER `vip_config_id`,
-  ADD COLUMN `invite_valid_at` DATETIME DEFAULT NULL COMMENT '成为有效邀请的时间（如下级首单满足条件）' AFTER `vip_domain`,
   ADD KEY `idx_users_parent_user_id` (`parent_user_id`),
   ADD KEY `idx_users_vip_config_id` (`vip_config_id`),
   ADD UNIQUE KEY `uk_users_vip_domain` (`vip_domain`);

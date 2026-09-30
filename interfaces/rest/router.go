@@ -26,6 +26,7 @@ type Router struct {
 	subscriptionHandler   *handler.SubscriptionHandler
 	invoiceConfigHandler       *handler.InvoiceConfigHandler
 	userNotificationHandler    *handler.UserNotificationHandler
+	inviteRebateHandler        *handler.InviteRebateHandler
 }
 
 func NewRouter(
@@ -38,6 +39,7 @@ func NewRouter(
 	subscriptionHandler *handler.SubscriptionHandler,
 	invoiceConfigHandler *handler.InvoiceConfigHandler,
 	userNotificationHandler *handler.UserNotificationHandler,
+	inviteRebateHandler *handler.InviteRebateHandler,
 ) *Router {
 	return &Router{
 		setting:                   setting,
@@ -49,6 +51,7 @@ func NewRouter(
 		subscriptionHandler:       subscriptionHandler,
 		invoiceConfigHandler:      invoiceConfigHandler,
 		userNotificationHandler:   userNotificationHandler,
+		inviteRebateHandler:     inviteRebateHandler,
 	}
 }
 
@@ -86,6 +89,12 @@ func (r *Router) setupRouters() *gin.Engine {
 		userAuth.POST("/users/invoice-configs", r.invoiceConfigHandler.Create)
 		userAuth.PUT("/users/invoice-configs/:id", r.invoiceConfigHandler.Update)
 		userAuth.POST("/users/invoice-configs/:id/set-default", r.invoiceConfigHandler.SetDefault)
+		userAuth.GET("/users/invite-rebate/overview", r.inviteRebateHandler.Overview)
+		userAuth.GET("/users/invite-rebate/members", r.inviteRebateHandler.ListMembers)
+		userAuth.GET("/users/invite-rebate/commission-records", r.inviteRebateHandler.ListCommissionRecords)
+		userAuth.GET("/users/invite-rebate/withdrawals", r.inviteRebateHandler.ListWithdrawals)
+		userAuth.GET("/users/invite-rebate/payout-config", r.inviteRebateHandler.GetPayoutConfig)
+		userAuth.PUT("/users/invite-rebate/payout-config", r.inviteRebateHandler.SavePayoutConfig)
 	}
 
 	// 需登录；正式网关回调另开 /api/v1/payments/notify 且无鉴权

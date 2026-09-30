@@ -1,5 +1,6 @@
 import {
   createEnterpriseApi,
+  createInviteRebateApi,
   createInvoiceApi,
   createNotificationApi,
   createOrderApi,
@@ -48,6 +49,11 @@ export const invoiceApi = createInvoiceApi({
 })
 
 export const notificationApi = createNotificationApi({
+  baseURL,
+  getToken: () => getAuthToken(),
+})
+
+export const inviteRebateApi = createInviteRebateApi({
   baseURL,
   getToken: () => getAuthToken(),
 })

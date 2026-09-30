@@ -31,26 +31,29 @@ import {
   setSessionUser,
   userAccountLabel,
 } from '@/composables/useSessionUser'
-import { invoiceApi, orderApi, subscriptionApi, userApi } from '@/api'
-import type { UserInvoiceItem, UserOrderItem, UserSubscriptionItem } from '@ai-token-mall/shared'
+import { inviteRebateApi, invoiceApi, orderApi, subscriptionApi, userApi } from '@/api'
+import type {
+  InviteCommissionRecord,
+  InviteRebateMember,
+  InviteRebateOverview,
+  InviteWithdrawalRecord,
+  UserInvoiceItem,
+  UserOrderItem,
+  UserSubscriptionItem,
+} from '@ai-token-mall/shared'
 import {
   formatTokens,
   memberNav,
   mockApiTeamMembers,
   mockInvitedUsers,
-  mockInviteRebatePolicy,
-  mockInviteRebateRecords,
-  mockPromoDomainBase,
   mockSubscriptions,
   mockTeamSubKeys,
-  mockWithdrawalRecords,
   orderStatusLabel,
   withdrawalChannelLabel,
   withdrawalStatusLabel,
   type MemberTab,
   type MockSubAccount,
   type MockTeamSubKey,
-  type MockWithdrawalRecord,
 } from '@/mocks/member'
 
 const router = useRouter()
@@ -105,7 +108,19 @@ const addTeamMemberOpen = ref(false)
 const addTeamMemberInvitedId = ref<number | null>(null)
 const inviteRebatePanelTab = ref<'details' | 'members' | 'rebates' | 'withdrawals'>('details')
 const commissionAvailable = ref(0)
-const withdrawalRecords = ref<MockWithdrawalRecord[]>([...mockWithdrawalRecords])
+const inviteRebateOverview = ref<InviteRebateOverview | null>(null)
+const inviteMembers = ref<InviteRebateMember[]>([])
+const commissionRecords = ref<InviteCommissionRecord[]>([])
+const commissionRecordsPage = ref(1)
+const commissionRecordsPageSize = 9
+const commissionRecordsTotal = ref(0)
+const commissionRecordsLoaded = ref(false)
+const withdrawalRecords = ref<InviteWithdrawalRecord[]>([])
+const withdrawalsPage = ref(1)
+const withdrawalsPageSize = 9
+const withdrawalsTotal = ref(0)
+const withdrawalsLoaded = ref(false)
+const inviteRebateLoaded = ref(false)
 const payoutQr = reactive({ alipay: '', wechat: '' })
 const payoutQrSetupOpen = ref(false)
 const payoutQrSetupChannel = ref<'alipay' | 'wechat'>('alipay')
@@ -235,9 +250,19 @@ watch(
     if (tab === 'invoices') {
       void fetchInvoicesTabData()
     }
+    if (tab === 'sub-accounts') {
+      void fetchInviteRebateTabData()
+    }
   },
   { immediate: true },
 )
+
+watch(inviteRebatePanelTab, (panel) => {
+  if (activeTab.value !== 'sub-accounts' || !inviteRebateLoaded.value) return
+  if (panel === 'members') void fetchInviteMembersTabData()
+  if (panel === 'rebates') void fetchCommissionRecordsTabData()
+  if (panel === 'withdrawals') void fetchWithdrawalsTabData()
+})
 
 const pageTitle = computed(() => {
   if (activeTab.value === 'messages') return '站内消息'
@@ -258,10 +283,9 @@ const teamInviteLink = computed(() => {
   return `${origin}/register?team_invite=${uid}`
 })
 
-const exclusivePromoDomain = computed(() => {
-  const uid = user.value?.id
-  return uid != null ? `${mockPromoDomainBase}/${uid}` : `${mockPromoDomainBase}/guest`
-})
+const exclusivePromoDomain = computed(
+  () => inviteRebateOverview.value?.promo_domain_url?.trim() ?? '',
+)
 
 onBeforeMount(() => {
   const profile = getSessionUser()
@@ -427,6 +451,77 @@ async function fetchInvoicesTabData() {
 function onInvoicesPageChange(page: number) {
   invoicesPage.value = page
   void fetchInvoicesTabData()
+}
+
+async function fetchInviteRebateTabData() {
+  await withTopLoading(async () => {
+    try {
+      const overview = await inviteRebateApi.overview()
+      inviteRebateOverview.value = overview
+      commissionAvailable.value = parseMoney(overview.commission_balance)
+      const payout = await inviteRebateApi.payoutConfig()
+      payoutQr.alipay = payout.alipay_qr_url ?? ''
+      payoutQr.wechat = payout.wechat_qr_url ?? ''
+      inviteRebateLoaded.value = true
+      const panel = inviteRebatePanelTab.value
+      if (panel === 'members') await fetchInviteMembersTabData()
+      else if (panel === 'rebates') await fetchCommissionRecordsTabData()
+      else if (panel === 'withdrawals') await fetchWithdrawalsTabData()
+    } catch (e) {
+      handleMemberAuthError(e, '邀请返利加载失败')
+    }
+  })
+}
+
+async function fetchInviteMembersTabData() {
+  try {
+    const data = await inviteRebateApi.members()
+    inviteMembers.value = data.items
+  } catch (e) {
+    handleMemberAuthError(e, '邀请成员加载失败')
+  }
+}
+
+async function fetchCommissionRecordsTabData() {
+  try {
+    const data = await inviteRebateApi.commissionRecords({
+      page: commissionRecordsPage.value,
+      page_size: commissionRecordsPageSize,
+    })
+    commissionRecords.value = data.items
+    commissionRecordsTotal.value = data.total
+    commissionRecordsPage.value = data.page
+  } catch (e) {
+    handleMemberAuthError(e, '返利记录加载失败')
+  } finally {
+    commissionRecordsLoaded.value = true
+  }
+}
+
+function onCommissionRecordsPageChange(page: number) {
+  commissionRecordsPage.value = page
+  void fetchCommissionRecordsTabData()
+}
+
+async function fetchWithdrawalsTabData() {
+  try {
+    const data = await inviteRebateApi.withdrawals({
+      page: withdrawalsPage.value,
+      page_size: withdrawalsPageSize,
+    })
+    withdrawalRecords.value = data.items
+    withdrawalsTotal.value = data.total
+    withdrawalsPage.value = data.page
+  } catch (e) {
+    handleMemberAuthError(e, '提现记录加载失败')
+  } finally {
+    withdrawalsLoaded.value = true
+  }
+}
+
+function onWithdrawalsPageChange(page: number) {
+  withdrawalsPage.value = page
+  void fetchWithdrawalsTabData()
 }
 
 function invoiceStatusLabel(status: string) {
@@ -604,16 +699,24 @@ function openPayoutQrModal(channel: 'alipay' | 'wechat') {
   payoutQrSetupOpen.value = true
 }
 
-function confirmPayoutQrSetup() {
+async function confirmPayoutQrSetup() {
   const url = payoutQrSetupValue.value.trim()
   if (!url) {
-    ElMessage.warning('请填写收款码图片地址或上传后粘贴链接（演示）')
+    ElMessage.warning('请填写收款码图片地址或上传后粘贴链接')
     return
   }
-  if (payoutQrSetupChannel.value === 'alipay') payoutQr.alipay = url
-  else payoutQr.wechat = url
-  payoutQrSetupOpen.value = false
-  ElMessage.success('收款码已保存')
+  try {
+    await inviteRebateApi.savePayoutConfig({
+      channel: payoutQrSetupChannel.value,
+      qr_url: url,
+    })
+    if (payoutQrSetupChannel.value === 'alipay') payoutQr.alipay = url
+    else payoutQr.wechat = url
+    payoutQrSetupOpen.value = false
+    ElMessage.success('收款码已保存')
+  } catch (e) {
+    handleMemberAuthError(e, '保存收款码失败')
+  }
 }
 
 function openWithdrawModal() {
@@ -650,7 +753,7 @@ function confirmWithdraw() {
     amount: yuan,
     channel,
     status: 'pending',
-    createdAt: formatNowBeijing('datetime'),
+    created_at: formatNowBeijing('datetime'),
   })
   commissionAvailable.value -= yuan
   withdrawOpen.value = false
@@ -1391,7 +1494,8 @@ function confirmAddTeamMember() {
                 <div class="rebate-details-section">
                   <span class="metric-label">您当前的返佣比例</span>
                   <p class="rebate-rate-value">
-                    {{ mockInviteRebatePolicy.currentRatePercent }}<span class="rebate-rate-unit">%</span>
+                    {{ parseMoney(inviteRebateOverview?.current_rate_percent ?? 0)
+                    }}<span class="rebate-rate-unit">%</span>
                   </p>
                 </div>
               </article>
@@ -1408,24 +1512,20 @@ function confirmAddTeamMember() {
                   </thead>
                   <tbody>
                     <tr
-                      v-for="tier in mockInviteRebatePolicy.tiers"
-                      :key="tier.levelLabel"
+                      v-for="tier in inviteRebateOverview?.tiers ?? []"
+                      :key="tier.level_label"
                       :class="{
-                        'rebate-tier-row--current':
-                          tier.levelLabel === mockInviteRebatePolicy.currentLevelLabel,
+                        'rebate-tier-row--current': tier.is_current,
                       }"
                     >
                       <td>
-                        <strong>{{ tier.levelLabel }}</strong>
-                        <span
-                          v-if="tier.levelLabel === mockInviteRebatePolicy.currentLevelLabel"
-                          class="tag tag--key-main rebate-tier-badge"
-                        >
+                        <strong>{{ tier.level_label }}</strong>
+                        <span v-if="tier.is_current" class="tag tag--key-main rebate-tier-badge">
                           当前
                         </span>
                       </td>
-                      <td>{{ tier.minInvites }} 人</td>
-                      <td>{{ tier.ratePercent }}%</td>
+                      <td>{{ tier.min_valid_invites }} 人</td>
+                      <td>{{ parseMoney(tier.rate_percent) }}%</td>
                     </tr>
                   </tbody>
                 </table>
@@ -1433,7 +1533,7 @@ function confirmAddTeamMember() {
 
               <h3 class="panel-subtitle">说明</h3>
               <ul class="rebate-notes">
-                <li v-for="(note, i) in mockInviteRebatePolicy.notes" :key="i">{{ note }}</li>
+                <li v-for="(note, i) in inviteRebateOverview?.notes ?? []" :key="i">{{ note }}</li>
               </ul>
             </div>
 
@@ -1453,22 +1553,17 @@ function confirmAddTeamMember() {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="u in mockInvitedUsers" :key="u.id">
-                      <td>{{ u.nickname }}</td>
-                      <td>{{ u.email }}</td>
+                    <tr v-for="u in inviteMembers" :key="u.id">
+                      <td>{{ u.nickname || u.email || '—' }}</td>
+                      <td>{{ u.email || '—' }}</td>
                       <td>
-                        <span
-                          class="tag"
-                          :class="isInvitedUserInApiTeam(u.id) ? 'tag--active' : 'tag--key-team'"
-                        >
-                          {{ isInvitedUserInApiTeam(u.id) ? '已加入团队' : '已注册待添加' }}
-                        </span>
+                        <span class="tag tag--active">已绑定</span>
                       </td>
                     </tr>
                   </tbody>
                 </table>
               </div>
-              <p v-if="!mockInvitedUsers.length" class="empty">
+              <p v-if="inviteRebateLoaded && !inviteMembers.length" class="empty">
                 暂无邀请成员，点击上方「邀请成员」分享链接。
               </p>
             </div>
@@ -1477,7 +1572,7 @@ function confirmAddTeamMember() {
               <p class="rebate-lead muted">
                 受邀用户完成支付后，返利将自动加到「佣金」。
               </p>
-              <div v-if="mockInviteRebateRecords.length" class="table-wrap">
+              <div v-if="commissionRecords.length" class="table-wrap">
                 <table class="data-table">
                   <thead>
                     <tr>
@@ -1490,21 +1585,31 @@ function confirmAddTeamMember() {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="r in mockInviteRebateRecords" :key="r.id">
+                    <tr v-for="r in commissionRecords" :key="r.id">
                       <td>
-                        <strong>{{ r.inviteeNickname }}</strong>
-                        <span class="cell-sub muted">{{ r.inviteeEmail }}</span>
+                        <strong>{{ r.invitee_nickname || r.invitee_email || '—' }}</strong>
+                        <span v-if="r.invitee_email" class="cell-sub muted">{{ r.invitee_email }}</span>
                       </td>
-                      <td class="mono">{{ r.orderNo }}</td>
-                      <td>{{ r.productName }}</td>
-                      <td>{{ formatCny(r.orderAmount) }}</td>
-                      <td class="amount-plus">+{{ formatCny(r.rebateAmount) }}</td>
-                      <td class="muted">{{ r.createdAt }}</td>
+                      <td class="mono">{{ r.order_no }}</td>
+                      <td>{{ r.product_name }}</td>
+                      <td>{{ formatCny(r.order_amount) }}</td>
+                      <td class="amount-plus">+{{ formatCny(r.rebate_amount) }}</td>
+                      <td class="muted">{{ r.created_at }}</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
-              <p v-else class="empty">暂无返利记录。</p>
+              <p v-else-if="commissionRecordsLoaded" class="empty">暂无返利记录。</p>
+              <div v-if="commissionRecordsTotal > commissionRecordsPageSize" class="orders-pagination">
+                <el-pagination
+                  v-model:current-page="commissionRecordsPage"
+                  :page-size="commissionRecordsPageSize"
+                  :total="commissionRecordsTotal"
+                  layout="total, prev, pager, next"
+                  background
+                  @current-change="onCommissionRecordsPageChange"
+                />
+              </div>
             </div>
 
             <div v-else-if="inviteRebatePanelTab === 'withdrawals'" role="tabpanel">
@@ -1565,7 +1670,7 @@ function confirmAddTeamMember() {
                   <tbody>
                     <tr v-for="w in withdrawalRecords" :key="w.id">
                       <td>{{ formatCny(w.amount) }}</td>
-                      <td>{{ withdrawalChannelLabel[w.channel] }}</td>
+                      <td>{{ withdrawalChannelLabel[w.channel as 'alipay' | 'wechat'] ?? w.channel }}</td>
                       <td>
                         <span
                           class="tag"
@@ -1575,15 +1680,25 @@ function confirmAddTeamMember() {
                             'tag--failed': w.status === 'failed',
                           }"
                         >
-                          {{ withdrawalStatusLabel[w.status] }}
+                          {{ withdrawalStatusLabel[w.status as keyof typeof withdrawalStatusLabel] ?? w.status }}
                         </span>
                       </td>
-                      <td class="muted">{{ w.createdAt }}</td>
+                      <td class="muted">{{ w.created_at }}</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
-              <p v-else class="empty">暂无提现记录。</p>
+              <p v-else-if="withdrawalsLoaded" class="empty">暂无提现记录。</p>
+              <div v-if="withdrawalsTotal > withdrawalsPageSize" class="orders-pagination">
+                <el-pagination
+                  v-model:current-page="withdrawalsPage"
+                  :page-size="withdrawalsPageSize"
+                  :total="withdrawalsTotal"
+                  layout="total, prev, pager, next"
+                  background
+                  @current-change="onWithdrawalsPageChange"
+                />
+              </div>
             </div>
             </div>
 

@@ -32,7 +32,7 @@ func (r *UsersImpl) CreateRegister(ctx context.Context, tx *gorm.DB, u *entity.U
 	}
 	q := tx.WithContext(ctx)
 	if !withInviteFields {
-		q = q.Omit("parent_user_id", "vip_config_id", "vip_domain", "invite_valid_at")
+		q = q.Omit("parent_user_id", "vip_config_id", "vip_domain")
 	}
 	return q.Create(u).Error
 }
@@ -103,13 +103,6 @@ func (r *UsersImpl) CountByParentUserID(ctx context.Context, parentUserID uint) 
 	var n int64
 	err := r.db.WithContext(ctx).Model(&entity.Users{}).
 		Where("parent_user_id = ?", parentUserID).Count(&n).Error
-	return n, err
-}
-
-func (r *UsersImpl) CountValidInvitesByParentUserID(ctx context.Context, parentUserID uint) (int64, error) {
-	var n int64
-	err := r.db.WithContext(ctx).Model(&entity.Users{}).
-		Where("parent_user_id = ? AND invite_valid_at IS NOT NULL", parentUserID).Count(&n).Error
 	return n, err
 }
 

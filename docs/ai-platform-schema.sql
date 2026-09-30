@@ -19,7 +19,6 @@ CREATE TABLE IF NOT EXISTS `users` (
   `parent_user_id`  BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '上级用户 ID，0 无上级',
   `vip_config_id`   BIGINT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'VIP 档位 vip_config.id',
   `vip_domain`      VARCHAR(255) DEFAULT NULL COMMENT '专属推广独立域名',
-  `invite_valid_at` DATETIME     DEFAULT NULL COMMENT '有效邀请认定时间（如下级首单）',
   `status`          VARCHAR(32)  NOT NULL DEFAULT 'active' COMMENT 'active|disabled|banned',
   `wallet_balance`     DECIMAL(16,2) NOT NULL DEFAULT 0 COMMENT '钱包可用余额（元）',
   `commission_balance` DECIMAL(16,2) NOT NULL DEFAULT 0 COMMENT '佣金余额（元）',
