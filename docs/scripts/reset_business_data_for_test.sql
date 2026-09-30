@@ -22,7 +22,8 @@ TRUNCATE TABLE `user_orders`;
 -- 用户侧配置（非 users 主表）
 TRUNCATE TABLE `user_invoice_config`;
 
--- 企业咨询（若未建表可注释本行）
+-- 企业咨询与成员（若未建表可注释）
+TRUNCATE TABLE `enterprise_users`;
 TRUNCATE TABLE `enterprise_inquiry`;
 
 -- 可选：上游容量计数归零（路由/容量测试时用）

@@ -80,6 +80,7 @@ func BuildContainer() *dig.Container {
 	_ = c.Provide(mysql.NewTutorialCategoryImpl)
 	_ = c.Provide(mysql.NewTutorialArticleImpl)
 	_ = c.Provide(mysql.NewEnterpriseInquiryImpl)
+	_ = c.Provide(mysql.NewEnterpriseUsersImpl)
 	_ = c.Provide(mysql.NewEnterpriseProductsImpl)
 	_ = c.Provide(mysql.NewUserOrdersImpl)
 	_ = c.Provide(mysql.NewUserSubscriptionsImpl)

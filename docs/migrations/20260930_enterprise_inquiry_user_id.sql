@@ -1,4 +1,4 @@
--- 企业采购需求：关联登录用户（未登录留 NULL）
-ALTER TABLE `enterprise_inquiry`
-  ADD COLUMN `user_id` BIGINT UNSIGNED DEFAULT NULL COMMENT '登录用户 ID' AFTER `id`,
-  ADD KEY `idx_enterprise_inquiry_user` (`user_id`);
+-- 历史占位：早期 20260928 未含用户列时使用；当前 20260928 已直接建 owner_user_id，新库可跳过本文件。
+-- 若库中仍为 user_id 列，请执行 20260930_enterprise_inquiry_owner_user_id.sql
+
+SELECT 1;
