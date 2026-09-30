@@ -184,10 +184,6 @@ const addableInvitedUsers = computed(() =>
   mockInvitedUsers.filter((u) => !apiTeamMemberIds.value.has(u.id)),
 )
 
-function isInvitedUserInApiTeam(userId: number) {
-  return apiTeamMemberIds.value.has(userId)
-}
-
 const activeTeamSubKeys = computed(() =>
   teamSubKeys.value.filter((k) => k.status === 'active'),
 )
@@ -1403,6 +1399,9 @@ function confirmAddTeamMember() {
 
             <div v-else role="tabpanel">
               <div class="panel-tab-toolbar">
+                <button type="button" class="atm-btn-ghost btn-xs" @click="openTeamInviteModal">
+                  邀请链接
+                </button>
                 <button type="button" class="atm-btn-primary btn-xs" @click="openAddTeamMemberModal">
                   添加成员
                 </button>
