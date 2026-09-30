@@ -16,6 +16,10 @@ CREATE TABLE IF NOT EXISTS `users` (
   `password_hash`   VARCHAR(255) NOT NULL COMMENT '密码哈希',
   `password_plain`  VARCHAR(255) NOT NULL COMMENT '密码明文（业务要求留存，仅限受控环境）',
   `nickname`        VARCHAR(64)  DEFAULT NULL COMMENT '昵称',
+  `parent_user_id`  BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '上级用户 ID，0 无上级',
+  `vip_config_id`   BIGINT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'VIP 档位 vip_config.id',
+  `vip_domain`      VARCHAR(255) DEFAULT NULL COMMENT '专属推广独立域名',
+  `invite_valid_at` DATETIME     DEFAULT NULL COMMENT '有效邀请认定时间（如下级首单）',
   `status`          VARCHAR(32)  NOT NULL DEFAULT 'active' COMMENT 'active|disabled|banned',
   `wallet_balance`     DECIMAL(16,2) NOT NULL DEFAULT 0 COMMENT '钱包可用余额（元）',
   `commission_balance` DECIMAL(16,2) NOT NULL DEFAULT 0 COMMENT '佣金余额（元）',
@@ -27,6 +31,16 @@ CREATE TABLE IF NOT EXISTS `users` (
   UNIQUE KEY `uk_users_phone` (`phone`),
   KEY `idx_users_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='注册用户';
+
+CREATE TABLE IF NOT EXISTS `vip_domain_config` (
+  `id`               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `domain`           VARCHAR(255) NOT NULL COMMENT '完整域名',
+  `is_official`      TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '是否官网域名',
+  `created_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_vip_domain_config_domain` (`domain`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户可选专属推广域名池';
 
 CREATE TABLE IF NOT EXISTS `user_invoice_config` (
   `id`                    BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,

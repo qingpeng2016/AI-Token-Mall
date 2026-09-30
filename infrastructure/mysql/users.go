@@ -62,6 +62,49 @@ func (r *UsersImpl) FindByID(ctx context.Context, id uint) (*entity.Users, error
 	return &u, nil
 }
 
+func (r *UsersImpl) FindByVipDomain(ctx context.Context, vipDomain string) (*entity.Users, error) {
+	var u entity.Users
+	err := r.db.WithContext(ctx).Where("vip_domain = ?", vipDomain).First(&u).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+func (r *UsersImpl) ListByParentUserID(ctx context.Context, parentUserID uint, offset, limit int) ([]entity.Users, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	var rows []entity.Users
+	err := r.db.WithContext(ctx).
+		Where("parent_user_id = ?", parentUserID).
+		Order("id DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&rows).Error
+	return rows, err
+}
+
+func (r *UsersImpl) CountByParentUserID(ctx context.Context, parentUserID uint) (int64, error) {
+	var n int64
+	err := r.db.WithContext(ctx).Model(&entity.Users{}).
+		Where("parent_user_id = ?", parentUserID).Count(&n).Error
+	return n, err
+}
+
+func (r *UsersImpl) CountValidInvitesByParentUserID(ctx context.Context, parentUserID uint) (int64, error) {
+	var n int64
+	err := r.db.WithContext(ctx).Model(&entity.Users{}).
+		Where("parent_user_id = ? AND invite_valid_at IS NOT NULL", parentUserID).Count(&n).Error
+	return n, err
+}
+
 func (r *UsersImpl) FindByIDForUpdate(ctx context.Context, tx *gorm.DB, id uint) (*entity.Users, error) {
 	var u entity.Users
 	err := repository.GormDB(ctx, r.db, tx).
