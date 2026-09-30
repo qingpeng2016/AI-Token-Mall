@@ -16,6 +16,7 @@ type UsersRepo interface {
 	FindByIDForUpdate(ctx context.Context, tx *gorm.DB, id uint) (*entity.Users, error)
 	ApplyWalletDelta(ctx context.Context, tx *gorm.DB, userID uint, delta decimal.Decimal) (balanceAfter decimal.Decimal, err error)
 	UpdateLastLogin(ctx context.Context, id uint) error
+	UpdatePassword(ctx context.Context, id uint, passwordHash, passwordPlain string) error
 	Count(ctx context.Context) (int64, error)
 }
 

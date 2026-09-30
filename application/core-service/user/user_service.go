@@ -47,6 +47,33 @@ func (s *UserService) GetProfile(ctx context.Context, userID uint) (*response.Us
 	return toUserProfile(u), nil
 }
 
+func (s *UserService) ChangePassword(ctx context.Context, userID uint, req *request.ChangePasswordReq) error {
+	if req.NewPassword != req.ConfirmPassword {
+		return errorx.ErrPasswordMismatch
+	}
+	u, err := s.users.FindByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errorx.ErrUserNotFound
+		}
+		return errorx.ErrDbError
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(req.OldPassword)); err != nil {
+		return errorx.ErrWrongPassword
+	}
+	if req.OldPassword == req.NewPassword {
+		return errorx.ErrParamsError
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return errorx.ErrUnknown
+	}
+	if err := s.users.UpdatePassword(ctx, userID, string(hash), req.NewPassword); err != nil {
+		return errorx.ErrDbError
+	}
+	return nil
+}
+
 func (s *UserService) ListWalletFlows(ctx context.Context, userID uint, q *request.ListWalletFlowsQuery) (*response.UserWalletFlowListPageResp, error) {
 	page := q.Page
 	if page < 1 {

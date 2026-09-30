@@ -11,6 +11,7 @@ import {
 } from '@ai-token-mall/shared'
 import CatalogPickerModal from '@/components/catalog/CatalogPickerModal.vue'
 import PurchaseModal from '@/components/checkout/PurchaseModal.vue'
+import ChangePasswordModal from '@/components/member/ChangePasswordModal.vue'
 import InvoiceConfigModal from '@/components/member/InvoiceConfigModal.vue'
 import MemberSidebar from '@/components/member/MemberSidebar.vue'
 import type { CatalogProduct } from '@/mocks/home'
@@ -81,6 +82,7 @@ const invoicesPageSize = 9
 const invoicesTotal = ref(0)
 const invoicesLoaded = ref(false)
 const invoiceConfigOpen = ref(false)
+const changePasswordOpen = ref(false)
 const walletBalance = ref(0)
 const plansLoaded = ref(false)
 const ordersLoaded = ref(false)
@@ -1591,7 +1593,7 @@ function confirmAddTeamMember() {
               <div class="settings-row">
                 <dt>密码</dt>
                 <dd>
-                  <button type="button" class="link-btn" @click="mockAction('修改密码 API 对接中')">
+                  <button type="button" class="link-btn" @click="changePasswordOpen = true">
                     修改密码
                   </button>
                 </dd>
@@ -1613,6 +1615,7 @@ function confirmAddTeamMember() {
       @buy="onCatalogBuy"
     />
     <InvoiceConfigModal v-model:open="invoiceConfigOpen" />
+    <ChangePasswordModal v-model:open="changePasswordOpen" />
     <PurchaseModal
       v-model:open="purchaseOpen"
       :product="purchaseProduct"

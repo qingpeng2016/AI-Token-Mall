@@ -84,6 +84,25 @@ func (h *UserHandler) Me(c *gin.Context) {
 	response.ResponseSuccess(c, data)
 }
 
+// ChangePassword 修改登录密码（需验证原密码）
+func (h *UserHandler) ChangePassword(c *gin.Context) {
+	userID, ok := ginMiddleware.UserIDFromContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
+	var req request.ChangePasswordReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ResponseBindErr(c, err)
+		return
+	}
+	if err := h.userSvc.ChangePassword(c.Request.Context(), userID, &req); err != nil {
+		response.ResponseErr(c, err)
+		return
+	}
+	response.ResponseSuccess(c, nil)
+}
+
 // ListWalletFlows 当前用户资金流水（会员中心 · 资金流水）
 func (h *UserHandler) ListWalletFlows(c *gin.Context) {
 	userID, ok := ginMiddleware.UserIDFromContext(c)

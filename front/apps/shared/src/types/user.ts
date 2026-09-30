@@ -40,6 +40,12 @@ export interface LoginRequest {
   password: string
 }
 
+export interface ChangePasswordRequest {
+  old_password: string
+  new_password: string
+  confirm_password: string
+}
+
 export interface LoginResponse {
   user: UserProfile
 }

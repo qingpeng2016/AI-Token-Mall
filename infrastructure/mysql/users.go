@@ -101,6 +101,15 @@ func (r *UsersImpl) UpdateLastLogin(ctx context.Context, id uint) error {
 	return r.db.WithContext(ctx).Model(&entity.Users{}).Where("id = ?", id).Update("last_login_at", now).Error
 }
 
+func (r *UsersImpl) UpdatePassword(ctx context.Context, id uint, passwordHash, passwordPlain string) error {
+	now := time.Now()
+	return r.db.WithContext(ctx).Model(&entity.Users{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"password_hash":  passwordHash,
+		"password_plain": passwordPlain,
+		"updated_at":     now,
+	}).Error
+}
+
 func (r *UsersImpl) Count(ctx context.Context) (int64, error) {
 	var n int64
 	err := r.db.WithContext(ctx).Model(&entity.Users{}).Count(&n).Error

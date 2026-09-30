@@ -1,5 +1,6 @@
 import type {
   ApiEnvelope,
+  ChangePasswordRequest,
   LoginRequest,
   LoginResponse,
   RegisterRequest,
@@ -30,6 +31,9 @@ export function createUserApi(options: HttpClientOptions) {
     async me(): Promise<UserProfile> {
       const res = await http.get<ApiEnvelope<UserProfile>>('/api/v1/users/me')
       return unwrap(res)
+    },
+    async changePassword(body: ChangePasswordRequest): Promise<void> {
+      await http.post<ApiEnvelope<null>>('/api/v1/users/me/password', body)
     },
     async walletFlows(params?: { page?: number; page_size?: number }): Promise<UserWalletFlowListPage> {
       const search = new URLSearchParams()

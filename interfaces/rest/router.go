@@ -71,6 +71,7 @@ func (r *Router) setupRouters() *gin.Engine {
 	userAuth := engine.Group("/api/v1", ginMiddleware.RequireAuth)
 	{
 		userAuth.GET("/users/me", r.userHandler.Me)
+		userAuth.POST("/users/me/password", r.userHandler.ChangePassword)
 		userAuth.GET("/users/wallet-flows", r.userHandler.ListWalletFlows)
 		userAuth.GET("/users/invoices", r.userHandler.ListInvoices)
 		userAuth.GET("/users/invoice-configs", r.invoiceConfigHandler.ListMine)
