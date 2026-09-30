@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/qingpeng2016/ai-token-mall/application/core-service/enterprise"
+	ginMiddleware "github.com/qingpeng2016/ai-token-mall/common/dederi/gin/middleware"
 	"github.com/qingpeng2016/ai-token-mall/common/dederi/gin/response"
 	"github.com/qingpeng2016/ai-token-mall/domain/rest/request"
 	"github.com/gin-gonic/gin"
@@ -25,7 +26,11 @@ func (h *EnterpriseHandler) SubmitInquiry(c *gin.Context) {
 		response.ResponseBindErr(c, err)
 		return
 	}
-	id, err := h.enterpriseSvc.SubmitInquiry(c.Request.Context(), &req)
+	var userID *uint
+	if uid, ok := ginMiddleware.TryUserIDFromRequest(c); ok {
+		userID = &uid
+	}
+	id, err := h.enterpriseSvc.SubmitInquiry(c.Request.Context(), &req, userID)
 	if err != nil {
 		response.ResponseErr(c, err)
 		return

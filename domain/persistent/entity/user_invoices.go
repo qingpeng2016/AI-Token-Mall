@@ -7,9 +7,10 @@ import (
 )
 
 type UserInvoices struct {
-	ID          uint            `gorm:"primaryKey;column:id"`
-	OrderID     uint            `gorm:"column:order_id;not null"`
-	UserID      uint            `gorm:"column:user_id;not null"`
+	ID                  uint            `gorm:"primaryKey;column:id"`
+	OrderID             uint            `gorm:"column:order_id;not null"`
+	EnterpriseInquiryID uint            `gorm:"column:enterprise_inquiry_id;not null;default:0"`
+	UserID              uint            `gorm:"column:user_id;not null"`
 	InvoiceType string          `gorm:"column:invoice_type;size:32;not null"`
 	Title       string          `gorm:"column:title;size:256;not null"`
 	TaxNo       *string         `gorm:"column:tax_no;size:64"`

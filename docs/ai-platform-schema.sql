@@ -29,9 +29,10 @@ CREATE TABLE IF NOT EXISTS `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='注册用户';
 
 CREATE TABLE IF NOT EXISTS `user_invoice_config` (
-  `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `user_id`         BIGINT UNSIGNED NOT NULL COMMENT '用户 ID',
-  `profile_type`    VARCHAR(16)  NOT NULL DEFAULT 'enterprise' COMMENT 'enterprise|personal',
+  `id`                    BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`               BIGINT UNSIGNED NOT NULL COMMENT '用户 ID',
+  `enterprise_inquiry_id` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'enterprise_inquiry.id，0 表示无',
+  `profile_type`          VARCHAR(16)  NOT NULL DEFAULT 'enterprise' COMMENT 'enterprise|personal',
   `title`           VARCHAR(256) NOT NULL COMMENT '发票抬头',
   `tax_no`          VARCHAR(64)  DEFAULT NULL COMMENT '税号',
   `bank_name`       VARCHAR(128) DEFAULT NULL,
@@ -42,7 +43,8 @@ CREATE TABLE IF NOT EXISTS `user_invoice_config` (
   `created_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_user_invoice_config_user` (`user_id`)
+  KEY `idx_user_invoice_config_user` (`user_id`),
+  KEY `idx_user_invoice_config_enterprise_inquiry` (`enterprise_inquiry_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户发票抬头配置（含企业 VAT）';
 
 -- ---------------------------------------------------------------------------
@@ -225,9 +227,10 @@ CREATE TABLE IF NOT EXISTS `user_refunds` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户退款';
 
 CREATE TABLE IF NOT EXISTS `user_invoices` (
-  `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `order_id`        BIGINT UNSIGNED NOT NULL,
-  `user_id`         BIGINT UNSIGNED NOT NULL,
+  `id`                    BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `order_id`              BIGINT UNSIGNED NOT NULL,
+  `enterprise_inquiry_id` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'enterprise_inquiry.id，0 表示无',
+  `user_id`               BIGINT UNSIGNED NOT NULL,
   `invoice_type`    VARCHAR(32)  NOT NULL COMMENT 'personal|electronic|enterprise_vat',
   `title`           VARCHAR(256) NOT NULL,
   `tax_no`          VARCHAR(64)  DEFAULT NULL,
@@ -239,7 +242,8 @@ CREATE TABLE IF NOT EXISTS `user_invoices` (
   `updated_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_user_invoices_user` (`user_id`),
-  KEY `idx_user_invoices_order` (`order_id`)
+  KEY `idx_user_invoices_order` (`order_id`),
+  KEY `idx_user_invoices_enterprise_inquiry` (`enterprise_inquiry_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户发票';
 
 -- ---------------------------------------------------------------------------

@@ -22,8 +22,9 @@ type Router struct {
 	productHandler   *handler.ProductHandler
 	tutorialHandler    *handler.TutorialHandler
 	enterpriseHandler  *handler.EnterpriseHandler
-	orderHandler         *handler.OrderHandler
-	subscriptionHandler  *handler.SubscriptionHandler
+	orderHandler          *handler.OrderHandler
+	subscriptionHandler   *handler.SubscriptionHandler
+	invoiceConfigHandler  *handler.InvoiceConfigHandler
 }
 
 func NewRouter(
@@ -34,15 +35,17 @@ func NewRouter(
 	enterpriseHandler *handler.EnterpriseHandler,
 	orderHandler *handler.OrderHandler,
 	subscriptionHandler *handler.SubscriptionHandler,
+	invoiceConfigHandler *handler.InvoiceConfigHandler,
 ) *Router {
 	return &Router{
-		setting:             setting,
-		userHandler:         userHandler,
-		productHandler:      productHandler,
-		tutorialHandler:     tutorialHandler,
-		enterpriseHandler:   enterpriseHandler,
-		orderHandler:        orderHandler,
-		subscriptionHandler: subscriptionHandler,
+		setting:              setting,
+		userHandler:          userHandler,
+		productHandler:       productHandler,
+		tutorialHandler:      tutorialHandler,
+		enterpriseHandler:    enterpriseHandler,
+		orderHandler:         orderHandler,
+		subscriptionHandler:  subscriptionHandler,
+		invoiceConfigHandler: invoiceConfigHandler,
 	}
 }
 
@@ -70,6 +73,9 @@ func (r *Router) setupRouters() *gin.Engine {
 		userAuth.GET("/users/me", r.userHandler.Me)
 		userAuth.GET("/users/wallet-flows", r.userHandler.ListWalletFlows)
 		userAuth.GET("/users/invoices", r.userHandler.ListInvoices)
+		userAuth.GET("/users/invoice-configs", r.invoiceConfigHandler.ListMine)
+		userAuth.POST("/users/invoice-configs", r.invoiceConfigHandler.Create)
+		userAuth.PUT("/users/invoice-configs/:id", r.invoiceConfigHandler.Update)
 	}
 
 	// 需登录；正式网关回调另开 /api/v1/payments/notify 且无鉴权

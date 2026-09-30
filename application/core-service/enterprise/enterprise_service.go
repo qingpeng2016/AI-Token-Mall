@@ -23,12 +23,15 @@ func NewEnterpriseService(inquiryRepo repository.EnterpriseInquiryRepo, products
 	return &EnterpriseService{inquiryRepo: inquiryRepo, productsRepo: productsRepo}
 }
 
-func (s *EnterpriseService) SubmitInquiry(ctx context.Context, req *request.SubmitEnterpriseInquiryReq) (uint, error) {
+func (s *EnterpriseService) SubmitInquiry(ctx context.Context, req *request.SubmitEnterpriseInquiryReq, userID *uint) (uint, error) {
 	row := &entity.EnterpriseInquiry{
 		CompanyName: strings.TrimSpace(req.CompanyName),
 		ContactName: strings.TrimSpace(req.ContactName),
 		Phone:       strings.TrimSpace(req.Phone),
 		Status:      "pending",
+	}
+	if userID != nil && *userID > 0 {
+		row.UserID = userID
 	}
 	email := strings.TrimSpace(req.Email)
 	if email != "" {

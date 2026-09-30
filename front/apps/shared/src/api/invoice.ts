@@ -17,6 +17,31 @@ export type UserInvoiceListPage = {
   page_size: number
 }
 
+export type InvoiceConfigItem = {
+  id: number
+  profile_type: 'enterprise' | 'personal' | string
+  title: string
+  tax_no?: string
+  bank_name?: string
+  bank_account?: string
+  address?: string
+  phone?: string
+  is_default: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type SaveInvoiceConfigBody = {
+  profile_type?: 'enterprise' | 'personal'
+  title: string
+  tax_no?: string
+  bank_name?: string
+  bank_account?: string
+  address?: string
+  phone?: string
+  is_default?: boolean
+}
+
 function unwrap<T>(envelope: ApiEnvelope<T>): T {
   return envelope.data
 }
@@ -32,6 +57,24 @@ export function createInvoiceApi(options: HttpClientOptions) {
       const qs = search.toString()
       const path = qs ? `/api/v1/users/invoices?${qs}` : '/api/v1/users/invoices'
       const res = await http.get<ApiEnvelope<UserInvoiceListPage>>(path)
+      return unwrap(res)
+    },
+    async listConfigs(): Promise<InvoiceConfigItem[]> {
+      const res = await http.get<ApiEnvelope<InvoiceConfigItem[]>>('/api/v1/users/invoice-configs')
+      return unwrap(res)
+    },
+    async createConfig(body: SaveInvoiceConfigBody): Promise<InvoiceConfigItem> {
+      const res = await http.post<ApiEnvelope<InvoiceConfigItem>>(
+        '/api/v1/users/invoice-configs',
+        body,
+      )
+      return unwrap(res)
+    },
+    async updateConfig(id: number, body: SaveInvoiceConfigBody): Promise<InvoiceConfigItem> {
+      const res = await http.put<ApiEnvelope<InvoiceConfigItem>>(
+        `/api/v1/users/invoice-configs/${id}`,
+        body,
+      )
       return unwrap(res)
     },
   }

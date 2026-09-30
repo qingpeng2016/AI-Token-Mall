@@ -11,6 +11,7 @@ import {
 } from '@ai-token-mall/shared'
 import CatalogPickerModal from '@/components/catalog/CatalogPickerModal.vue'
 import PurchaseModal from '@/components/checkout/PurchaseModal.vue'
+import InvoiceConfigModal from '@/components/member/InvoiceConfigModal.vue'
 import MemberSidebar from '@/components/member/MemberSidebar.vue'
 import type { CatalogProduct } from '@/mocks/home'
 import {
@@ -79,6 +80,7 @@ const invoicesPage = ref(1)
 const invoicesPageSize = 9
 const invoicesTotal = ref(0)
 const invoicesLoaded = ref(false)
+const invoiceConfigOpen = ref(false)
 const walletBalance = ref(0)
 const plansLoaded = ref(false)
 const ordersLoaded = ref(false)
@@ -829,10 +831,10 @@ function confirmAddTeamMember() {
                 <button
                   v-if="activeTab === 'invoices'"
                   type="button"
-                  class="link-btn panel-head-action"
-                  @click="mockAction('发票抬头管理对接中')"
+                  class="atm-btn-primary btn-xs panel-head-action"
+                  @click="invoiceConfigOpen = true"
                 >
-                  管理发票抬头 →
+                  管理发票抬头
                 </button>
               </div>
               <div
@@ -1610,6 +1612,7 @@ function confirmAddTeamMember() {
       :upgrade-baseline-limit-tokens="catalogUpgradeBaselineLimitTokens"
       @buy="onCatalogBuy"
     />
+    <InvoiceConfigModal v-model:open="invoiceConfigOpen" />
     <PurchaseModal
       v-model:open="purchaseOpen"
       :product="purchaseProduct"

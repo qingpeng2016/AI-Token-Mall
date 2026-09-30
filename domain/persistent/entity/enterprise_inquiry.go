@@ -4,6 +4,7 @@ import "time"
 
 type EnterpriseInquiry struct {
 	ID          uint      `gorm:"primaryKey;column:id"`
+	UserID      *uint     `gorm:"column:user_id"`
 	CompanyName string    `gorm:"column:company_name;size:256;not null"`
 	ContactName string    `gorm:"column:contact_name;size:128;not null"`
 	Phone       string    `gorm:"column:phone;size:32;not null"`

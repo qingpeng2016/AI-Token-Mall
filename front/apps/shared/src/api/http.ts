@@ -79,5 +79,6 @@ export function createHttpClient(options: HttpClientOptions) {
   return {
     get: <T>(path: string) => request<T>(path, { method: 'GET' }),
     post: <T>(path: string, json: unknown) => request<T>(path, { method: 'POST', json }),
+    put: <T>(path: string, json: unknown) => request<T>(path, { method: 'PUT', json }),
   }
 }

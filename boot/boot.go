@@ -6,6 +6,7 @@ import (
 	alipaysvc "github.com/qingpeng2016/ai-token-mall/application/core-service/alipay"
 	botscheduleconfig "github.com/qingpeng2016/ai-token-mall/application/core-service/bot_schedule_config"
 	"github.com/qingpeng2016/ai-token-mall/application/core-service/enterprise"
+	invoicesvc "github.com/qingpeng2016/ai-token-mall/application/core-service/invoice"
 	"github.com/qingpeng2016/ai-token-mall/application/core-service/order"
 	productsvc "github.com/qingpeng2016/ai-token-mall/application/core-service/product"
 	"github.com/qingpeng2016/ai-token-mall/application/core-service/subscription"
@@ -43,7 +44,9 @@ func BuildContainer() *dig.Container {
 	_ = c.Provide(handler.NewEnterpriseHandler)
 	_ = c.Provide(handler.NewOrderHandler)
 	_ = c.Provide(handler.NewSubscriptionHandler)
+	_ = c.Provide(handler.NewInvoiceConfigHandler)
 	_ = c.Provide(user.NewUserService)
+	_ = c.Provide(invoicesvc.NewInvoiceConfigService)
 	_ = c.Provide(productsvc.NewProductService)
 	_ = c.Provide(tutorial.NewTutorialService)
 	_ = c.Provide(enterprise.NewEnterpriseService)
@@ -74,6 +77,7 @@ func BuildContainer() *dig.Container {
 	_ = c.Provide(mysql.NewUserAPIKeysImpl)
 	_ = c.Provide(mysql.NewPaymentCallbacksImpl)
 	_ = c.Provide(mysql.NewUserInvoicesImpl)
+	_ = c.Provide(mysql.NewUserInvoiceConfigImpl)
 	_ = c.Provide(mysql.NewTransactorImpl)
 	_ = c.Provide(mysql.NewBotScheduleConfigImpl)
 	_ = c.Provide(redis.NewClient)
