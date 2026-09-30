@@ -2,7 +2,13 @@
 import { computed, nextTick, onBeforeMount, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { formatCny, formatNowBeijing, type OrderType } from '@ai-token-mall/shared'
+import {
+  formatCny,
+  formatNowBeijing,
+  parseMoney,
+  type OrderType,
+  type UserWalletFlowItem,
+} from '@ai-token-mall/shared'
 import CatalogPickerModal from '@/components/catalog/CatalogPickerModal.vue'
 import PurchaseModal from '@/components/checkout/PurchaseModal.vue'
 import MemberSidebar from '@/components/member/MemberSidebar.vue'
@@ -12,13 +18,18 @@ import {
   useCatalogProducts,
 } from '@/composables/useCatalogProducts'
 import {
+  beginRouteNavigationLoading,
+  endRouteNavigationLoading,
+} from '@/composables/useRouteNavigationLoading'
+import {
   clearSessionUser,
   getSessionUser,
   isLoggedIn,
+  setSessionUser,
   userAccountLabel,
 } from '@/composables/useSessionUser'
-import { subscriptionApi, userApi } from '@/api'
-import type { UserSubscriptionItem } from '@ai-token-mall/shared'
+import { orderApi, subscriptionApi, userApi } from '@/api'
+import type { UserOrderItem, UserSubscriptionItem } from '@ai-token-mall/shared'
 import {
   formatTokens,
   memberNav,
@@ -28,11 +39,8 @@ import {
   mockInviteRebatePolicy,
   mockInviteRebateRecords,
   mockPromoDomainBase,
-  mockMemberOverview,
-  mockOrders,
   mockSubscriptions,
   mockTeamSubKeys,
-  mockWalletTx,
   mockWithdrawalRecords,
   orderStatusLabel,
   withdrawalChannelLabel,
@@ -58,9 +66,19 @@ const purchaseUserSubscriptionId = ref(0)
 const purchaseSubscriptionPeriodEnd = ref('')
 const purchaseSubscriptionExpiresAt = ref('')
 const memberSubscriptions = ref<UserSubscriptionItem[]>([])
-const plansLoading = ref(false)
+const recentOrders = ref<UserOrderItem[]>([])
+const memberOrders = ref<UserOrderItem[]>([])
+const ordersPage = ref(1)
+const ordersPageSize = 2
+const ordersTotal = ref(0)
+const walletFlows = ref<UserWalletFlowItem[]>([])
+const walletBalance = ref(0)
+const plansLoaded = ref(false)
+const ordersLoaded = ref(false)
+const recentOrdersLoaded = ref(false)
+const walletFlowsLoaded = ref(false)
 /** 各侧栏 Tab 仅首次进入时拉取接口，关闭弹窗等不重复请求 */
-const tabLoadedOnce = ref<Partial<Record<MemberTab, boolean>>>({})
+const tabLoadedOnce = ref<Partial<Record<MemberTab | 'profile' | 'recentOrders', boolean>>>({})
 
 const subscriptionStatusLabel: Record<string, string> = {
   active: '使用中',
@@ -74,7 +92,7 @@ const teamMembers = ref<MockSubAccount[]>([...mockApiTeamMembers])
 const addTeamMemberOpen = ref(false)
 const addTeamMemberInvitedId = ref<number | null>(null)
 const inviteRebatePanelTab = ref<'details' | 'members' | 'rebates' | 'withdrawals'>('details')
-const commissionAvailable = ref(mockMemberOverview.commission)
+const commissionAvailable = ref(0)
 const withdrawalRecords = ref<MockWithdrawalRecord[]>([...mockWithdrawalRecords])
 const payoutQr = reactive({ alipay: '', wechat: '' })
 const payoutQrSetupOpen = ref(false)
@@ -185,9 +203,23 @@ watch(
     if (tab !== 'api-keys') apiKeyPanelTab.value = 'mine'
     if (tab !== 'sub-accounts') inviteRebatePanelTab.value = 'details'
     if (tab === prevTab) return
-    if (tab === 'plans' && !tabLoadedOnce.value.plans) {
+    if ((tab === 'plans' || tab === 'overview') && !tabLoadedOnce.value.plans) {
       tabLoadedOnce.value.plans = true
       void fetchPlansTabData()
+    }
+    if (tab === 'orders') {
+      void fetchOrdersTabData()
+    } else if (tab === 'overview' && !tabLoadedOnce.value.recentOrders) {
+      tabLoadedOnce.value.recentOrders = true
+      void fetchRecentOrders()
+    }
+    if ((tab === 'overview' || tab === 'settings') && !tabLoadedOnce.value.profile) {
+      tabLoadedOnce.value.profile = true
+      void fetchMemberProfile()
+    }
+    if (tab === 'account' && !tabLoadedOnce.value.account) {
+      tabLoadedOnce.value.account = true
+      void fetchWalletFlowsTabData()
     }
   },
   { immediate: true },
@@ -197,6 +229,10 @@ const pageTitle = computed(() => memberNav.find((n) => n.id === activeTab.value)
 
 const displayName = computed(() =>
   user.value ? userAccountLabel(user.value) : '会员',
+)
+
+const overviewSubscriptions = computed(() =>
+  memberSubscriptions.value.filter((s) => s.status === 'active'),
 )
 
 const teamInviteLink = computed(() => {
@@ -239,23 +275,115 @@ async function ensureCatalogReady() {
   await reloadCatalogProducts({ soft: true })
 }
 
-async function fetchPlansTabData() {
-  plansLoading.value = true
-  void ensureCatalogReady().catch(() => {})
+async function withTopLoading<T>(task: () => Promise<T>): Promise<T> {
+  beginRouteNavigationLoading()
   try {
-    memberSubscriptions.value = await subscriptionApi.list()
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : ''
-    if (/unauthorized|401/i.test(msg)) {
-      ElMessage.error('登录已失效，请重新登录')
-      clearSessionUser()
-      void router.replace({ path: '/login', query: { redirect: route.fullPath } })
-    } else {
-      ElMessage.error(msg || '套餐列表加载失败')
-    }
+    return await task()
   } finally {
-    plansLoading.value = false
+    endRouteNavigationLoading()
   }
+}
+
+async function fetchPlansTabData() {
+  void ensureCatalogReady().catch(() => {})
+  await withTopLoading(async () => {
+    try {
+      memberSubscriptions.value = await subscriptionApi.list()
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : ''
+      if (/unauthorized|401/i.test(msg)) {
+        ElMessage.error('登录已失效，请重新登录')
+        clearSessionUser()
+        void router.replace({ path: '/login', query: { redirect: route.fullPath } })
+      } else {
+        ElMessage.error(msg || '套餐列表加载失败')
+      }
+    } finally {
+      plansLoaded.value = true
+    }
+  })
+}
+
+async function fetchRecentOrders() {
+  await withTopLoading(async () => {
+    try {
+      const data = await orderApi.list({ page: 1, page_size: 3 })
+      recentOrders.value = data.items
+    } catch (e) {
+      handleMemberAuthError(e, '最近订单加载失败')
+    } finally {
+      recentOrdersLoaded.value = true
+    }
+  })
+}
+
+async function fetchOrdersTabData() {
+  await withTopLoading(async () => {
+    try {
+      const data = await orderApi.list({
+        page: ordersPage.value,
+        page_size: ordersPageSize,
+      })
+      memberOrders.value = data.items
+      ordersTotal.value = data.total
+      ordersPage.value = data.page
+    } catch (e) {
+      handleMemberAuthError(e, '订单列表加载失败')
+    } finally {
+      ordersLoaded.value = true
+    }
+  })
+}
+
+function onOrdersPageChange(page: number) {
+  // v-model 已先更新 current-page，不可再与 ordersPage 比较后跳过请求
+  ordersPage.value = page
+  void fetchOrdersTabData()
+}
+
+function handleMemberAuthError(e: unknown, fallback: string) {
+  const msg = e instanceof Error ? e.message : ''
+  if (/unauthorized|401/i.test(msg)) {
+    ElMessage.error('登录已失效，请重新登录')
+    clearSessionUser()
+    void router.replace({ path: '/login', query: { redirect: route.fullPath } })
+    return
+  }
+  ElMessage.error(msg || fallback)
+}
+
+async function fetchMemberProfile() {
+  await withTopLoading(async () => {
+    try {
+      const profile = await userApi.me()
+      user.value = profile
+      setSessionUser(profile)
+      walletBalance.value = parseMoney(profile.wallet_balance)
+      commissionAvailable.value = parseMoney(profile.commission_balance)
+    } catch (e) {
+      handleMemberAuthError(e, '用户信息加载失败')
+    }
+  })
+}
+
+async function fetchWalletFlowsTabData() {
+  await withTopLoading(async () => {
+    try {
+      walletFlows.value = await userApi.walletFlows()
+    } catch (e) {
+      handleMemberAuthError(e, '资金流水加载失败')
+    } finally {
+      walletFlowsLoaded.value = true
+    }
+  })
+}
+
+function walletFlowTypeLabel(type: string) {
+  if (type === 'recharge') return '充值'
+  if (type === 'refund') return '退款'
+  if (type === 'commission') return '佣金'
+  if (type === 'withdraw') return '提现'
+  return '消费'
 }
 
 function findCatalogProductById(productId: number) {
@@ -744,9 +872,7 @@ function confirmAddTeamMember() {
               <article class="stat-card stat-card--balance">
                 <div class="stat-main">
                   <span class="stat-label">余额</span>
-                  <strong class="stat-value">{{
-                    formatCny(mockMemberOverview.balance)
-                  }}</strong>
+                  <strong class="stat-value">{{ formatCny(walletBalance) }}</strong>
                 </div>
                 <button type="button" class="stat-link" @click="mockRecharge">充值</button>
               </article>
@@ -764,30 +890,31 @@ function confirmAddTeamMember() {
             </div>
 
             <h2 class="panel-subtitle">套餐用量</h2>
-            <div class="plan-mini-list">
+            <div v-if="overviewSubscriptions.length" class="plan-mini-list">
               <article
-                v-for="sub in mockSubscriptions"
+                v-for="sub in overviewSubscriptions"
                 :key="sub.id"
                 class="plan-mini"
               >
                 <div class="plan-mini-head">
-                  <strong>{{ sub.productName }}</strong>
-                  <span>至 {{ sub.expiresAt }}</span>
+                  <strong>{{ sub.product_name }}</strong>
+                  <span>至 {{ sub.expires_at }}</span>
                 </div>
                 <div class="progress-track">
                   <div
                     class="progress-fill"
-                    :style="{ width: `${usagePercent(sub.usedTokens, sub.limitTokens)}%` }"
+                    :style="{ width: `${usagePercent(sub.used_tokens, sub.limit_tokens)}%` }"
                   />
                 </div>
                 <p class="progress-meta">
-                  已用 {{ formatTokens(sub.usedTokens) }} / {{ formatTokens(sub.limitTokens) }}
+                  已用 {{ formatTokens(sub.used_tokens) }} / {{ formatTokens(sub.limit_tokens) }}
                 </p>
               </article>
             </div>
+            <p v-else-if="plansLoaded" class="empty">暂无使用中的套餐</p>
 
             <h2 class="panel-subtitle">最近订单</h2>
-            <div class="table-wrap">
+            <div v-if="recentOrders.length" class="table-wrap">
               <table class="data-table">
                 <thead>
                   <tr>
@@ -798,10 +925,10 @@ function confirmAddTeamMember() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="o in mockOrders.slice(0, 3)" :key="o.orderNo">
-                    <td>{{ o.orderNo }}</td>
-                    <td>{{ o.productName }}</td>
-                    <td>{{ formatCny(o.totalAmount) }}</td>
+                  <tr v-for="o in recentOrders" :key="o.order_no">
+                    <td>{{ o.order_no }}</td>
+                    <td>{{ o.product_name }}</td>
+                    <td>{{ formatCny(o.total_amount) }}</td>
                     <td>
                       <span class="tag" :class="`tag--${o.status}`">{{
                         orderStatusLabel[o.status]
@@ -811,12 +938,14 @@ function confirmAddTeamMember() {
                 </tbody>
               </table>
             </div>
+            <p v-else-if="recentOrdersLoaded" class="empty">暂无订单</p>
+            <p v-if="recentOrders.length" class="overview-orders-more muted">
+              <RouterLink :to="{ path: '/member', query: { tab: 'orders' } }">查看全部订单 →</RouterLink>
+            </p>
             </div>
 
             <!-- 我的套餐 -->
             <div v-else-if="activeTab === 'plans'" class="panel-body">
-            <p v-if="plansLoading" class="empty">加载中…</p>
-            <template v-else>
               <article v-for="sub in memberSubscriptions" :key="sub.id" class="plan-card">
                 <div class="plan-card-head">
                   <div>
@@ -883,8 +1012,9 @@ function confirmAddTeamMember() {
                   </button>
                 </div>
               </article>
-              <p v-if="!memberSubscriptions.length" class="empty">暂无套餐记录，去首页选购吧。</p>
-            </template>
+              <p v-if="plansLoaded && !memberSubscriptions.length" class="empty">
+                暂无套餐记录，去首页选购吧。
+              </p>
             </div>
 
             <!-- API Key -->
@@ -1037,7 +1167,7 @@ function confirmAddTeamMember() {
 
             <!-- 我的订单 -->
             <div v-else-if="activeTab === 'orders'" class="panel-body">
-            <div class="table-wrap">
+            <div v-if="memberOrders.length" class="table-wrap">
               <table class="data-table">
                 <thead>
                   <tr>
@@ -1052,18 +1182,18 @@ function confirmAddTeamMember() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="o in mockOrders" :key="o.orderNo">
-                    <td class="mono">{{ o.orderNo }}</td>
-                    <td>{{ o.productName }}</td>
+                  <tr v-for="o in memberOrders" :key="o.order_no">
+                    <td class="mono">{{ o.order_no }}</td>
+                    <td>{{ o.product_name }}</td>
                     <td>{{ o.quantity }}</td>
-                    <td>{{ formatCny(o.totalAmount) }}</td>
-                    <td>{{ o.enterpriseInvoice ? '企业' : '—' }}</td>
+                    <td>{{ formatCny(o.total_amount) }}</td>
+                    <td>{{ o.enterprise_invoice ? '企业' : '—' }}</td>
                     <td>
                       <span class="tag" :class="`tag--${o.status}`">{{
                         orderStatusLabel[o.status]
                       }}</span>
                     </td>
-                    <td class="muted">{{ o.createdAt }}</td>
+                    <td class="muted">{{ o.created_at }}</td>
                     <td>
                       <button
                         v-if="o.status === 'pending_payment'"
@@ -1078,11 +1208,22 @@ function confirmAddTeamMember() {
                 </tbody>
               </table>
             </div>
+            <p v-else-if="ordersLoaded" class="empty">暂无订单</p>
+            <div v-if="ordersTotal > ordersPageSize" class="orders-pagination">
+              <el-pagination
+                v-model:current-page="ordersPage"
+                :page-size="ordersPageSize"
+                :total="ordersTotal"
+                layout="total, prev, pager, next"
+                background
+                @current-change="onOrdersPageChange"
+              />
+            </div>
             </div>
 
             <!-- 资金流水 -->
             <div v-else-if="activeTab === 'account'" class="panel-body">
-            <div class="table-wrap">
+            <div v-if="walletFlows.length" class="table-wrap">
               <table class="data-table">
                 <thead>
                   <tr>
@@ -1093,26 +1234,23 @@ function confirmAddTeamMember() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="tx in mockWalletTx" :key="tx.id">
-                    <td>
-                      {{
-                        tx.type === 'recharge'
-                          ? '充值'
-                          : tx.type === 'refund'
-                            ? '退款'
-                            : '消费'
-                      }}
-                    </td>
-                    <td :class="tx.amount > 0 ? 'amount-plus' : 'amount-minus'">
-                      {{ tx.amount > 0 ? '+' : ''
-                      }}{{ formatCny(Math.abs(tx.amount)) }}
+                  <tr v-for="tx in walletFlows" :key="tx.id">
+                    <td>{{ walletFlowTypeLabel(tx.type) }}</td>
+                    <td
+                      :class="
+                        parseMoney(tx.amount) > 0 ? 'amount-plus' : 'amount-minus'
+                      "
+                    >
+                      {{ parseMoney(tx.amount) > 0 ? '+' : ''
+                      }}{{ formatCny(Math.abs(parseMoney(tx.amount))) }}
                     </td>
                     <td>{{ tx.remark }}</td>
-                    <td class="muted">{{ tx.createdAt }}</td>
+                    <td class="muted">{{ tx.created_at }}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
+            <p v-else-if="walletFlowsLoaded" class="empty">暂无流水</p>
             </div>
 
             <!-- 发票 -->
@@ -2387,6 +2525,26 @@ function confirmAddTeamMember() {
   gap: 16px;
   align-items: center;
   margin-top: 16px;
+}
+
+.orders-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.overview-orders-more {
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.overview-orders-more a {
+  color: var(--atm-primary, #7c3aed);
+  text-decoration: none;
+}
+
+.overview-orders-more a:hover {
+  text-decoration: underline;
 }
 
 .table-wrap {

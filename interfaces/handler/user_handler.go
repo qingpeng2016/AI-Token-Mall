@@ -5,6 +5,7 @@ import (
 
 	"github.com/qingpeng2016/ai-token-mall/application/core-service/user"
 	"github.com/qingpeng2016/ai-token-mall/common/constants"
+	ginMiddleware "github.com/qingpeng2016/ai-token-mall/common/dederi/gin/middleware"
 	"github.com/qingpeng2016/ai-token-mall/common/dederi/gin/response"
 	"github.com/qingpeng2016/ai-token-mall/domain/rest/request"
 	"github.com/gin-gonic/gin"
@@ -66,6 +67,36 @@ func (h *UserHandler) Login(c *gin.Context) {
 		false,
 	)
 	response.ResponseSuccess(c, gin.H{"user": data.User})
+}
+
+// Me 当前登录用户信息（会员中心概览 / 账户设置）
+func (h *UserHandler) Me(c *gin.Context) {
+	userID, ok := ginMiddleware.UserIDFromContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
+	data, err := h.userSvc.GetProfile(c.Request.Context(), userID)
+	if err != nil {
+		response.ResponseErr(c, err)
+		return
+	}
+	response.ResponseSuccess(c, data)
+}
+
+// ListWalletFlows 当前用户资金流水（会员中心 · 资金流水）
+func (h *UserHandler) ListWalletFlows(c *gin.Context) {
+	userID, ok := ginMiddleware.UserIDFromContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
+	data, err := h.userSvc.ListWalletFlows(c.Request.Context(), userID)
+	if err != nil {
+		response.ResponseErr(c, err)
+		return
+	}
+	response.ResponseSuccess(c, data)
 }
 
 // Logout 退出登录：清空 atm_token Cookie

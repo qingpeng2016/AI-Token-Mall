@@ -18,6 +18,23 @@ func NewOrderHandler(orderSvc *order.OrderService) *OrderHandler {
 	return &OrderHandler{orderSvc: orderSvc}
 }
 
+// ListMine 当前用户订单列表（会员中心 · 我的订单）
+func (h *OrderHandler) ListMine(c *gin.Context) {
+	userID, ok := ginMiddleware.UserIDFromContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
+	var q request.ListOrdersQuery
+	_ = c.ShouldBindQuery(&q)
+	data, err := h.orderSvc.ListMine(c.Request.Context(), userID, &q)
+	if err != nil {
+		response.ResponseErr(c, err)
+		return
+	}
+	response.ResponseSuccess(c, data)
+}
+
 // CreateOrder 创建待支付订单（模拟收银台前置）
 func (h *OrderHandler) CreateOrder(c *gin.Context) {
 	userID, ok := ginMiddleware.UserIDFromContext(c)

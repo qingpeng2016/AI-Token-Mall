@@ -1,5 +1,10 @@
 package request
 
+type ListOrdersQuery struct {
+	Page     int `form:"page"`
+	PageSize int `form:"page_size"`
+}
+
 type CreateOrderReq struct {
 	ProductID         uint   `json:"product_id" binding:"required"`
 	OrderType          string `json:"order_type" binding:"omitempty,oneof=purchase renewal upgrade quota_addon"`

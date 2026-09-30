@@ -7,6 +7,12 @@ import (
 	"gorm.io/gorm"
 )
 
+type UserOrdersListRow struct {
+	entity.UserOrders
+	ProductCardTitle string `gorm:"column:product_card_title"`
+	ProductSKUName   string `gorm:"column:product_sku_name"`
+}
+
 type PaymentNotifyInput struct {
 	Channel        string
 	OutTradeNo     string
@@ -16,6 +22,8 @@ type PaymentNotifyInput struct {
 }
 
 type UserOrdersRepo interface {
+	ListByUserID(ctx context.Context, userID uint, offset, limit int) ([]UserOrdersListRow, error)
+	CountByUserID(ctx context.Context, userID uint) (int64, error)
 	CreateOrder(ctx context.Context, order *entity.UserOrders) error
 	CreateRenewalOrderReplacingPending(ctx context.Context, order *entity.UserOrders) error
 	CreateUpgradeOrderReplacingPending(ctx context.Context, order *entity.UserOrders) error

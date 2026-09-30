@@ -17,16 +17,51 @@ import (
 	"github.com/qingpeng2016/ai-token-mall/domain/rest/request"
 	"github.com/qingpeng2016/ai-token-mall/domain/rest/response"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 var cnPhonePattern = regexp.MustCompile(`^1\d{10}$`)
 
 type UserService struct {
-	users repository.UsersRepo
+	users   repository.UsersRepo
+	wallets repository.UserWalletFlowsRepo
 }
 
-func NewUserService(users repository.UsersRepo) *UserService {
-	return &UserService{users: users}
+func NewUserService(users repository.UsersRepo, wallets repository.UserWalletFlowsRepo) *UserService {
+	return &UserService{users: users, wallets: wallets}
+}
+
+func (s *UserService) GetProfile(ctx context.Context, userID uint) (*response.UserProfileResp, error) {
+	u, err := s.users.FindByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errorx.ErrUserNotFound
+		}
+		return nil, errorx.ErrDbError
+	}
+	return toUserProfile(u), nil
+}
+
+func (s *UserService) ListWalletFlows(ctx context.Context, userID uint) ([]response.UserWalletFlowItem, error) {
+	rows, err := s.wallets.ListByUserID(ctx, userID, 100)
+	if err != nil {
+		return nil, errorx.ErrDbError
+	}
+	items := make([]response.UserWalletFlowItem, 0, len(rows))
+	for _, row := range rows {
+		remark := ""
+		if row.Remark != nil {
+			remark = *row.Remark
+		}
+		items = append(items, response.UserWalletFlowItem{
+			ID:        row.ID,
+			Type:      row.Type,
+			Amount:    response.MoneyFrom(row.Amount),
+			Remark:    remark,
+			CreatedAt: formatUserDateTime(row.CreatedAt),
+		})
+	}
+	return items, nil
 }
 
 func (s *UserService) Register(ctx context.Context, req *request.RegisterUserReq) (*response.LoginUserResp, error) {
@@ -150,8 +185,11 @@ func validateLoginIdentity(email, phone string) error {
 
 func toUserProfile(u *entity.Users) *response.UserProfileResp {
 	resp := &response.UserProfileResp{
-		ID:     u.ID,
-		Status: u.Status,
+		ID:                u.ID,
+		Status:            u.Status,
+		WalletBalance:     response.MoneyFrom(u.WalletBalance),
+		CommissionBalance: response.MoneyFrom(u.CommissionBalance),
+		CreatedAt:         formatUserDateTime(u.CreatedAt),
 	}
 	if u.Email != nil {
 		resp.Email = *u.Email
@@ -162,5 +200,15 @@ func toUserProfile(u *entity.Users) *response.UserProfileResp {
 	if u.Nickname != nil {
 		resp.Nickname = *u.Nickname
 	}
+	if u.LastLoginAt != nil && !u.LastLoginAt.IsZero() {
+		resp.LastLoginAt = formatUserDateTime(*u.LastLoginAt)
+	}
 	return resp
+}
+
+func formatUserDateTime(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.Format("2006-01-02 15:04")
 }

@@ -6,7 +6,18 @@ export interface UserProfile {
   phone?: string | null
   nickname?: string | null
   status?: string
+  wallet_balance?: number | string
+  commission_balance?: number | string
   created_at?: string
+  last_login_at?: string | null
+}
+
+export type UserWalletFlowItem = {
+  id: number
+  type: 'recharge' | 'pay' | 'refund' | 'commission' | 'withdraw' | string
+  amount: number | string
+  remark: string
+  created_at: string
 }
 
 export interface RegisterRequest {

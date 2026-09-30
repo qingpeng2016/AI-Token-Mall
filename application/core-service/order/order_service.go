@@ -28,6 +28,62 @@ func NewOrderService(orders repository.UserOrdersRepo, products repository.Produ
 	return &OrderService{orders: orders, products: products, fulfill: fulfill}
 }
 
+func (s *OrderService) ListMine(ctx context.Context, userID uint, q *request.ListOrdersQuery) (*response.UserOrderListPageResp, error) {
+	page := q.Page
+	if page < 1 {
+		page = 1
+	}
+	pageSize := q.PageSize
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	offset := (page - 1) * pageSize
+
+	total, err := s.orders.CountByUserID(ctx, userID)
+	if err != nil {
+		return nil, errorx.ErrDbError
+	}
+	rows, err := s.orders.ListByUserID(ctx, userID, offset, pageSize)
+	if err != nil {
+		return nil, errorx.ErrDbError
+	}
+	items := make([]response.UserOrderListItem, 0, len(rows))
+	for _, row := range rows {
+		name := row.ProductCardTitle
+		if name == "" {
+			name = row.ProductSKUName
+		}
+		items = append(items, response.UserOrderListItem{
+			ID:                row.ID,
+			OrderNo:           row.OrderNo,
+			OrderType:         row.OrderType,
+			ProductName:       name,
+			Quantity:          row.Quantity,
+			TotalAmount:       response.MoneyFrom(row.TotalAmount),
+			Status:            row.Status,
+			EnterpriseInvoice: row.EnterpriseInvoice == 1,
+			OutTradeNo:        row.OutTradeNo,
+			CreatedAt:         formatOrderDateTime(row.CreatedAt),
+		})
+	}
+	return &response.UserOrderListPageResp{
+		Items:    items,
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
+	}, nil
+}
+
+func formatOrderDateTime(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.Format("2006-01-02 15:04")
+}
+
 func (s *OrderService) CreateMockOrder(ctx context.Context, userID uint, req *request.CreateOrderReq) (*response.CreateOrderResp, error) {
 	channel := normalizePayChannel(req.Channel)
 	if channel == "" {

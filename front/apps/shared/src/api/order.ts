@@ -14,6 +14,26 @@ export type CreateOrderBody = {
   enterprise_invoice?: boolean
 }
 
+export type UserOrderListPage = {
+  items: UserOrderItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export type UserOrderItem = {
+  id: number
+  order_no: string
+  order_type: OrderType
+  product_name: string
+  quantity: number
+  total_amount: number | string
+  status: 'pending_payment' | 'completed' | 'failed' | 'cancelled'
+  enterprise_invoice: boolean
+  out_trade_no: string
+  created_at: string
+}
+
 export type CreateOrderResult = {
   order_no: string
   out_trade_no: string
@@ -34,6 +54,15 @@ export function createOrderApi(options: HttpClientOptions) {
   const http = createHttpClient(options)
 
   return {
+    async list(params?: { page?: number; page_size?: number }): Promise<UserOrderListPage> {
+      const search = new URLSearchParams()
+      if (params?.page != null) search.set('page', String(params.page))
+      if (params?.page_size != null) search.set('page_size', String(params.page_size))
+      const qs = search.toString()
+      const path = qs ? `/api/v1/mock/orders?${qs}` : '/api/v1/mock/orders'
+      const res = await http.get<ApiEnvelope<UserOrderListPage>>(path)
+      return unwrap(res)
+    },
     async create(body: CreateOrderBody): Promise<CreateOrderResult> {
       const res = await http.post<ApiEnvelope<CreateOrderResult>>('/api/v1/mock/orders', body)
       return unwrap(res)

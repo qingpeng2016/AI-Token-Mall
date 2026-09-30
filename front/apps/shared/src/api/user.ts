@@ -3,6 +3,8 @@ import type {
   LoginRequest,
   LoginResponse,
   RegisterRequest,
+  UserProfile,
+  UserWalletFlowItem,
 } from '../types/user'
 import { createHttpClient, type HttpClientOptions } from './http'
 
@@ -24,6 +26,14 @@ export function createUserApi(options: HttpClientOptions) {
     },
     async logout(): Promise<void> {
       await http.post<ApiEnvelope<null>>('/api/v1/users/logout', {})
+    },
+    async me(): Promise<UserProfile> {
+      const res = await http.get<ApiEnvelope<UserProfile>>('/api/v1/users/me')
+      return unwrap(res)
+    },
+    async walletFlows(): Promise<UserWalletFlowItem[]> {
+      const res = await http.get<ApiEnvelope<UserWalletFlowItem[]>>('/api/v1/users/wallet-flows')
+      return unwrap(res)
     },
   }
 }

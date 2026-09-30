@@ -19,6 +19,35 @@ func NewUserOrdersImpl(db *gorm.DB) repository.UserOrdersRepo {
 	return &UserOrdersImpl{db: db}
 }
 
+func (r *UserOrdersImpl) ListByUserID(ctx context.Context, userID uint, offset, limit int) ([]repository.UserOrdersListRow, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 10
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	var rows []repository.UserOrdersListRow
+	err := r.db.WithContext(ctx).
+		Table("user_orders AS o").
+		Select("o.*, p.card_title AS product_card_title, p.sku_product_name AS product_sku_name").
+		Joins("LEFT JOIN products p ON p.id = o.product_id").
+		Where("o.user_id = ?", userID).
+		Order("o.id DESC").
+		Offset(offset).
+		Limit(limit).
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+func (r *UserOrdersImpl) CountByUserID(ctx context.Context, userID uint) (int64, error) {
+	var n int64
+	err := r.db.WithContext(ctx).Model(&entity.UserOrders{}).Where("user_id = ?", userID).Count(&n).Error
+	return n, err
+}
+
 func (r *UserOrdersImpl) CreateOrder(ctx context.Context, order *entity.UserOrders) error {
 	return r.db.WithContext(ctx).Create(order).Error
 }

@@ -65,10 +65,17 @@ func (r *Router) setupRouters() *gin.Engine {
 		v1.POST("/enterprise/inquiries", r.enterpriseHandler.SubmitInquiry)
 	}
 
+	userAuth := engine.Group("/api/v1", ginMiddleware.RequireAuth)
+	{
+		userAuth.GET("/users/me", r.userHandler.Me)
+		userAuth.GET("/users/wallet-flows", r.userHandler.ListWalletFlows)
+	}
+
 	// 需登录；正式网关回调另开 /api/v1/payments/notify 且无鉴权
 	authGroup := engine.Group("/api/v1/mock", ginMiddleware.RequireAuth)
 	{
 		authGroup.GET("/subscriptions", r.subscriptionHandler.ListMine)
+		authGroup.GET("/orders", r.orderHandler.ListMine)
 		authGroup.POST("/orders", r.orderHandler.CreateOrder)
 		authGroup.POST("/orders/checkout", r.orderHandler.MockCheckout)
 		authGroup.POST("/payments/notify/:channel", r.orderHandler.PaymentNotify)
