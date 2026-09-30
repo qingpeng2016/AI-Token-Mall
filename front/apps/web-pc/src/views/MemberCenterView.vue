@@ -722,6 +722,11 @@ function clearPayoutQrSetupFile() {
   payoutQrSetupFile.value = null
 }
 
+function closePayoutQrModal() {
+  payoutQrSetupOpen.value = false
+  clearPayoutQrSetupFile()
+}
+
 function openPayoutQrModal(channel: 'alipay' | 'wechat') {
   clearPayoutQrSetupFile()
   payoutQrSetupChannel.value = channel
@@ -1867,10 +1872,7 @@ function confirmAddTeamMember() {
       <div
         v-if="payoutQrSetupOpen"
         class="team-invite-backdrop"
-        @click.self="
-          payoutQrSetupOpen = false
-          clearPayoutQrSetupFile()
-        "
+        @click.self="closePayoutQrModal"
       >
         <div class="team-invite-panel" role="dialog" :aria-labelledby="'payout-qr-title'">
           <header class="team-invite-head">
@@ -1879,10 +1881,7 @@ function confirmAddTeamMember() {
               type="button"
               class="team-invite-close"
               aria-label="关闭"
-              @click="
-                payoutQrSetupOpen = false
-                clearPayoutQrSetupFile()
-              "
+              @click="closePayoutQrModal"
             >
               ×
             </button>
@@ -1903,14 +1902,7 @@ function confirmAddTeamMember() {
             />
           </label>
           <div class="assign-subkey-actions">
-            <button
-              type="button"
-              class="atm-btn-ghost btn-xs"
-              @click="
-                payoutQrSetupOpen = false
-                clearPayoutQrSetupFile()
-              "
-            >
+            <button type="button" class="atm-btn-ghost btn-xs" @click="closePayoutQrModal">
               取消
             </button>
             <button type="button" class="atm-btn-primary btn-xs" @click="confirmPayoutQrSetup">
