@@ -23,17 +23,27 @@ import (
 var cnPhonePattern = regexp.MustCompile(`^1\d{10}$`)
 
 type UserService struct {
-	users    repository.UsersRepo
-	wallets  repository.UserWalletFlowsRepo
-	invoices repository.UserInvoicesRepo
+	users      repository.UsersRepo
+	wallets    repository.UserWalletFlowsRepo
+	invoices   repository.UserInvoicesRepo
+	vipConfigs repository.VipConfigRepo
+	vipDomains repository.VipDomainConfigRepo
 }
 
 func NewUserService(
 	users repository.UsersRepo,
 	wallets repository.UserWalletFlowsRepo,
 	invoices repository.UserInvoicesRepo,
+	vipConfigs repository.VipConfigRepo,
+	vipDomains repository.VipDomainConfigRepo,
 ) *UserService {
-	return &UserService{users: users, wallets: wallets, invoices: invoices}
+	return &UserService{
+		users:      users,
+		wallets:    wallets,
+		invoices:   invoices,
+		vipConfigs: vipConfigs,
+		vipDomains: vipDomains,
+	}
 }
 
 func (s *UserService) GetProfile(ctx context.Context, userID uint) (*response.UserProfileResp, error) {
@@ -207,6 +217,18 @@ func (s *UserService) Register(ctx context.Context, req *request.RegisterUserReq
 	if phone != "" {
 		u.Phone = &phone
 	}
+	inviteProfile, err := s.resolveRegistrationInviteProfile(ctx, req.RegistrationHost)
+	if err != nil {
+		if isRegistrationInviteConfigErr(err) {
+			return nil, errorx.ErrParamsError
+		}
+		return nil, errorx.ErrDbError
+	}
+	applyRegistrationInviteProfile(u, inviteProfile)
+	if !inviteProfile.Apply {
+		u.VipConfigID = 1
+	}
+
 	if err := s.users.Create(ctx, nil, u); err != nil {
 		var mysqlErr *mysql.MySQLError
 		if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {

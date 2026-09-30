@@ -29,6 +29,18 @@ func (r *VipConfigImpl) FindByID(ctx context.Context, id uint) (*entity.VipConfi
 	return &row, nil
 }
 
+func (r *VipConfigImpl) FindDefault(ctx context.Context) (*entity.VipConfig, error) {
+	var row entity.VipConfig
+	err := r.db.WithContext(ctx).Where("is_default = ?", true).First(&row).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &row, nil
+}
+
 func (r *VipConfigImpl) ListEnabled(ctx context.Context) ([]entity.VipConfig, error) {
 	var rows []entity.VipConfig
 	err := r.db.WithContext(ctx).

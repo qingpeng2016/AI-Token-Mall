@@ -37,17 +37,21 @@ async function onSubmit() {
 
   loading.value = true
   try {
+    const registrationHost =
+      typeof window !== 'undefined' ? window.location.hostname : ''
     const body =
       form.mode === 'email'
         ? {
             email: form.email.trim(),
             password: form.password,
             confirm_password: form.confirmPassword,
+            registration_host: registrationHost,
           }
         : {
             phone: form.phone.trim(),
             password: form.password,
             confirm_password: form.confirmPassword,
+            registration_host: registrationHost,
           }
     const { user } = await userApi.register(body)
     setSessionUser({

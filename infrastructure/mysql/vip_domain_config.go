@@ -48,3 +48,12 @@ func (r *VipDomainConfigImpl) ListAll(ctx context.Context) ([]entity.VipDomainCo
 		Find(&rows).Error
 	return rows, err
 }
+
+func (r *VipDomainConfigImpl) ListNonOfficial(ctx context.Context) ([]entity.VipDomainConfig, error) {
+	var rows []entity.VipDomainConfig
+	err := r.db.WithContext(ctx).
+		Where("is_official = ?", false).
+		Order("id ASC").
+		Find(&rows).Error
+	return rows, err
+}

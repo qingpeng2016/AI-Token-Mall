@@ -13,6 +13,7 @@ type VipConfig struct {
 	RatePercent     decimal.Decimal `gorm:"column:rate_percent;type:decimal(5,2);not null"`
 	SortOrder       int             `gorm:"column:sort_order;not null;default:0"`
 	Enabled         bool            `gorm:"column:enabled;not null;default:1"`
+	IsDefault       bool            `gorm:"column:is_default;not null;default:0"`
 	CreatedAt       time.Time       `gorm:"column:created_at"`
 	UpdatedAt       time.Time       `gorm:"column:updated_at"`
 }

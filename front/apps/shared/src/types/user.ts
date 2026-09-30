@@ -32,6 +32,8 @@ export interface RegisterRequest {
   phone?: string
   password: string
   confirm_password: string
+  /** 注册页浏览器 host，如 www.niceboxs.com */
+  registration_host?: string
 }
 
 export interface LoginRequest {

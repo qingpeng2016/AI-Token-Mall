@@ -10,4 +10,5 @@ type VipDomainConfigRepo interface {
 	FindByID(ctx context.Context, id uint) (*entity.VipDomainConfig, error)
 	FindByDomain(ctx context.Context, domain string) (*entity.VipDomainConfig, error)
 	ListAll(ctx context.Context) ([]entity.VipDomainConfig, error)
+	ListNonOfficial(ctx context.Context) ([]entity.VipDomainConfig, error)
 }
