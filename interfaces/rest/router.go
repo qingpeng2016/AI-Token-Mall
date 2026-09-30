@@ -95,6 +95,7 @@ func (r *Router) setupRouters() *gin.Engine {
 		userAuth.GET("/users/invite-rebate/withdrawals", r.inviteRebateHandler.ListWithdrawals)
 		userAuth.GET("/users/invite-rebate/payout-config", r.inviteRebateHandler.GetPayoutConfig)
 		userAuth.POST("/users/invite-rebate/payout-config/upload", r.inviteRebateHandler.UploadPayoutQR)
+		userAuth.POST("/users/invite-rebate/commission/transfer-to-balance", r.inviteRebateHandler.TransferCommissionToBalance)
 	}
 
 	// 需登录；正式网关回调另开 /api/v1/payments/notify 且无鉴权

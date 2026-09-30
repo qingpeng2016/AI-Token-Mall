@@ -5,3 +5,7 @@ type InviteRebatePageQuery struct {
 	PageSize int `form:"page_size"`
 }
 
+type CommissionTransferToBalanceReq struct {
+	Amount string `json:"amount" binding:"required"`
+}
+

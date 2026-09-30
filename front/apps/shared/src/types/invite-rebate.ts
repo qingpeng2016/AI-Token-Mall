@@ -68,3 +68,9 @@ export type InvitePayoutConfig = {
   alipay_configured: boolean
   wechat_configured: boolean
 }
+
+export type CommissionTransferToBalanceResult = {
+  transferred_amount: string
+  commission_balance: string
+  wallet_balance: string
+}

@@ -140,6 +140,10 @@ const withdrawForm = reactive({
   channel: 'alipay' as 'alipay' | 'wechat',
   amountYuan: '',
 })
+const transferOpen = ref(false)
+const transferForm = reactive({
+  amountYuan: '',
+})
 const teamSubKeys = ref<MockTeamSubKey[]>([...mockTeamSubKeys])
 const assignSubKeyOpen = ref(false)
 const assignSubKeyForm = reactive({
@@ -551,6 +555,36 @@ function walletFlowTypeLabel(type: string) {
   if (type === 'commission') return '佣金'
   if (type === 'withdraw') return '提现'
   return '消费'
+}
+
+function openTransferModal() {
+  if (commissionAvailable.value <= 0) {
+    ElMessage.warning('暂无可划转佣金')
+    return
+  }
+  transferForm.amountYuan = ''
+  transferOpen.value = true
+}
+
+async function confirmCommissionTransfer() {
+  const yuan = Number(transferForm.amountYuan)
+  if (!Number.isFinite(yuan) || yuan <= 0) {
+    ElMessage.warning('请输入有效的划转金额')
+    return
+  }
+  if (yuan > commissionAvailable.value) {
+    ElMessage.warning('划转金额不能超过可提现佣金')
+    return
+  }
+  try {
+    const data = await inviteRebateApi.transferCommissionToBalance(yuan.toFixed(2))
+    commissionAvailable.value = parseMoney(data.commission_balance)
+    walletBalance.value = parseMoney(data.wallet_balance)
+    transferOpen.value = false
+    ElMessage.success('已划转到账户余额')
+  } catch (e) {
+    handleMemberAuthError(e, '划转失败')
+  }
 }
 
 function findCatalogProductById(productId: number) {
@@ -1669,9 +1703,14 @@ function confirmAddTeamMember() {
                     <span class="withdraw-payout-name">可提现佣金</span>
                     <strong>{{ formatCny(commissionAvailable) }}</strong>
                   </span>
-                  <button type="button" class="atm-btn-primary btn-xs" @click="openWithdrawModal">
-                    提现
-                  </button>
+                  <div class="withdraw-toolbar-actions">
+                    <button type="button" class="atm-btn-ghost btn-xs" @click="openTransferModal">
+                      划转
+                    </button>
+                    <button type="button" class="atm-btn-primary btn-xs" @click="openWithdrawModal">
+                      提现
+                    </button>
+                  </div>
                 </div>
 
                 <h3 class="withdraw-section-title withdraw-section-title--sub">收款方式</h3>
@@ -1907,6 +1946,48 @@ function confirmAddTeamMember() {
             </button>
             <button type="button" class="atm-btn-primary btn-xs" @click="confirmPayoutQrSetup">
               保存
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-if="transferOpen"
+        class="team-invite-backdrop"
+        @click.self="transferOpen = false"
+      >
+        <div class="team-invite-panel" role="dialog" aria-labelledby="transfer-title">
+          <header class="team-invite-head">
+            <h3 id="transfer-title">划转到余额</h3>
+            <button
+              type="button"
+              class="team-invite-close"
+              aria-label="关闭"
+              @click="transferOpen = false"
+            >
+              ×
+            </button>
+          </header>
+          <p class="team-invite-lead">
+            将佣金转入账户余额，可用于购买套餐；当前可划转 {{ formatCny(commissionAvailable) }}。
+          </p>
+          <label class="team-invite-field">
+            <span class="metric-label">划转金额（元）</span>
+            <input
+              v-model="transferForm.amountYuan"
+              type="number"
+              min="0.01"
+              step="0.01"
+              class="team-invite-input"
+              placeholder="例如 50.00"
+            />
+          </label>
+          <div class="assign-subkey-actions">
+            <button type="button" class="atm-btn-ghost btn-xs" @click="transferOpen = false">
+              取消
+            </button>
+            <button type="button" class="atm-btn-primary btn-xs" @click="confirmCommissionTransfer">
+              确认划转
             </button>
           </div>
         </div>
@@ -2323,6 +2404,13 @@ function confirmAddTeamMember() {
   justify-content: space-between;
   gap: 16px;
   width: 100%;
+}
+
+.withdraw-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 .withdraw-balance {

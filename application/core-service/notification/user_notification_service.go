@@ -63,6 +63,12 @@ var notificationTemplates = map[string]templateView{
 		Body:     "新的 API Key 已生成，请在「API Key」中查看与复制。",
 		LinkTab:  "api-keys",
 	},
+	"commission_transferred_to_wallet": {
+		Category: "finance",
+		Title:    "佣金已划转到余额",
+		Body:     "您已将佣金划转到账户余额，可在「账户余额」查看资金流水。",
+		LinkTab:  "account",
+	},
 }
 
 type UserNotificationService struct {

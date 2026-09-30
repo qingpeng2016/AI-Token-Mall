@@ -23,26 +23,35 @@ var policyNotes = []string{
 }
 
 type Service struct {
-	users      repository.UsersRepo
-	vipConfigs repository.VipConfigRepo
-	records    repository.UserCommissionRecordsRepo
-	withdraws  repository.UserCommissionWithdrawalsRepo
-	payouts    repository.UserCommissionPayoutConfigRepo
+	tx           repository.Transactor
+	users        repository.UsersRepo
+	vipConfigs   repository.VipConfigRepo
+	records      repository.UserCommissionRecordsRepo
+	withdraws    repository.UserCommissionWithdrawalsRepo
+	payouts      repository.UserCommissionPayoutConfigRepo
+	wallets      repository.UserWalletFlowsRepo
+	notifications repository.UserNotificationsRepo
 }
 
 func NewService(
+	tx repository.Transactor,
 	users repository.UsersRepo,
 	vipConfigs repository.VipConfigRepo,
 	records repository.UserCommissionRecordsRepo,
 	withdraws repository.UserCommissionWithdrawalsRepo,
 	payouts repository.UserCommissionPayoutConfigRepo,
+	wallets repository.UserWalletFlowsRepo,
+	notifications repository.UserNotificationsRepo,
 ) *Service {
 	return &Service{
-		users:      users,
-		vipConfigs: vipConfigs,
-		records:    records,
-		withdraws:  withdraws,
-		payouts:    payouts,
+		tx:            tx,
+		users:         users,
+		vipConfigs:    vipConfigs,
+		records:       records,
+		withdraws:     withdraws,
+		payouts:       payouts,
+		wallets:       wallets,
+		notifications: notifications,
 	}
 }
 

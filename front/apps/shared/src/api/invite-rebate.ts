@@ -2,6 +2,7 @@ import type { ApiEnvelope } from '../types/user'
 import type {
   InviteCommissionRecordListPage,
   InvitePayoutConfig,
+  CommissionTransferToBalanceResult,
   InviteRebateMemberList,
   InviteRebateOverview,
   InviteWithdrawalListPage,
@@ -48,6 +49,13 @@ export function createInviteRebateApi(options: HttpClientOptions) {
     },
     async payoutConfig(): Promise<InvitePayoutConfig> {
       const res = await http.get<ApiEnvelope<InvitePayoutConfig>>('/api/v1/users/invite-rebate/payout-config')
+      return unwrap(res)
+    },
+    async transferCommissionToBalance(amount: string): Promise<CommissionTransferToBalanceResult> {
+      const res = await http.post<ApiEnvelope<CommissionTransferToBalanceResult>>(
+        '/api/v1/users/invite-rebate/commission/transfer-to-balance',
+        { amount },
+      )
       return unwrap(res)
     },
     async uploadPayoutQr(channel: 'alipay' | 'wechat', file: File): Promise<InvitePayoutConfig> {

@@ -70,3 +70,9 @@ type InvitePayoutConfigResp struct {
 	AlipayConfigured bool   `json:"alipay_configured"`
 	WechatConfigured bool   `json:"wechat_configured"`
 }
+
+type CommissionTransferToBalanceResp struct {
+	TransferredAmount Money `json:"transferred_amount"`
+	CommissionBalance Money `json:"commission_balance"`
+	WalletBalance     Money `json:"wallet_balance"`
+}

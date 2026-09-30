@@ -120,6 +120,35 @@ func (r *UsersImpl) FindByIDForUpdate(ctx context.Context, tx *gorm.DB, id uint)
 	return &u, nil
 }
 
+func (r *UsersImpl) TransferCommissionToWallet(
+	ctx context.Context, tx *gorm.DB, userID uint, amount decimal.Decimal,
+) (decimal.Decimal, decimal.Decimal, error) {
+	u, err := r.FindByIDForUpdate(ctx, tx, userID)
+	if err != nil {
+		return decimal.Zero, decimal.Zero, err
+	}
+	if u == nil {
+		return decimal.Zero, decimal.Zero, gorm.ErrRecordNotFound
+	}
+	if amount.LessThanOrEqual(decimal.Zero) {
+		return decimal.Zero, decimal.Zero, fmt.Errorf("invalid transfer amount")
+	}
+	newCommission := u.CommissionBalance.Sub(amount)
+	if newCommission.IsNegative() {
+		return decimal.Zero, decimal.Zero, fmt.Errorf("insufficient commission balance")
+	}
+	newWallet := u.WalletBalance.Add(amount)
+	now := time.Now()
+	if err := repository.GormDB(ctx, r.db, tx).Model(&entity.Users{}).Where("id = ?", userID).Updates(map[string]interface{}{
+		"commission_balance": newCommission,
+		"wallet_balance":     newWallet,
+		"updated_at":         now,
+	}).Error; err != nil {
+		return decimal.Zero, decimal.Zero, err
+	}
+	return newCommission, newWallet, nil
+}
+
 func (r *UsersImpl) ApplyWalletDelta(ctx context.Context, tx *gorm.DB, userID uint, delta decimal.Decimal) (decimal.Decimal, error) {
 	u, err := r.FindByIDForUpdate(ctx, tx, userID)
 	if err != nil {

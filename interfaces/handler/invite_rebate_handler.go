@@ -139,3 +139,22 @@ func (h *InviteRebateHandler) UploadPayoutQR(c *gin.Context) {
 	}
 	response.ResponseSuccess(c, cfg)
 }
+
+func (h *InviteRebateHandler) TransferCommissionToBalance(c *gin.Context) {
+	userID, ok := ginMiddleware.UserIDFromContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "unauthorized", "data": nil})
+		return
+	}
+	var req request.CommissionTransferToBalanceReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ResponseBindErr(c, err)
+		return
+	}
+	data, err := h.svc.TransferCommissionToBalance(c.Request.Context(), userID, req.Amount)
+	if err != nil {
+		response.ResponseErr(c, err)
+		return
+	}
+	response.ResponseSuccess(c, data)
+}
