@@ -219,26 +219,33 @@ func (s *Service) GetPayoutConfig(ctx context.Context, userID uint) (*response.I
 	}
 	resp := &response.InvitePayoutConfigResp{}
 	for _, row := range rows {
+		dataURL := qrImageDataURL(row.QrMime, row.QrImage)
 		if row.Channel == "alipay" {
-			resp.AlipayQrURL = row.QrURL
+			resp.AlipayQrDataURL = dataURL
+			resp.AlipayConfigured = row.HasQR()
 		}
 		if row.Channel == "wechat" {
-			resp.WechatQrURL = row.QrURL
+			resp.WechatQrDataURL = dataURL
+			resp.WechatConfigured = row.HasQR()
 		}
 	}
 	return resp, nil
 }
 
-func (s *Service) SavePayoutConfig(ctx context.Context, userID uint, req *request.InvitePayoutConfigSaveReq) error {
-	channel := strings.TrimSpace(req.Channel)
-	url := strings.TrimSpace(req.QrURL)
-	if channel == "" || url == "" {
+func (s *Service) SavePayoutQR(ctx context.Context, userID uint, channel string, image []byte, mime string) error {
+	channel = strings.TrimSpace(strings.ToLower(channel))
+	if channel != "alipay" && channel != "wechat" {
 		return errorx.ErrParamsError
 	}
+	if err := validatePayoutQRImage(image, mime); err != nil {
+		return err
+	}
+	mime = strings.TrimSpace(mime)
 	return s.payouts.Save(ctx, &entity.UserCommissionPayoutConfig{
 		UserID:  userID,
 		Channel: channel,
-		QrURL:   url,
+		QrMime:  &mime,
+		QrImage: image,
 	})
 }
 

@@ -65,6 +65,8 @@ type InviteWithdrawalListPageResp struct {
 }
 
 type InvitePayoutConfigResp struct {
-	AlipayQrURL string `json:"alipay_qr_url"`
-	WechatQrURL string `json:"wechat_qr_url"`
+	AlipayQrDataURL  string `json:"alipay_qr_data_url"`
+	WechatQrDataURL  string `json:"wechat_qr_data_url"`
+	AlipayConfigured bool   `json:"alipay_configured"`
+	WechatConfigured bool   `json:"wechat_configured"`
 }

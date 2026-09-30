@@ -39,6 +39,6 @@ func (r *UserCommissionPayoutConfigImpl) FindByUserIDAndChannel(ctx context.Cont
 func (r *UserCommissionPayoutConfigImpl) Save(ctx context.Context, row *entity.UserCommissionPayoutConfig) error {
 	return r.db.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "user_id"}, {Name: "channel"}},
-		DoUpdates: clause.AssignmentColumns([]string{"qr_url", "updated_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"qr_mime", "qr_image", "updated_at"}),
 	}).Create(row).Error
 }

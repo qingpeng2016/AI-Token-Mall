@@ -63,6 +63,8 @@ export type InviteWithdrawalListPage = {
 }
 
 export type InvitePayoutConfig = {
-  alipay_qr_url: string
-  wechat_qr_url: string
+  alipay_qr_data_url: string
+  wechat_qr_data_url: string
+  alipay_configured: boolean
+  wechat_configured: boolean
 }

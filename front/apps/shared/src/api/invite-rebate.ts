@@ -50,8 +50,15 @@ export function createInviteRebateApi(options: HttpClientOptions) {
       const res = await http.get<ApiEnvelope<InvitePayoutConfig>>('/api/v1/users/invite-rebate/payout-config')
       return unwrap(res)
     },
-    async savePayoutConfig(body: { channel: 'alipay' | 'wechat'; qr_url: string }): Promise<void> {
-      await http.put<ApiEnvelope<null>>('/api/v1/users/invite-rebate/payout-config', body)
+    async uploadPayoutQr(channel: 'alipay' | 'wechat', file: File): Promise<InvitePayoutConfig> {
+      const form = new FormData()
+      form.append('channel', channel)
+      form.append('file', file)
+      const res = await http.postForm<ApiEnvelope<InvitePayoutConfig>>(
+        '/api/v1/users/invite-rebate/payout-config/upload',
+        form,
+      )
+      return unwrap(res)
     },
   }
 }

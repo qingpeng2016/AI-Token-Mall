@@ -129,9 +129,12 @@ const inviteRebateDisplayNotes = [
   '佣金可划转到余额或者提现。',
 ]
 const payoutQr = reactive({ alipay: '', wechat: '' })
+const payoutQrConfigured = reactive({ alipay: false, wechat: false })
 const payoutQrSetupOpen = ref(false)
 const payoutQrSetupChannel = ref<'alipay' | 'wechat'>('alipay')
-const payoutQrSetupValue = ref('')
+const payoutQrSetupFile = ref<File | null>(null)
+const payoutQrSetupPreview = ref('')
+let payoutQrSetupObjectUrl: string | null = null
 const withdrawOpen = ref(false)
 const withdrawForm = reactive({
   channel: 'alipay' as 'alipay' | 'wechat',
@@ -467,8 +470,7 @@ async function fetchInviteRebateTabData() {
       inviteRebateOverview.value = overview
       commissionAvailable.value = parseMoney(overview.commission_balance)
       const payout = await inviteRebateApi.payoutConfig()
-      payoutQr.alipay = payout.alipay_qr_url ?? ''
-      payoutQr.wechat = payout.wechat_qr_url ?? ''
+      applyInvitePayoutConfig(payout)
       inviteRebateLoaded.value = true
       const panel = inviteRebatePanelTab.value
       if (panel === 'members') await fetchInviteMembersTabData()
@@ -700,26 +702,68 @@ function copyExclusivePromoDomain() {
   void copyToClipboard(exclusivePromoDomain.value, '已复制推广域名')
 }
 
+function applyInvitePayoutConfig(payout: {
+  alipay_qr_data_url?: string
+  wechat_qr_data_url?: string
+  alipay_configured?: boolean
+  wechat_configured?: boolean
+}) {
+  payoutQr.alipay = payout.alipay_qr_data_url ?? ''
+  payoutQr.wechat = payout.wechat_qr_data_url ?? ''
+  payoutQrConfigured.alipay = Boolean(payout.alipay_configured ?? payoutQr.alipay)
+  payoutQrConfigured.wechat = Boolean(payout.wechat_configured ?? payoutQr.wechat)
+}
+
+function clearPayoutQrSetupFile() {
+  if (payoutQrSetupObjectUrl) {
+    URL.revokeObjectURL(payoutQrSetupObjectUrl)
+    payoutQrSetupObjectUrl = null
+  }
+  payoutQrSetupFile.value = null
+}
+
 function openPayoutQrModal(channel: 'alipay' | 'wechat') {
+  clearPayoutQrSetupFile()
   payoutQrSetupChannel.value = channel
-  payoutQrSetupValue.value = channel === 'alipay' ? payoutQr.alipay : payoutQr.wechat
+  payoutQrSetupPreview.value = channel === 'alipay' ? payoutQr.alipay : payoutQr.wechat
   payoutQrSetupOpen.value = true
 }
 
+function onPayoutQrFileChange(ev: Event) {
+  const input = ev.target as HTMLInputElement
+  const file = input.files?.[0] ?? null
+  clearPayoutQrSetupFile()
+  if (!file) {
+    payoutQrSetupPreview.value =
+      payoutQrSetupChannel.value === 'alipay' ? payoutQr.alipay : payoutQr.wechat
+    return
+  }
+  if (!/^image\/(png|jpeg|webp)$/i.test(file.type)) {
+    ElMessage.warning('请上传 PNG、JPEG 或 WebP 图片')
+    input.value = ''
+    return
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    ElMessage.warning('图片大小不能超过 2MB')
+    input.value = ''
+    return
+  }
+  payoutQrSetupFile.value = file
+  payoutQrSetupObjectUrl = URL.createObjectURL(file)
+  payoutQrSetupPreview.value = payoutQrSetupObjectUrl
+}
+
 async function confirmPayoutQrSetup() {
-  const url = payoutQrSetupValue.value.trim()
-  if (!url) {
-    ElMessage.warning('请填写收款码图片地址或上传后粘贴链接')
+  const file = payoutQrSetupFile.value
+  if (!file) {
+    ElMessage.warning('请选择收款码图片')
     return
   }
   try {
-    await inviteRebateApi.savePayoutConfig({
-      channel: payoutQrSetupChannel.value,
-      qr_url: url,
-    })
-    if (payoutQrSetupChannel.value === 'alipay') payoutQr.alipay = url
-    else payoutQr.wechat = url
+    const cfg = await inviteRebateApi.uploadPayoutQr(payoutQrSetupChannel.value, file)
+    applyInvitePayoutConfig(cfg)
     payoutQrSetupOpen.value = false
+    clearPayoutQrSetupFile()
     ElMessage.success('收款码已保存')
   } catch (e) {
     handleMemberAuthError(e, '保存收款码失败')
@@ -727,11 +771,11 @@ async function confirmPayoutQrSetup() {
 }
 
 function openWithdrawModal() {
-  if (!payoutQr.alipay && !payoutQr.wechat) {
+  if (!payoutQrConfigured.alipay && !payoutQrConfigured.wechat) {
     ElMessage.warning('请先设置支付宝或微信收款码')
     return
   }
-  withdrawForm.channel = payoutQr.alipay ? 'alipay' : 'wechat'
+  withdrawForm.channel = payoutQrConfigured.alipay ? 'alipay' : 'wechat'
   withdrawForm.amountYuan = ''
   withdrawOpen.value = true
 }
@@ -747,11 +791,11 @@ function confirmWithdraw() {
     return
   }
   const channel = withdrawForm.channel
-  if (channel === 'alipay' && !payoutQr.alipay) {
+  if (channel === 'alipay' && !payoutQrConfigured.alipay) {
     ElMessage.warning('请先设置支付宝收款码')
     return
   }
-  if (channel === 'wechat' && !payoutQr.wechat) {
+  if (channel === 'wechat' && !payoutQrConfigured.wechat) {
     ElMessage.warning('请先设置微信收款码')
     return
   }
@@ -1630,27 +1674,27 @@ function confirmAddTeamMember() {
                   <article class="withdraw-payout-row">
                     <span class="withdraw-payout-name">支付宝</span>
                     <p class="withdraw-payout-status muted">
-                      {{ payoutQr.alipay ? '收款码已配置' : '未设置收款码' }}
+                      {{ payoutQrConfigured.alipay ? '收款码已配置' : '未设置收款码' }}
                     </p>
                     <button
                       type="button"
                       class="atm-btn-primary btn-xs withdraw-payout-btn"
                       @click="openPayoutQrModal('alipay')"
                     >
-                      {{ payoutQr.alipay ? '更换收款码' : '设置收款码' }}
+                      {{ payoutQrConfigured.alipay ? '更换收款码' : '设置收款码' }}
                     </button>
                   </article>
                   <article class="withdraw-payout-row">
                     <span class="withdraw-payout-name">微信</span>
                     <p class="withdraw-payout-status muted">
-                      {{ payoutQr.wechat ? '收款码已配置' : '未设置收款码' }}
+                      {{ payoutQrConfigured.wechat ? '收款码已配置' : '未设置收款码' }}
                     </p>
                     <button
                       type="button"
                       class="atm-btn-primary btn-xs withdraw-payout-btn"
                       @click="openPayoutQrModal('wechat')"
                     >
-                      {{ payoutQr.wechat ? '更换收款码' : '设置收款码' }}
+                      {{ payoutQrConfigured.wechat ? '更换收款码' : '设置收款码' }}
                     </button>
                   </article>
                 </div>
@@ -1823,7 +1867,10 @@ function confirmAddTeamMember() {
       <div
         v-if="payoutQrSetupOpen"
         class="team-invite-backdrop"
-        @click.self="payoutQrSetupOpen = false"
+        @click.self="
+          payoutQrSetupOpen = false
+          clearPayoutQrSetupFile()
+        "
       >
         <div class="team-invite-panel" role="dialog" :aria-labelledby="'payout-qr-title'">
           <header class="team-invite-head">
@@ -1832,20 +1879,38 @@ function confirmAddTeamMember() {
               type="button"
               class="team-invite-close"
               aria-label="关闭"
-              @click="payoutQrSetupOpen = false"
+              @click="
+                payoutQrSetupOpen = false
+                clearPayoutQrSetupFile()
+              "
             >
               ×
             </button>
           </header>
           <p class="team-invite-lead">
-            上传收款码后，将图片链接粘贴到下方（演示环境；正式版支持本地上传）。
+            上传 PNG / JPEG / WebP 收款码（不超过 2MB）。已有收款码可直接更换图片覆盖保存。
           </p>
+          <div v-if="payoutQrSetupPreview" class="payout-qr-preview-wrap">
+            <img :src="payoutQrSetupPreview" alt="收款码预览" class="payout-qr-preview" />
+          </div>
           <label class="team-invite-field">
-            <span class="metric-label">收款码图片 URL</span>
-            <input v-model="payoutQrSetupValue" type="url" class="team-invite-input" placeholder="https://..." />
+            <span class="metric-label">选择图片</span>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              class="team-invite-input"
+              @change="onPayoutQrFileChange"
+            />
           </label>
           <div class="assign-subkey-actions">
-            <button type="button" class="atm-btn-ghost btn-xs" @click="payoutQrSetupOpen = false">
+            <button
+              type="button"
+              class="atm-btn-ghost btn-xs"
+              @click="
+                payoutQrSetupOpen = false
+                clearPayoutQrSetupFile()
+              "
+            >
               取消
             </button>
             <button type="button" class="atm-btn-primary btn-xs" @click="confirmPayoutQrSetup">
@@ -1878,8 +1943,8 @@ function confirmAddTeamMember() {
           <label class="team-invite-field">
             <span class="metric-label">到账方式</span>
             <select v-model="withdrawForm.channel" class="member-select">
-              <option v-if="payoutQr.alipay" value="alipay">支付宝</option>
-              <option v-if="payoutQr.wechat" value="wechat">微信</option>
+              <option v-if="payoutQrConfigured.alipay" value="alipay">支付宝</option>
+              <option v-if="payoutQrConfigured.wechat" value="wechat">微信</option>
             </select>
           </label>
           <label class="team-invite-field">
@@ -3026,5 +3091,23 @@ function confirmAddTeamMember() {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
+}
+
+.payout-qr-preview-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.payout-qr-preview {
+  display: block;
+  max-width: 220px;
+  max-height: 220px;
+  object-fit: contain;
+  border-radius: 8px;
 }
 </style>
