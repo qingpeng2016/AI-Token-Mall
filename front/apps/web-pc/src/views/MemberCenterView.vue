@@ -1224,7 +1224,7 @@ function confirmAddTeamMember() {
             </div>
             </div>
 
-            <!-- 我的订单 -->
+            <!-- 订单记录 -->
             <div v-else-if="activeTab === 'orders'" class="panel-body">
             <div v-if="memberOrders.length" class="table-wrap">
               <table class="data-table">

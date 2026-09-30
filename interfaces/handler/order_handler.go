@@ -18,7 +18,7 @@ func NewOrderHandler(orderSvc *order.OrderService) *OrderHandler {
 	return &OrderHandler{orderSvc: orderSvc}
 }
 
-// ListMine 当前用户订单列表（会员中心 · 我的订单）
+// ListMine 当前用户订单列表（会员中心 · 订单记录）
 func (h *OrderHandler) ListMine(c *gin.Context) {
 	userID, ok := ginMiddleware.UserIDFromContext(c)
 	if !ok {
