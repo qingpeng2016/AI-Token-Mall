@@ -1594,6 +1594,12 @@ function confirmAddTeamMember() {
                     }}<span class="rebate-rate-unit">%</span>
                   </p>
                 </div>
+                <div class="rebate-details-section">
+                  <span class="metric-label">下级累计消费（已完成订单）</span>
+                  <p class="rebate-rate-value">
+                    {{ formatCny(inviteRebateOverview?.invitee_paid_total ?? 0) }}
+                  </p>
+                </div>
               </article>
 
               <h3 class="panel-subtitle">等级与比例</h3>
@@ -1603,6 +1609,7 @@ function confirmAddTeamMember() {
                     <tr>
                       <th>等级</th>
                       <th>邀请下级（≥）</th>
+                      <th>下级累计消费（≥）</th>
                       <th>返佣比例</th>
                     </tr>
                   </thead>
@@ -1621,6 +1628,7 @@ function confirmAddTeamMember() {
                         </span>
                       </td>
                       <td>{{ tier.min_valid_invites }} 人</td>
+                      <td>{{ formatCny(tier.min_invitee_paid_amount) }}</td>
                       <td>{{ parseMoney(tier.rate_percent) }}%</td>
                     </tr>
                   </tbody>

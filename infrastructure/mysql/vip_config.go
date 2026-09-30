@@ -11,8 +11,8 @@ import (
 )
 
 var vipConfigBaseSelect = []string{
-	"id", "level_label", "min_valid_invites", "rate_percent",
-	"sort_order", "enabled", "created_at", "updated_at",
+	"id", "level_label", "min_valid_invites", "min_invitee_paid_amount", "rate_percent",
+	"sort_order", "enabled", "is_default", "created_at", "updated_at",
 }
 
 type VipConfigImpl struct {
@@ -60,5 +60,11 @@ func (r *VipConfigImpl) ListEnabled(ctx context.Context) ([]entity.VipConfig, er
 		Where("enabled = ?", true).
 		Order("sort_order ASC, id ASC").
 		Find(&rows).Error
+	return rows, err
+}
+
+func (r *VipConfigImpl) ListAll(ctx context.Context) ([]entity.VipConfig, error) {
+	var rows []entity.VipConfig
+	err := r.db.WithContext(ctx).Order("sort_order ASC, id ASC").Find(&rows).Error
 	return rows, err
 }

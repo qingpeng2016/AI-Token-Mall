@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS `vip_config` (
   `id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `level_label`       VARCHAR(64)  NOT NULL COMMENT '等级名称，如标准推广',
   `min_valid_invites` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '有效邀请人数下限（≥）',
+  `min_invitee_paid_amount` DECIMAL(16,2) NOT NULL DEFAULT 0.00 COMMENT '直属下级已完成订单实付累计（元，≥）',
   `rate_percent`      DECIMAL(5,2) NOT NULL COMMENT '返佣比例（%）',
   `sort_order`        INT          NOT NULL DEFAULT 0 COMMENT '展示与匹配顺序，越大门槛越高',
   `enabled`           TINYINT(1)   NOT NULL DEFAULT 1,
@@ -13,15 +14,16 @@ CREATE TABLE IF NOT EXISTS `vip_config` (
   KEY `idx_vip_config_enabled_sort` (`enabled`, `sort_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='邀请返利 VIP/返佣档位配置';
 
-INSERT INTO `vip_config` (`id`, `level_label`, `min_valid_invites`, `rate_percent`, `sort_order`, `enabled`)
+INSERT INTO `vip_config` (`id`, `level_label`, `min_valid_invites`, `min_invitee_paid_amount`, `rate_percent`, `sort_order`, `enabled`)
 VALUES
-  (1, '入门推广', 0,  3.00, 10, 1),
-  (2, '标准推广', 3,  5.00, 20, 1),
-  (3, '高级推广', 5,  8.00, 30, 1),
-  (4, '合伙人',   20, 12.00, 40, 1)
+  (1, '入门推广', 0,  0.00,    3.00, 10, 1),
+  (2, '标准推广', 3,  0.00,    5.00, 20, 1),
+  (3, '高级推广', 5,  500.00,  8.00, 30, 1),
+  (4, '合伙人',   20, 2000.00, 12.00, 40, 1)
 ON DUPLICATE KEY UPDATE
   `level_label` = VALUES(`level_label`),
   `min_valid_invites` = VALUES(`min_valid_invites`),
+  `min_invitee_paid_amount` = VALUES(`min_invitee_paid_amount`),
   `rate_percent` = VALUES(`rate_percent`),
   `sort_order` = VALUES(`sort_order`),
   `enabled` = VALUES(`enabled`);

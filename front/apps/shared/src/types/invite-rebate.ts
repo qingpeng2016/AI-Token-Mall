@@ -1,6 +1,7 @@
 export type InviteRebateTier = {
   level_label: string
   min_valid_invites: number
+  min_invitee_paid_amount: number | string
   rate_percent: number | string
   is_current: boolean
 }
@@ -10,6 +11,7 @@ export type InviteRebateOverview = {
   current_level_label: string
   current_rate_percent: number | string
   valid_invite_count: number
+  invitee_paid_total: number | string
   commission_balance: number | string
   tiers: InviteRebateTier[]
   notes: string[]

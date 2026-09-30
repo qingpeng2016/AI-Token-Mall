@@ -5,6 +5,7 @@ type InviteRebateOverviewResp struct {
 	CurrentLevelLabel   string                  `json:"current_level_label"`
 	CurrentRatePercent  Money                   `json:"current_rate_percent"`
 	ValidInviteCount    int64                   `json:"valid_invite_count"`
+	InviteePaidTotal    Money                   `json:"invitee_paid_total"`
 	CommissionBalance   Money                   `json:"commission_balance"`
 	Tiers               []InviteRebateTierItem  `json:"tiers"`
 	Notes               []string                `json:"notes"`
@@ -12,8 +13,9 @@ type InviteRebateOverviewResp struct {
 
 type InviteRebateTierItem struct {
 	LevelLabel      string `json:"level_label"`
-	MinValidInvites uint   `json:"min_valid_invites"`
-	RatePercent     Money  `json:"rate_percent"`
+	MinValidInvites      uint  `json:"min_valid_invites"`
+	MinInviteePaidAmount Money `json:"min_invitee_paid_amount"`
+	RatePercent          Money `json:"rate_percent"`
 	IsCurrent       bool   `json:"is_current"`
 }
 

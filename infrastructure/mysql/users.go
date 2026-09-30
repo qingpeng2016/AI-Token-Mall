@@ -106,6 +106,84 @@ func (r *UsersImpl) CountByParentUserID(ctx context.Context, parentUserID uint) 
 	return n, err
 }
 
+func (r *UsersImpl) CountInviteesGroupByInviter(ctx context.Context) (map[uint]int64, error) {
+	type row struct {
+		InviterID uint  `gorm:"column:inviter_id"`
+		Cnt       int64 `gorm:"column:cnt"`
+	}
+	var rows []row
+	err := r.db.WithContext(ctx).Model(&entity.Users{}).
+		Select("parent_user_id AS inviter_id, COUNT(*) AS cnt").
+		Where("parent_user_id > ?", 0).
+		Group("parent_user_id").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[uint]int64, len(rows))
+	for _, r := range rows {
+		out[r.InviterID] = r.Cnt
+	}
+	return out, nil
+}
+
+func (r *UsersImpl) ListIDAndVipConfigID(ctx context.Context, offset, limit int) ([]repository.UserVipConfigRow, error) {
+	if limit <= 0 || limit > 2000 {
+		limit = 500
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	var rows []repository.UserVipConfigRow
+	err := r.db.WithContext(ctx).Model(&entity.Users{}).
+		Select("id", "vip_config_id").
+		Order("id ASC").
+		Offset(offset).
+		Limit(limit).
+		Scan(&rows).Error
+	return rows, err
+}
+
+func (r *UsersImpl) SumInviteeCompletedOrderAmountByInviter(ctx context.Context, inviterUserID uint) (decimal.Decimal, error) {
+	var total decimal.Decimal
+	err := r.db.WithContext(ctx).Table("users AS invitee").
+		Select("COALESCE(SUM(o.total_amount), 0)").
+		Joins("INNER JOIN user_orders o ON o.user_id = invitee.id AND o.status = ?", "completed").
+		Where("invitee.parent_user_id = ?", inviterUserID).
+		Scan(&total).Error
+	return total, err
+}
+
+func (r *UsersImpl) SumInviteeCompletedOrderAmountGroupByInviter(ctx context.Context) (map[uint]decimal.Decimal, error) {
+	type row struct {
+		InviterID uint            `gorm:"column:inviter_id"`
+		Total     decimal.Decimal `gorm:"column:total"`
+	}
+	var rows []row
+	err := r.db.WithContext(ctx).Table("users AS invitee").
+		Select("invitee.parent_user_id AS inviter_id, COALESCE(SUM(o.total_amount), 0) AS total").
+		Joins("INNER JOIN user_orders o ON o.user_id = invitee.id AND o.status = ?", "completed").
+		Where("invitee.parent_user_id > ?", 0).
+		Group("invitee.parent_user_id").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[uint]decimal.Decimal, len(rows))
+	for _, r := range rows {
+		out[r.InviterID] = r.Total
+	}
+	return out, nil
+}
+
+func (r *UsersImpl) UpdateVipConfigID(ctx context.Context, userID, vipConfigID uint) error {
+	now := time.Now()
+	return r.db.WithContext(ctx).Model(&entity.Users{}).Where("id = ?", userID).Updates(map[string]interface{}{
+		"vip_config_id": vipConfigID,
+		"updated_at":    now,
+	}).Error
+}
+
 func (r *UsersImpl) FindByIDForUpdate(ctx context.Context, tx *gorm.DB, id uint) (*entity.Users, error) {
 	var u entity.Users
 	err := repository.GormDB(ctx, r.db, tx).

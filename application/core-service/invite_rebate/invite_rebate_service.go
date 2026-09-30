@@ -17,7 +17,7 @@ import (
 )
 
 var policyNotes = []string{
-	"返佣比例按「邀请下级人数」自动升级，下级为注册时已绑定到您账号的用户。",
+	"返佣比例按「邀请下级人数」与「下级累计消费」自动升级，下级为注册时已绑定到您账号的用户。",
 	"受邀用户每笔已支付订单，按实付金额 × 当前返佣比例计算返利，支付成功后即时计入「佣金」。",
 	"佣金可划转到余额或者提现。",
 }
@@ -87,6 +87,10 @@ func (s *Service) GetOverview(ctx context.Context, userID uint) (*response.Invit
 	if err != nil {
 		return nil, errorx.ErrDbError
 	}
+	inviteePaidTotal, err := s.users.SumInviteeCompletedOrderAmountByInviter(ctx, userID)
+	if err != nil {
+		return nil, errorx.ErrDbError
+	}
 
 	tierItems := make([]response.InviteRebateTierItem, 0, len(tiers))
 	currentLabel := ""
@@ -97,10 +101,11 @@ func (s *Service) GetOverview(ctx context.Context, userID uint) (*response.Invit
 	}
 	for _, t := range tiers {
 		tierItems = append(tierItems, response.InviteRebateTierItem{
-			LevelLabel:      t.LevelLabel,
-			MinValidInvites: t.MinValidInvites,
-			RatePercent:     response.MoneyFrom(t.RatePercent),
-			IsCurrent:       currentTier != nil && t.ID == currentTier.ID,
+			LevelLabel:           t.LevelLabel,
+			MinValidInvites:      t.MinValidInvites,
+			MinInviteePaidAmount: response.MoneyFrom(t.MinInviteePaidAmount),
+			RatePercent:          response.MoneyFrom(t.RatePercent),
+			IsCurrent:            currentTier != nil && t.ID == currentTier.ID,
 		})
 	}
 
@@ -110,13 +115,14 @@ func (s *Service) GetOverview(ctx context.Context, userID uint) (*response.Invit
 	}
 
 	return &response.InviteRebateOverviewResp{
-		PromoDomainURL:     promoURL,
-		CurrentLevelLabel:  currentLabel,
-		CurrentRatePercent: currentRate,
-		ValidInviteCount:   validCount,
-		CommissionBalance:  response.MoneyFrom(u.CommissionBalance),
-		Tiers:              tierItems,
-		Notes:              policyNotes,
+		PromoDomainURL:      promoURL,
+		CurrentLevelLabel:   currentLabel,
+		CurrentRatePercent:  currentRate,
+		ValidInviteCount:    validCount,
+		InviteePaidTotal:    response.MoneyFrom(inviteePaidTotal),
+		CommissionBalance:   response.MoneyFrom(u.CommissionBalance),
+		Tiers:               tierItems,
+		Notes:               policyNotes,
 	}, nil
 }
 

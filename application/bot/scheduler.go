@@ -8,6 +8,7 @@ import (
 	"time"
 
 	subscriptionlifecycle "github.com/qingpeng2016/ai-token-mall/application/bot/scripts/subscription_lifecycle"
+	viplevelsync "github.com/qingpeng2016/ai-token-mall/application/bot/scripts/vip_level_sync"
 	botscheduleconfig "github.com/qingpeng2016/ai-token-mall/application/core-service/bot_schedule_config"
 	"github.com/qingpeng2016/ai-token-mall/common/dederi/logger"
 	"github.com/qingpeng2016/ai-token-mall/common/notification"
@@ -22,6 +23,7 @@ import (
 type Scheduler struct {
 	botScheduleConfigService *botscheduleconfig.BotScheduleConfigService
 	subscriptionLifecycleJob *subscriptionlifecycle.SubscriptionLifecycleJob
+	vipLevelSyncJob          *viplevelsync.VipLevelSyncJob
 	ns                       *gocron.Scheduler
 	jobMap                   map[string]*gocron.Job
 	configMap                map[string]float64
@@ -33,10 +35,12 @@ type Scheduler struct {
 func NewScheduler(
 	botScheduleConfigService *botscheduleconfig.BotScheduleConfigService,
 	subscriptionLifecycleJob *subscriptionlifecycle.SubscriptionLifecycleJob,
+	vipLevelSyncJob *viplevelsync.VipLevelSyncJob,
 ) *Scheduler {
 	return &Scheduler{
 		botScheduleConfigService: botScheduleConfigService,
 		subscriptionLifecycleJob: subscriptionLifecycleJob,
+		vipLevelSyncJob:          vipLevelSyncJob,
 		ns:                       gocron.NewScheduler(time.Local),
 		jobMap:                   make(map[string]*gocron.Job),
 		configMap:                make(map[string]float64),
@@ -220,6 +224,10 @@ func (s *Scheduler) getAITokenMallHandleFunc(taskName string) func() {
 	case subscriptionlifecycle.TaskSubscriptionLifecycle:
 		return func() {
 			s.subscriptionLifecycleJob.Run(context.Background())
+		}
+	case viplevelsync.TaskVipLevelSync:
+		return func() {
+			s.vipLevelSyncJob.Run(context.Background())
 		}
 	default:
 		return nil

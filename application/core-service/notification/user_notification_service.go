@@ -81,6 +81,12 @@ var notificationTemplates = map[string]templateView{
 		Body:     "下级订单支付成功，返利已计入您的佣金，可在「邀请返利 → 返利记录」查看。",
 		LinkTab:  "sub-accounts",
 	},
+	"vip_level_upgraded": {
+		Category: "finance",
+		Title:    "推广等级已提升",
+		Body:     "您的邀请推广 VIP 等级已升级，返佣比例已更新，请在「邀请返利」查看当前档位。",
+		LinkTab:  "sub-accounts",
+	},
 }
 
 type UserNotificationService struct {
