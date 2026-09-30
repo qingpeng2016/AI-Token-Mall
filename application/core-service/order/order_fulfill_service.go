@@ -13,6 +13,7 @@ import (
 	"github.com/qingpeng2016/ai-token-mall/common/constants"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/entity"
 	"github.com/qingpeng2016/ai-token-mall/domain/persistent/repository"
+	"github.com/shopspring/decimal"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
@@ -160,7 +161,10 @@ func (s *OrderFulfillService) FulfillBalanceRenewalInTx(
 	if err := s.reactivateSubscriptionAPIKeys(ctx, tx, sub.ID, now); err != nil {
 		return err
 	}
-	return s.insertSubscriptionOrderNotification(ctx, tx, order, sub, nil, "subscription_renewed", now)
+	if err := s.insertSubscriptionOrderNotification(ctx, tx, order, sub, nil, "subscription_renewed", now); err != nil {
+		return err
+	}
+	return s.inviteRebate.AccrueInviteRebateForPaidOrder(ctx, tx, order, product, now)
 }
 
 func (s *OrderFulfillService) insertCallback(ctx context.Context, tx *gorm.DB, in repository.PaymentNotifyInput, sigOK int, result string) error {
@@ -521,23 +525,25 @@ func (s *OrderFulfillService) insertSubscriptionOrderNotification(ctx context.Co
 	return s.notifications.Create(ctx, tx, &row)
 }
 
-// deductBalanceAndRecordFlow 仅 balance 渠道：扣 users.wallet_balance 并记流水。
+// deductBalanceAndRecordFlow 记买家支付流水；余额支付同时扣 wallet_balance，三方支付 balance_after 为 NULL。
 func (s *OrderFulfillService) deductBalanceAndRecordFlow(ctx context.Context, tx *gorm.DB, order *entity.UserOrders, product *entity.Products, channel string, now time.Time) error {
-	if channel != "balance" {
-		return nil
+	negAmount := order.TotalAmount.Neg()
+	var balanceAfter *decimal.Decimal
+	if channel == "balance" {
+		bal, err := s.users.ApplyWalletDelta(ctx, tx, order.UserID, negAmount)
+		if err != nil {
+			return err
+		}
+		balanceAfter = &bal
 	}
-	balanceAfter, err := s.users.ApplyWalletDelta(ctx, tx, order.UserID, order.TotalAmount.Neg())
-	if err != nil {
-		return err
-	}
+
 	refType := "order"
-	remark := fmt.Sprintf("订单 %s · %s · %s", order.OrderNo, product.CardTitle, channel)
-	bal := balanceAfter
+	remark := fmt.Sprintf("订单 %s · %s · %s", order.OrderNo, product.CardTitle, payChannelFlowLabel(channel))
 	row := entity.UserWalletFlows{
 		UserID:       order.UserID,
 		Type:         "pay",
-		Amount:       order.TotalAmount.Neg(),
-		BalanceAfter: &bal,
+		Amount:       negAmount,
+		BalanceAfter: balanceAfter,
 		Currency:     order.Currency,
 		RefType:      &refType,
 		RefID:        &order.ID,
@@ -545,4 +551,20 @@ func (s *OrderFulfillService) deductBalanceAndRecordFlow(ctx context.Context, tx
 		CreatedAt:    now,
 	}
 	return s.wallets.CreateFlow(ctx, tx, &row)
+}
+
+func payChannelFlowLabel(channel string) string {
+	switch channel {
+	case "balance":
+		return "余额"
+	case "alipay":
+		return "支付宝"
+	case "wechat":
+		return "微信支付"
+	default:
+		if channel == "" {
+			return "在线支付"
+		}
+		return channel
+	}
 }

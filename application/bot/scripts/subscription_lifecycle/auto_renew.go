@@ -75,6 +75,7 @@ func (j *SubscriptionLifecycleJob) autoRenewSubscription(ctx context.Context, su
 			return err
 		}
 
+		// 余额扣款、流水、续期通知 + 上级邀请返利（与支付回调 AccrueInviteRebateForPaidOrder 一致）
 		return j.fulfill.FulfillBalanceRenewalInTx(ctx, tx, &order, product, now)
 	})
 }
