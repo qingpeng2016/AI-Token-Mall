@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/qingpeng2016/ai-token-mall/common/errorx"
@@ -15,21 +14,9 @@ import (
 )
 
 func (s *Service) TransferCommissionToBalance(ctx context.Context, userID uint, amountStr string) (*response.CommissionTransferToBalanceResp, error) {
-	amountStr = strings.TrimSpace(amountStr)
-	if amountStr == "" {
-		return nil, errorx.ErrParamsError
-	}
-	amount, err := decimal.NewFromString(amountStr)
+	amount, err := parseCommissionAmountYuan(amountStr)
 	if err != nil {
-		return nil, errorx.ErrParamsError
-	}
-	amount = amount.Round(2)
-	if amount.LessThanOrEqual(decimal.Zero) {
-		return nil, errorx.ErrParamsError
-	}
-	const maxTransfer = 1_000_000
-	if amount.GreaterThan(decimal.NewFromInt(maxTransfer)) {
-		return nil, errorx.ErrParamsError
+		return nil, err
 	}
 
 	var commissionAfter, walletAfter decimal.Decimal

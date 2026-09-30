@@ -819,7 +819,7 @@ function openWithdrawModal() {
   withdrawOpen.value = true
 }
 
-function confirmWithdraw() {
+async function confirmWithdraw() {
   const yuan = Number(withdrawForm.amountYuan)
   if (!Number.isFinite(yuan) || yuan <= 0) {
     ElMessage.warning('请输入有效的提现金额')
@@ -838,16 +838,20 @@ function confirmWithdraw() {
     ElMessage.warning('请先设置微信收款码')
     return
   }
-  withdrawalRecords.value.unshift({
-    id: Date.now(),
-    amount: yuan,
-    channel,
-    status: 'pending',
-    created_at: formatNowBeijing('datetime'),
-  })
-  commissionAvailable.value -= yuan
-  withdrawOpen.value = false
-  ElMessage.success('提现申请已提交')
+  try {
+    const data = await inviteRebateApi.createWithdrawal({
+      amount: yuan.toFixed(2),
+      channel,
+    })
+    commissionAvailable.value = parseMoney(data.commission_balance)
+    withdrawalRecords.value.unshift(data.withdrawal)
+    withdrawalsTotal.value += 1
+    withdrawalsLoaded.value = true
+    withdrawOpen.value = false
+    ElMessage.success('提现申请已提交')
+  } catch (e) {
+    handleMemberAuthError(e, '提现申请失败')
+  }
 }
 
 const payoutQrSetupTitle = computed(() =>
@@ -1138,9 +1142,14 @@ function confirmAddTeamMember() {
                     formatCny(commissionAvailable)
                   }}</strong>
                 </div>
-                <button type="button" class="stat-link" @click="goCommissionWithdrawFromOverview">
-                  提现
-                </button>
+                <div class="stat-card-actions">
+                  <button type="button" class="stat-link" @click="openTransferModal">
+                    划转
+                  </button>
+                  <button type="button" class="stat-link" @click="goCommissionWithdrawFromOverview">
+                    提现
+                  </button>
+                </div>
               </article>
             </div>
 
@@ -1704,7 +1713,7 @@ function confirmAddTeamMember() {
                     <strong>{{ formatCny(commissionAvailable) }}</strong>
                   </span>
                   <div class="withdraw-toolbar-actions">
-                    <button type="button" class="atm-btn-ghost btn-xs" @click="openTransferModal">
+                    <button type="button" class="atm-btn-primary btn-xs" @click="openTransferModal">
                       划转
                     </button>
                     <button type="button" class="atm-btn-primary btn-xs" @click="openWithdrawModal">
@@ -2672,6 +2681,15 @@ function confirmAddTeamMember() {
 .stat-card--balance .stat-value,
 .stat-card--commission .stat-value {
   color: var(--atm-primary-dark);
+}
+
+.stat-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .stat-link {

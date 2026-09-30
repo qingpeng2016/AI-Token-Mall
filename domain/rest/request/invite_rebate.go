@@ -9,3 +9,8 @@ type CommissionTransferToBalanceReq struct {
 	Amount string `json:"amount" binding:"required"`
 }
 
+type CreateCommissionWithdrawalReq struct {
+	Amount  string `json:"amount" binding:"required"`
+	Channel string `json:"channel" binding:"required"`
+}
+

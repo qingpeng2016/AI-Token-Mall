@@ -22,6 +22,7 @@ type UsersRepo interface {
 	ApplyWalletDelta(ctx context.Context, tx *gorm.DB, userID uint, delta decimal.Decimal) (balanceAfter decimal.Decimal, err error)
 	// TransferCommissionToWallet 扣减 commission_balance、增加 wallet_balance（同一行锁内完成）。
 	TransferCommissionToWallet(ctx context.Context, tx *gorm.DB, userID uint, amount decimal.Decimal) (commissionAfter, walletAfter decimal.Decimal, err error)
+	ApplyCommissionDelta(ctx context.Context, tx *gorm.DB, userID uint, delta decimal.Decimal) (balanceAfter decimal.Decimal, err error)
 	UpdateLastLogin(ctx context.Context, id uint) error
 	UpdatePassword(ctx context.Context, id uint, passwordHash, passwordPlain string) error
 	Count(ctx context.Context) (int64, error)

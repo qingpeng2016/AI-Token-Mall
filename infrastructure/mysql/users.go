@@ -120,6 +120,28 @@ func (r *UsersImpl) FindByIDForUpdate(ctx context.Context, tx *gorm.DB, id uint)
 	return &u, nil
 }
 
+func (r *UsersImpl) ApplyCommissionDelta(ctx context.Context, tx *gorm.DB, userID uint, delta decimal.Decimal) (decimal.Decimal, error) {
+	u, err := r.FindByIDForUpdate(ctx, tx, userID)
+	if err != nil {
+		return decimal.Zero, err
+	}
+	if u == nil {
+		return decimal.Zero, gorm.ErrRecordNotFound
+	}
+	newBal := u.CommissionBalance.Add(delta)
+	if newBal.IsNegative() {
+		return decimal.Zero, fmt.Errorf("insufficient commission balance")
+	}
+	now := time.Now()
+	if err := repository.GormDB(ctx, r.db, tx).Model(&entity.Users{}).Where("id = ?", userID).Updates(map[string]interface{}{
+		"commission_balance": newBal,
+		"updated_at":         now,
+	}).Error; err != nil {
+		return decimal.Zero, err
+	}
+	return newBal, nil
+}
+
 func (r *UsersImpl) TransferCommissionToWallet(
 	ctx context.Context, tx *gorm.DB, userID uint, amount decimal.Decimal,
 ) (decimal.Decimal, decimal.Decimal, error) {

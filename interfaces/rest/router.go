@@ -93,6 +93,7 @@ func (r *Router) setupRouters() *gin.Engine {
 		userAuth.GET("/users/invite-rebate/members", r.inviteRebateHandler.ListMembers)
 		userAuth.GET("/users/invite-rebate/commission-records", r.inviteRebateHandler.ListCommissionRecords)
 		userAuth.GET("/users/invite-rebate/withdrawals", r.inviteRebateHandler.ListWithdrawals)
+		userAuth.POST("/users/invite-rebate/withdrawals", r.inviteRebateHandler.CreateWithdrawal)
 		userAuth.GET("/users/invite-rebate/payout-config", r.inviteRebateHandler.GetPayoutConfig)
 		userAuth.POST("/users/invite-rebate/payout-config/upload", r.inviteRebateHandler.UploadPayoutQR)
 		userAuth.POST("/users/invite-rebate/commission/transfer-to-balance", r.inviteRebateHandler.TransferCommissionToBalance)

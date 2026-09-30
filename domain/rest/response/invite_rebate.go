@@ -76,3 +76,8 @@ type CommissionTransferToBalanceResp struct {
 	CommissionBalance Money `json:"commission_balance"`
 	WalletBalance     Money `json:"wallet_balance"`
 }
+
+type CreateCommissionWithdrawalResp struct {
+	Withdrawal        InviteWithdrawalItem `json:"withdrawal"`
+	CommissionBalance Money                `json:"commission_balance"`
+}

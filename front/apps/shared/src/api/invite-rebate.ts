@@ -3,6 +3,7 @@ import type {
   InviteCommissionRecordListPage,
   InvitePayoutConfig,
   CommissionTransferToBalanceResult,
+  CreateCommissionWithdrawalResult,
   InviteRebateMemberList,
   InviteRebateOverview,
   InviteWithdrawalListPage,
@@ -34,6 +35,16 @@ export function createInviteRebateApi(options: HttpClientOptions) {
         ? `/api/v1/users/invite-rebate/commission-records?${qs}`
         : '/api/v1/users/invite-rebate/commission-records'
       const res = await http.get<ApiEnvelope<InviteCommissionRecordListPage>>(path)
+      return unwrap(res)
+    },
+    async createWithdrawal(body: {
+      amount: string
+      channel: 'alipay' | 'wechat'
+    }): Promise<CreateCommissionWithdrawalResult> {
+      const res = await http.post<ApiEnvelope<CreateCommissionWithdrawalResult>>(
+        '/api/v1/users/invite-rebate/withdrawals',
+        body,
+      )
       return unwrap(res)
     },
     async withdrawals(params?: { page?: number; page_size?: number }): Promise<InviteWithdrawalListPage> {

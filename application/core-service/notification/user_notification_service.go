@@ -69,6 +69,12 @@ var notificationTemplates = map[string]templateView{
 		Body:     "您已将佣金划转到账户余额，可在「账户余额」查看资金流水。",
 		LinkTab:  "account",
 	},
+	"commission_withdraw_submitted": {
+		Category: "finance",
+		Title:    "提现申请已提交",
+		Body:     "佣金提现申请已受理，打款后将更新状态，可在「邀请返利 → 提现记录」查看。",
+		LinkTab:  "sub-accounts",
+	},
 }
 
 type UserNotificationService struct {

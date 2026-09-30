@@ -74,3 +74,8 @@ export type CommissionTransferToBalanceResult = {
   commission_balance: string
   wallet_balance: string
 }
+
+export type CreateCommissionWithdrawalResult = {
+  withdrawal: InviteWithdrawalRecord
+  commission_balance: string
+}
