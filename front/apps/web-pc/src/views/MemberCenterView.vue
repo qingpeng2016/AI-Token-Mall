@@ -121,6 +121,13 @@ const withdrawalsPageSize = 9
 const withdrawalsTotal = ref(0)
 const withdrawalsLoaded = ref(false)
 const inviteRebateLoaded = ref(false)
+
+/** 返佣说明（与产品文案一致；不依赖后端 notes，避免旧服务缓存旧文案） */
+const inviteRebateDisplayNotes = [
+  '返佣比例按「邀请下级人数」自动升级，下级为注册时已绑定到您账号的用户。',
+  '受邀用户每笔已支付订单，按实付金额 × 当前返佣比例计算返利，支付成功后即时计入「佣金」。',
+  '佣金可划转到余额或者提现。',
+]
 const payoutQr = reactive({ alipay: '', wechat: '' })
 const payoutQrSetupOpen = ref(false)
 const payoutQrSetupChannel = ref<'alipay' | 'wechat'>('alipay')
@@ -1506,7 +1513,7 @@ function confirmAddTeamMember() {
                   <thead>
                     <tr>
                       <th>等级</th>
-                      <th>有效邀请（≥）</th>
+                      <th>邀请下级（≥）</th>
                       <th>返佣比例</th>
                     </tr>
                   </thead>
@@ -1533,16 +1540,11 @@ function confirmAddTeamMember() {
 
               <h3 class="panel-subtitle">说明</h3>
               <ul class="rebate-notes">
-                <li v-for="(note, i) in inviteRebateOverview?.notes ?? []" :key="i">{{ note }}</li>
+                <li v-for="(note, i) in inviteRebateDisplayNotes" :key="i">{{ note }}</li>
               </ul>
             </div>
 
             <div v-else-if="inviteRebatePanelTab === 'members'" role="tabpanel">
-              <div class="panel-tab-toolbar">
-                <button type="button" class="atm-btn-primary btn-xs" @click="openTeamInviteModal">
-                  邀请成员
-                </button>
-              </div>
               <div class="table-wrap">
                 <table class="data-table">
                   <thead>
@@ -1564,7 +1566,7 @@ function confirmAddTeamMember() {
                 </table>
               </div>
               <p v-if="inviteRebateLoaded && !inviteMembers.length" class="empty">
-                暂无邀请成员，点击上方「邀请成员」分享链接。
+                暂无邀请成员，请分享您的专属推广域名。
               </p>
             </div>
 
@@ -1577,7 +1579,6 @@ function confirmAddTeamMember() {
                   <thead>
                     <tr>
                       <th>邀请用户</th>
-                      <th>订单号</th>
                       <th>商品</th>
                       <th>订单金额</th>
                       <th>返利金额</th>
@@ -1590,7 +1591,6 @@ function confirmAddTeamMember() {
                         <strong>{{ r.invitee_nickname || r.invitee_email || '—' }}</strong>
                         <span v-if="r.invitee_email" class="cell-sub muted">{{ r.invitee_email }}</span>
                       </td>
-                      <td class="mono">{{ r.order_no }}</td>
                       <td>{{ r.product_name }}</td>
                       <td>{{ formatCny(r.order_amount) }}</td>
                       <td class="amount-plus">+{{ formatCny(r.rebate_amount) }}</td>
