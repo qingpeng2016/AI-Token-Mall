@@ -48,7 +48,7 @@ func (s *Service) ListMainKeys(ctx context.Context, userID uint) ([]response.Use
 	if err != nil {
 		return nil, errorx.ErrDbError
 	}
-	names, err := s.subscriptionNameMap(ctx, userID)
+	names, err := s.subscriptionNamesForKeyRows(ctx, rows)
 	if err != nil {
 		return nil, err
 	}
@@ -316,6 +316,10 @@ func (s *Service) subscriptionNameMap(ctx context.Context, userID uint) (map[uin
 	if err != nil {
 		return nil, errorx.ErrDbError
 	}
+	return subscriptionNamesFromSubscriptionRows(rows), nil
+}
+
+func subscriptionNamesFromSubscriptionRows(rows []entity.UserSubscriptions) map[uint]string {
 	out := make(map[uint]string, len(rows))
 	for _, row := range rows {
 		name := row.ProductCardTitle
@@ -323,6 +327,32 @@ func (s *Service) subscriptionNameMap(ctx context.Context, userID uint) (map[uin
 			name = row.SKUProductName
 		}
 		out[row.ID] = name
+	}
+	return out
+}
+
+func (s *Service) subscriptionNamesForKeyRows(ctx context.Context, keyRows []entity.UserAPIKeys) (map[uint]string, error) {
+	out := make(map[uint]string)
+	for _, k := range keyRows {
+		if _, ok := out[k.UserSubscriptionID]; ok {
+			continue
+		}
+		sub, err := s.subs.FindOne(ctx, nil, map[string]interface{}{"id": k.UserSubscriptionID}, "")
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				out[k.UserSubscriptionID] = "团队套餐"
+				continue
+			}
+			return nil, errorx.ErrDbError
+		}
+		name := sub.ProductCardTitle
+		if name == "" {
+			name = sub.SKUProductName
+		}
+		if name == "" {
+			name = "团队套餐"
+		}
+		out[k.UserSubscriptionID] = name
 	}
 	return out, nil
 }

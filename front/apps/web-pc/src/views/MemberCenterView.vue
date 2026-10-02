@@ -1471,7 +1471,12 @@ async function confirmAddTeamMember() {
                   <tbody>
                     <tr v-for="row in myApiKeyRows" :key="row.id">
                       <td>
-                        <span class="tag tag--key-main">主 Key</span>
+                        <span
+                          class="tag"
+                          :class="row.key_type === 'main' ? 'tag--key-main' : 'tag--key-team'"
+                        >
+                          {{ row.key_type === 'main' ? '主 Key' : '团队子 Key' }}
+                        </span>
                       </td>
                       <td>{{ row.subscription_name }}</td>
                       <td class="mono">{{ row.key_masked }}</td>
@@ -1500,7 +1505,9 @@ async function confirmAddTeamMember() {
                   </tbody>
                 </table>
               </div>
-              <p v-else class="empty">暂无 Key，开通套餐或分配团队子 Key 后将在此展示。</p>
+              <p v-else class="empty">
+                暂无 Key。开通套餐获得主 Key，或由团队负责人为您分配子 Key 后将在此展示。
+              </p>
             </div>
 
             <div v-else-if="apiKeyPanelTab === 'team'" role="tabpanel">

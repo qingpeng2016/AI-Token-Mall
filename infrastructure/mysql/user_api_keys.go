@@ -37,11 +37,12 @@ func (r *UserAPIKeysImpl) FindByID(ctx context.Context, id uint) (*entity.UserAP
 	return &row, nil
 }
 
+// ListMainByUserID 当前用户持有的 Key（含自建主 Key + 他人分配的团队子 Key）。
 func (r *UserAPIKeysImpl) ListMainByUserID(ctx context.Context, userID uint) ([]entity.UserAPIKeys, error) {
 	var rows []entity.UserAPIKeys
 	err := r.db.WithContext(ctx).
-		Where("user_id = ? AND key_type = ? AND status <> ?", userID, "main", "rotated").
-		Order("id DESC").
+		Where("user_id = ? AND status <> ?", userID, "rotated").
+		Order("key_type ASC, id DESC").
 		Find(&rows).Error
 	return rows, err
 }
