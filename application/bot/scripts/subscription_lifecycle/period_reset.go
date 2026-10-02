@@ -46,13 +46,6 @@ func (j *SubscriptionLifecycleJob) periodResetSubscription(ctx context.Context, 
 			return err
 		}
 
-		return j.apiKeys.UpdateWhere(ctx, tx, map[string]interface{}{
-			"user_subscription_id = ?": sub.ID,
-			"status <> ?":              "rotated",
-		}, map[string]interface{}{
-			"limit_tokens": sub.BaseLimitTokens,
-			"used_tokens":  0,
-			"updated_at":   now,
-		})
+		return j.periodResetMainAndSubKeysForSubscription(ctx, tx, sub.ID, sub.BaseLimitTokens, now)
 	})
 }

@@ -33,13 +33,7 @@ func (j *SubscriptionLifecycleJob) expireSubscription(ctx context.Context, subID
 			return err
 		}
 
-		return j.apiKeys.UpdateWhere(ctx, tx, map[string]interface{}{
-			"user_subscription_id = ?": sub.ID,
-			"status <> ?":              "rotated",
-		}, map[string]interface{}{
-			"status":     "expired",
-			"updated_at": now,
-		})
+		return j.expireMainAndSubKeysForSubscription(ctx, tx, sub.ID, now)
 	})
 }
 
