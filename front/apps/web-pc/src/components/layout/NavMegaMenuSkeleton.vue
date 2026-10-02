@@ -29,7 +29,7 @@ withDefaults(
 .sk-col-title {
   width: 72px;
   height: 16px;
-  margin: 0 0 10px 4px;
+  margin: 0 8px 8px;
 }
 
 .sk-row {
@@ -41,6 +41,7 @@ withDefaults(
   display: grid;
   grid-template-columns: repeat(3, minmax(158px, 1fr));
   gap: 18px 28px;
+  align-items: start;
   min-height: 220px;
 }
 
@@ -58,6 +59,9 @@ withDefaults(
 }
 
 .mega-col {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   min-width: 0;
 }
 

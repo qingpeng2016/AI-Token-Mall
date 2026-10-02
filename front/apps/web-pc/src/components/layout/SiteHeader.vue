@@ -412,6 +412,7 @@ function isSpaNav(href: string) {
   display: grid;
   grid-template-columns: repeat(3, minmax(158px, 1fr));
   gap: 18px 28px;
+  align-items: start;
 }
 
 @media (min-width: 1100px) {
@@ -419,11 +420,25 @@ function isSpaNav(href: string) {
     grid-template-columns: repeat(5, minmax(172px, 1fr));
     gap: 16px 20px;
   }
+
+  @supports (grid-template-rows: subgrid) {
+    .mega-grid {
+      grid-template-rows: auto 1fr;
+    }
+
+    .mega-col {
+      grid-row: span 2;
+      display: grid;
+      grid-template-rows: subgrid;
+    }
+  }
 }
 
 .mega-col-title {
   margin: 0 0 8px;
-  padding: 0 4px;
+  padding: 0 8px;
+  min-height: 20px;
+  line-height: 20px;
   font-size: 13px;
   font-weight: 700;
   color: var(--atm-text);
@@ -436,6 +451,9 @@ function isSpaNav(href: string) {
 }
 
 .mega-col {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   min-width: 0;
 }
 
