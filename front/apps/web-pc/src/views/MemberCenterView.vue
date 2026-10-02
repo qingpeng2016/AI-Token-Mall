@@ -453,28 +453,40 @@ function onInvoicesPageChange(page: number) {
 
 async function fetchApiKeysTabData() {
   await withTopLoading(async () => {
+    if (!plansLoaded.value) {
+      await fetchPlansTabData().catch(() => {})
+    }
+    if (!inviteRebateOverview.value) {
+      void inviteRebateApi
+        .overview()
+        .then((overview) => {
+          inviteRebateOverview.value = overview
+        })
+        .catch(() => {})
+    }
     try {
-      if (!plansLoaded.value) {
-        await fetchPlansTabData()
-      }
-      if (!inviteRebateOverview.value) {
-        const overview = await inviteRebateApi.overview()
-        inviteRebateOverview.value = overview
-      }
-      const [mainKeys, teamKeys, members] = await Promise.all([
-        apiKeyApi.listMainKeys(),
-        apiKeyApi.listTeamKeys(),
-        apiKeyApi.listTeamMembers(),
-      ])
-      mainApiKeys.value = mainKeys
-      teamApiKeys.value = teamKeys
-      teamMembers.value = members
+      mainApiKeys.value = await apiKeyApi.listMainKeys()
+    } catch (e) {
+      handleMemberAuthError(e, '我的 Key 加载失败')
+      mainApiKeys.value = []
+    }
+    try {
+      teamApiKeys.value = await apiKeyApi.listTeamKeys()
+    } catch {
+      teamApiKeys.value = []
+    }
+    try {
+      teamMembers.value = await apiKeyApi.listTeamMembers()
+    } catch {
+      teamMembers.value = []
+    }
+    try {
       const inquiryStatus = await apiKeyApi.getEnterpriseInquiry()
       hasEnterpriseInquiry.value = inquiryStatus.has_inquiry
-      apiKeysLoaded.value = true
-    } catch (e) {
-      handleMemberAuthError(e, 'API Key 加载失败')
+    } catch {
+      hasEnterpriseInquiry.value = false
     }
+    apiKeysLoaded.value = true
   })
 }
 

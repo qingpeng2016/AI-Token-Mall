@@ -48,13 +48,14 @@ func (s *Service) ListMainKeys(ctx context.Context, userID uint) ([]response.Use
 	if err != nil {
 		return nil, errorx.ErrDbError
 	}
-	names, err := s.subscriptionNamesForKeyRows(ctx, rows)
-	if err != nil {
-		return nil, err
-	}
+	names := s.subscriptionNamesForKeyRows(ctx, rows)
 	items := make([]response.UserAPIKeyItem, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, mapKeyItem(&row, names[row.UserSubscriptionID], "", ""))
+		name := names[row.UserSubscriptionID]
+		if name == "" {
+			name = "团队套餐"
+		}
+		items = append(items, mapKeyItem(&row, name, "", ""))
 	}
 	return items, nil
 }
@@ -319,19 +320,25 @@ func (s *Service) subscriptionNameMap(ctx context.Context, userID uint) (map[uin
 	return subscriptionNamesFromSubscriptionRows(rows), nil
 }
 
-func subscriptionNamesFromSubscriptionRows(rows []entity.UserSubscriptions) map[uint]string {
+func subscriptionDisplayName(productCardTitle, skuProductName string) string {
+	if productCardTitle != "" {
+		return productCardTitle
+	}
+	if skuProductName != "" {
+		return skuProductName
+	}
+	return "团队套餐"
+}
+
+func subscriptionNamesFromSubscriptionRows(rows []repository.UserSubscriptionsListRow) map[uint]string {
 	out := make(map[uint]string, len(rows))
 	for _, row := range rows {
-		name := row.ProductCardTitle
-		if name == "" {
-			name = row.SKUProductName
-		}
-		out[row.ID] = name
+		out[row.ID] = subscriptionDisplayName(row.ProductCardTitle, row.SKUProductName)
 	}
 	return out
 }
 
-func (s *Service) subscriptionNamesForKeyRows(ctx context.Context, keyRows []entity.UserAPIKeys) (map[uint]string, error) {
+func (s *Service) subscriptionNamesForKeyRows(ctx context.Context, keyRows []entity.UserAPIKeys) map[uint]string {
 	out := make(map[uint]string)
 	for _, k := range keyRows {
 		if _, ok := out[k.UserSubscriptionID]; ok {
@@ -339,22 +346,12 @@ func (s *Service) subscriptionNamesForKeyRows(ctx context.Context, keyRows []ent
 		}
 		sub, err := s.subs.FindOne(ctx, nil, map[string]interface{}{"id": k.UserSubscriptionID}, "")
 		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				out[k.UserSubscriptionID] = "团队套餐"
-				continue
-			}
-			return nil, errorx.ErrDbError
+			out[k.UserSubscriptionID] = "团队套餐"
+			continue
 		}
-		name := sub.ProductCardTitle
-		if name == "" {
-			name = sub.SKUProductName
-		}
-		if name == "" {
-			name = "团队套餐"
-		}
-		out[k.UserSubscriptionID] = name
+		out[k.UserSubscriptionID] = subscriptionDisplayName("", sub.SKUProductName)
 	}
-	return out, nil
+	return out
 }
 
 func (s *Service) memberLabels(ctx context.Context, userID uint) (nickname, email string) {

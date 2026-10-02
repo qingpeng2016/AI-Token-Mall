@@ -17,11 +17,11 @@ export function createApiKeyApi(options: HttpClientOptions) {
   return {
     async listMainKeys(): Promise<UserAPIKeyItem[]> {
       const res = await http.get<ApiEnvelope<UserAPIKeyItem[]>>('/api/v1/users/api-keys/main')
-      return unwrap(res)
+      return unwrap(res) ?? []
     },
     async listTeamKeys(): Promise<UserAPIKeyItem[]> {
       const res = await http.get<ApiEnvelope<UserAPIKeyItem[]>>('/api/v1/users/api-keys/team')
-      return unwrap(res)
+      return unwrap(res) ?? []
     },
     async createSubKey(body: {
       user_subscription_id: number
