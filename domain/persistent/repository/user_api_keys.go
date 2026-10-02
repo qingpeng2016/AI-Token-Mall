@@ -14,5 +14,6 @@ type UserAPIKeysRepo interface {
 	ListMainByUserID(ctx context.Context, userID uint) ([]entity.UserAPIKeys, error)
 	ListSubByOwnerUserID(ctx context.Context, ownerUserID uint) ([]entity.UserAPIKeys, error)
 	SumActiveLimitTokensBySubscription(ctx context.Context, subscriptionID uint, excludeKeyID uint) (int64, error)
+	SumActiveSubKeyLimitTokensBySubscription(ctx context.Context, subscriptionID uint, excludeKeyID uint) (int64, error)
 	ExistsActiveSubKey(ctx context.Context, subscriptionID, memberUserID uint) (bool, error)
 }

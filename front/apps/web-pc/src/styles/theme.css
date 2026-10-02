@@ -97,5 +97,6 @@ body {
   left: 50% !important;
   right: auto !important;
   bottom: auto !important;
+  z-index: 10001 !important;
   transform: translate(-50%, -50%) !important;
 }

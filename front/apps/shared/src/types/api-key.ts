@@ -10,6 +10,8 @@ export type UserAPIKeyItem = {
   member_user_id?: number
   member_nickname?: string
   member_email?: string
+  /** 仅创建子 Key 时返回一次 */
+  api_key?: string
 }
 
 export type ApiTeamMemberItem = {

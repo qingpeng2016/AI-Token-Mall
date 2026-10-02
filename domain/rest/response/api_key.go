@@ -12,10 +12,8 @@ type UserAPIKeyItem struct {
 	MemberUserID         uint   `json:"member_user_id,omitempty"`
 	MemberNickname       string `json:"member_nickname,omitempty"`
 	MemberEmail          string `json:"member_email,omitempty"`
-}
-
-type UserAPIKeyRevealResp struct {
-	APIKey string `json:"api_key"`
+	// APIKey 仅创建子 Key 时返回一次，不入库。
+	APIKey string `json:"api_key,omitempty"`
 }
 
 type ApiTeamMemberItem struct {

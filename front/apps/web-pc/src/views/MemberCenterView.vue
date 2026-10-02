@@ -154,6 +154,7 @@ const transferForm = reactive({
   amountYuan: '',
 })
 const assignSubKeyOpen = ref(false)
+const assignSubKeySubmitting = ref(false)
 const assignSubKeyForm = reactive({
   subscriptionId: null as number | null,
   memberUserId: null as number | null,
@@ -164,8 +165,26 @@ const editSubKeyLimitOpen = ref(false)
 const editSubKeyLimitTargetId = ref<number | null>(null)
 const editSubKeyLimitValue = ref(0)
 
-const assignSubKeySubscription = computed(() =>
-  memberSubscriptions.value.find((s) => s.id === assignSubKeyForm.subscriptionId),
+const assignSubKeySubscription = computed(() => {
+  const subId = Number(assignSubKeyForm.subscriptionId)
+  return memberSubscriptions.value.find((s) => Number(s.id) === subId)
+})
+
+function eligibleMembersForAssignSubKey(subscriptionId: number) {
+  const subId = Number(subscriptionId)
+  if (!Number.isFinite(subId) || subId <= 0) return []
+  const taken = new Set<number>()
+  for (const k of teamApiKeys.value) {
+    if (k.status !== 'active') continue
+    if (Number(k.user_subscription_id) !== subId) continue
+    const uid = Number(k.member_user_id)
+    if (uid > 0) taken.add(uid)
+  }
+  return teamMembersForSubKey.value.filter((m) => !taken.has(Number(m.user_id)))
+}
+
+const assignSubKeyEligibleMembers = computed(() =>
+  eligibleMembersForAssignSubKey(Number(assignSubKeyForm.subscriptionId)),
 )
 
 const editSubKeyLimitTarget = computed(() =>
@@ -183,6 +202,11 @@ const editSubKeyLimitMainTotal = computed(() => {
 
 const activeTeamMembers = computed(() =>
   teamMembers.value.filter((m) => m.status === 'active'),
+)
+
+/** 可分配子 Key：须已绑定商城 user_id */
+const teamMembersForSubKey = computed(() =>
+  activeTeamMembers.value.filter((m) => Number(m.user_id) > 0),
 )
 
 const activeTeamSubKeys = computed(() =>
@@ -354,15 +378,17 @@ function onOrdersPageChange(page: number) {
   void fetchOrdersTabData()
 }
 
+const toastAboveModal = { zIndex: 10000 }
+
 function handleMemberAuthError(e: unknown, fallback: string) {
   const msg = e instanceof Error ? e.message : ''
   if (/unauthorized|401/i.test(msg)) {
-    ElMessage.error('登录已失效，请重新登录')
+    ElMessage.error({ message: '登录已失效，请重新登录', ...toastAboveModal })
     clearSessionUser()
     void router.replace({ path: '/login', query: { redirect: route.fullPath } })
     return
   }
-  ElMessage.error(msg || fallback)
+  ElMessage.error({ message: msg || fallback, ...toastAboveModal })
 }
 
 async function fetchMemberProfile() {
@@ -707,8 +733,6 @@ function mockAction(msg: string) {
   ElMessage.info(msg)
 }
 
-const toastAboveModal = { zIndex: 10000 }
-
 function fallbackCopyText(text: string): boolean {
   try {
     const ta = document.createElement('textarea')
@@ -747,15 +771,6 @@ async function copyToClipboard(text: string, successMessage: string) {
     ElMessage.success({ message: successMessage, ...toastAboveModal })
   } else {
     ElMessage.warning({ message: '复制失败，请手动选择输入框内容复制', ...toastAboveModal })
-  }
-}
-
-async function copyApiKey(keyId: number) {
-  try {
-    const fullKey = await apiKeyApi.revealKey(keyId)
-    void copyToClipboard(fullKey, '已复制 API Key')
-  } catch (e) {
-    handleMemberAuthError(e, '无法复制 Key')
   }
 }
 
@@ -920,23 +935,49 @@ const payoutQrSetupTitle = computed(() =>
 )
 
 function syncAssignSubKeyLimitFromPlan() {
-  const sub = memberSubscriptions.value.find((s) => s.id === assignSubKeyForm.subscriptionId)
+  const subId = Number(assignSubKeyForm.subscriptionId)
+  const sub = memberSubscriptions.value.find((s) => Number(s.id) === subId)
   assignSubKeyForm.limitTokens = sub?.limit_tokens ?? 0
 }
 
+function syncAssignSubKeyMemberFromPlan() {
+  const eligible = assignSubKeyEligibleMembers.value
+  const current = Number(assignSubKeyForm.memberUserId)
+  if (eligible.some((m) => Number(m.user_id) === current)) return
+  assignSubKeyForm.memberUserId = eligible[0]?.user_id ?? null
+}
+
+function onAssignSubKeyPlanChange() {
+  syncAssignSubKeyLimitFromPlan()
+  syncAssignSubKeyMemberFromPlan()
+}
+
 function openAssignSubKeyModal() {
+  assignSubKeySubmitting.value = false
   const activeSubs = memberSubscriptions.value.filter((s) => s.status === 'active')
   if (!activeSubs.length) {
-    ElMessage.warning('请先开通套餐')
+    ElMessage.warning({ message: '请先开通套餐', ...toastAboveModal })
     return
   }
-  if (!activeTeamMembers.value.length) {
-    ElMessage.warning('请先在「我的团队」添加成员')
+  if (!teamMembersForSubKey.value.length) {
+    ElMessage.warning({
+      message: '请先在「我的团队」添加已注册成员（须绑定商城账号）',
+      ...toastAboveModal,
+    })
     return
   }
-  assignSubKeyForm.subscriptionId = activeSubs[0]?.id ?? null
-  assignSubKeyForm.memberUserId = activeTeamMembers.value[0]?.user_id ?? null
+  const subWithSlot =
+    activeSubs.find((s) => eligibleMembersForAssignSubKey(Number(s.id)).length > 0) ?? null
+  if (!subWithSlot) {
+    ElMessage.warning({
+      message: '各生效套餐下的团队成员均已分配子 Key',
+      ...toastAboveModal,
+    })
+    return
+  }
+  assignSubKeyForm.subscriptionId = subWithSlot.id
   syncAssignSubKeyLimitFromPlan()
+  syncAssignSubKeyMemberFromPlan()
   assignSubKeyOpen.value = true
 }
 
@@ -974,23 +1015,42 @@ async function confirmEditSubKeyLimit() {
 }
 
 async function confirmAssignSubKey() {
-  const subId = assignSubKeyForm.subscriptionId
-  const memberUserId = assignSubKeyForm.memberUserId
-  if (subId == null || memberUserId == null) {
-    ElMessage.warning('请选择套餐与团队成员')
+  if (assignSubKeySubmitting.value) return
+  const subId = Number(assignSubKeyForm.subscriptionId)
+  const memberUserId = Number(assignSubKeyForm.memberUserId)
+  if (!Number.isFinite(subId) || subId <= 0 || !Number.isFinite(memberUserId) || memberUserId <= 0) {
+    ElMessage.warning({ message: '请选择套餐与团队成员', ...toastAboveModal })
     return
   }
-  const subscription = memberSubscriptions.value.find((s) => s.id === subId)
-  if (!subscription) return
+  if (!assignSubKeyEligibleMembers.value.some((m) => Number(m.user_id) === memberUserId)) {
+    ElMessage.warning({
+      message: '该成员在此套餐下已分配子 Key，请重新选择',
+      ...toastAboveModal,
+    })
+    return
+  }
+  const subscription = memberSubscriptions.value.find((s) => Number(s.id) === subId)
+  if (!subscription) {
+    ElMessage.warning({ message: '未找到所选套餐，请关闭弹窗后重试', ...toastAboveModal })
+    return
+  }
 
-  const mainLimit = subscription.limit_tokens
-  let limitTokens = Math.floor(assignSubKeyForm.limitTokens)
+  const mainLimit = Number(subscription.limit_tokens)
+  let limitTokens = Math.floor(Number(assignSubKeyForm.limitTokens))
   if (!Number.isFinite(limitTokens) || limitTokens <= 0) limitTokens = mainLimit
+  if (!Number.isFinite(mainLimit) || mainLimit <= 0) {
+    ElMessage.warning({ message: '套餐额度无效，请刷新页面后重试', ...toastAboveModal })
+    return
+  }
   if (limitTokens > mainLimit) {
-    ElMessage.warning(`用量上限不能超过主 Key 套餐总量（${formatTokens(mainLimit)}）`)
+    ElMessage.warning({
+      message: `用量上限不能超过主 Key 套餐总量（${formatTokens(mainLimit)}）`,
+      ...toastAboveModal,
+    })
     return
   }
 
+  assignSubKeySubmitting.value = true
   try {
     const created = await apiKeyApi.createSubKey({
       user_subscription_id: subId,
@@ -1000,9 +1060,21 @@ async function confirmAssignSubKey() {
     teamApiKeys.value.unshift(created)
     assignSubKeyOpen.value = false
     apiKeyPanelTab.value = 'team'
-    ElMessage.success('子 Key 已分配')
+    void nextTick(() => {
+      if (created.api_key) {
+        void copyToClipboard(
+          created.api_key,
+          '子 Key 已复制（完整 Key 仅展示一次，请妥善保存）',
+        )
+      } else {
+        ElMessage.success({ message: '子 Key 已分配', ...toastAboveModal })
+      }
+    })
+    void fetchApiKeysTabData()
   } catch (e) {
     handleMemberAuthError(e, '分配子 Key 失败')
+  } finally {
+    assignSubKeySubmitting.value = false
   }
 }
 
@@ -1392,8 +1464,8 @@ async function confirmAddTeamMember() {
                       <th>类型</th>
                       <th>关联套餐</th>
                       <th>API Key</th>
+                      <th>使用量 / 总量</th>
                       <th>状态</th>
-                      <th />
                     </tr>
                   </thead>
                   <tbody>
@@ -1403,6 +1475,19 @@ async function confirmAddTeamMember() {
                       </td>
                       <td>{{ row.subscription_name }}</td>
                       <td class="mono">{{ row.key_masked }}</td>
+                      <td class="subkey-usage">
+                        <span class="subkey-usage-text">
+                          {{ formatTokens(row.used_tokens) }} / {{ formatTokens(row.limit_tokens) }}
+                        </span>
+                        <div class="progress-track progress-track--sm">
+                          <div
+                            class="progress-fill"
+                            :style="{
+                              width: `${usagePercent(row.used_tokens, row.limit_tokens)}%`,
+                            }"
+                          />
+                        </div>
+                      </td>
                       <td>
                         <span
                           class="tag"
@@ -1410,11 +1495,6 @@ async function confirmAddTeamMember() {
                         >{{
                           row.status === 'active' ? '使用中' : '不可用'
                         }}</span>
-                      </td>
-                      <td>
-                        <button type="button" class="link-btn" @click="copyApiKey(row.id)">
-                          复制
-                        </button>
                       </td>
                     </tr>
                   </tbody>
@@ -1460,9 +1540,6 @@ async function confirmAddTeamMember() {
                         </div>
                       </td>
                       <td class="subkey-row-actions">
-                        <button type="button" class="link-btn" @click="copyApiKey(k.id)">
-                          复制
-                        </button>
                         <button
                           type="button"
                           class="link-btn"
@@ -2213,7 +2290,12 @@ async function confirmAddTeamMember() {
         class="team-invite-backdrop"
         @click.self="assignSubKeyOpen = false"
       >
-        <div class="team-invite-panel" role="dialog" aria-labelledby="assign-subkey-title">
+        <div
+          class="team-invite-panel team-invite-panel--assign-subkey"
+          role="dialog"
+          aria-labelledby="assign-subkey-title"
+          @click.stop
+        >
           <header class="team-invite-head">
             <h3 id="assign-subkey-title">分配子 Key</h3>
             <button
@@ -2228,51 +2310,69 @@ async function confirmAddTeamMember() {
           <p class="team-invite-lead">
             从您的套餐额度中为团队成员生成独立子 Key，调用计入该套餐，用量单独归属成员。
           </p>
-          <label class="team-invite-field">
-            <span class="metric-label">关联套餐</span>
-            <select
-              v-model="assignSubKeyForm.subscriptionId"
-              class="member-select"
-              @change="syncAssignSubKeyLimitFromPlan"
-            >
-              <option
-                v-for="s in memberSubscriptions.filter((x) => x.status === 'active')"
-                :key="s.id"
-                :value="s.id"
+          <form class="assign-subkey-form" novalidate @submit.prevent="confirmAssignSubKey">
+            <label class="team-invite-field">
+              <span class="metric-label">关联套餐</span>
+              <select
+                v-model.number="assignSubKeyForm.subscriptionId"
+                class="member-select"
+                @change="onAssignSubKeyPlanChange"
               >
-                {{ s.product_name }}
-              </option>
-            </select>
-          </label>
-          <label class="team-invite-field">
-            <span class="metric-label">用量上限（tokens）</span>
-            <input
-              v-model.number="assignSubKeyForm.limitTokens"
-              type="number"
-              class="team-invite-input"
-              min="1"
-              :max="assignSubKeySubscription?.limit_tokens"
-            />
-            <p v-if="assignSubKeySubscription" class="field-hint">
-              默认与主 Key 一致：{{ formatTokens(assignSubKeySubscription.limit_tokens) }}（本周期套餐总量）
-            </p>
-          </label>
-          <label class="team-invite-field">
-            <span class="metric-label">团队成员</span>
-            <select v-model="assignSubKeyForm.memberUserId" class="member-select">
-              <option v-for="m in activeTeamMembers" :key="m.id" :value="m.user_id">
-                {{ m.nickname }}（{{ m.email }}）
-              </option>
-            </select>
-          </label>
-          <div class="assign-subkey-actions">
-            <button type="button" class="atm-btn-ghost btn-xs" @click="assignSubKeyOpen = false">
-              取消
-            </button>
-            <button type="button" class="atm-btn-primary btn-xs" @click="confirmAssignSubKey">
-              确认分配
-            </button>
-          </div>
+                <option
+                  v-for="s in memberSubscriptions.filter((x) => x.status === 'active')"
+                  :key="s.id"
+                  :value="s.id"
+                >
+                  {{ s.product_name }}
+                </option>
+              </select>
+            </label>
+            <label class="team-invite-field">
+              <span class="metric-label">用量上限（tokens）</span>
+              <input
+                v-model.number="assignSubKeyForm.limitTokens"
+                type="number"
+                class="team-invite-input"
+                min="1"
+                :max="assignSubKeySubscription?.limit_tokens"
+              />
+              <p v-if="assignSubKeySubscription" class="field-hint">
+                默认与主 Key 一致：{{ formatTokens(assignSubKeySubscription.limit_tokens) }}（本周期套餐总量）
+              </p>
+            </label>
+            <label class="team-invite-field">
+              <span class="metric-label">团队成员</span>
+              <select
+                v-model.number="assignSubKeyForm.memberUserId"
+                class="member-select"
+                :disabled="!assignSubKeyEligibleMembers.length"
+              >
+                <option v-for="m in assignSubKeyEligibleMembers" :key="m.id" :value="m.user_id">
+                  {{ m.nickname }}（{{ m.email }}）
+                </option>
+              </select>
+              <p v-if="!assignSubKeyEligibleMembers.length" class="field-hint">
+                该套餐下可分配成员已全部拥有子 Key，请切换关联套餐或先在「我的团队」添加成员。
+              </p>
+            </label>
+            <div class="assign-subkey-actions">
+              <button
+                type="button"
+                class="atm-btn-ghost btn-xs"
+                :disabled="assignSubKeySubmitting"
+                @click="assignSubKeyOpen = false"
+              >
+                取消
+              </button>
+              <button
+                type="submit"
+                class="atm-btn-primary btn-xs"
+                :disabled="assignSubKeySubmitting || !assignSubKeyEligibleMembers.length"
+              >
+                {{ assignSubKeySubmitting ? '提交中…' : '确认分配' }}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
 
@@ -3290,10 +3390,14 @@ async function confirmAddTeamMember() {
   margin-top: 14px;
 }
 
+.assign-subkey-form {
+  margin: 0;
+}
+
 .team-invite-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 2050;
+  z-index: 3000;
   display: flex;
   align-items: center;
   justify-content: center;

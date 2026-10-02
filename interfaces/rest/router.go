@@ -102,7 +102,6 @@ func (r *Router) setupRouters() *gin.Engine {
 		userAuth.POST("/users/invite-rebate/commission/transfer-to-balance", r.inviteRebateHandler.TransferCommissionToBalance)
 		userAuth.GET("/users/api-keys/main", r.userAPIKeyHandler.ListMain)
 		userAuth.GET("/users/api-keys/team", r.userAPIKeyHandler.ListTeam)
-		userAuth.GET("/users/api-keys/:id/reveal", r.userAPIKeyHandler.Reveal)
 		userAuth.POST("/users/api-keys/sub", r.userAPIKeyHandler.CreateSub)
 		userAuth.PATCH("/users/api-keys/:id/limit", r.userAPIKeyHandler.UpdateSubLimit)
 		userAuth.GET("/users/api-team/members", r.userAPIKeyHandler.ListTeamMembers)

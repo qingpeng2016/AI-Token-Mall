@@ -2,23 +2,11 @@ package apikey
 
 import "strings"
 
-// PrefixFromPlaintext 入库展示用前缀（ap- + 前 6 位随机段）。
-func PrefixFromPlaintext(plaintext string) string {
-	plaintext = strings.TrimSpace(plaintext)
-	if len(plaintext) <= 10 {
-		return plaintext
-	}
-	return plaintext[:10]
-}
-
-// Masked 脱敏展示。
-func Masked(prefix string) string {
-	prefix = strings.TrimSpace(prefix)
-	if prefix == "" {
+// MaskedFromHash 列表脱敏（仅存 SHA-256 哈希时使用）。
+func MaskedFromHash(hash string) string {
+	hash = strings.TrimSpace(hash)
+	if len(hash) < 12 {
 		return "ap-••••••••••••"
 	}
-	if len(prefix) >= 10 {
-		return prefix[:7] + "••••••" + prefix[len(prefix)-2:]
-	}
-	return prefix + "••••••"
+	return hash[:4] + "••••••" + hash[len(hash)-4:]
 }

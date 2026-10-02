@@ -10,8 +10,6 @@ type UserAPIKeys struct {
 	UserSubscriptionID   uint       `gorm:"column:user_subscription_id;not null"`
 	KeyType              string     `gorm:"column:key_type;size:16;not null;default:main"`
 	KeyHash              string     `gorm:"column:key_hash;size:64;not null"`
-	KeyPrefix            string     `gorm:"column:key_prefix;size:16;not null;default:''"`
-	KeyCiphertext        []byte     `gorm:"column:key_ciphertext"`
 	ProductsCategoryName string     `gorm:"column:products_category_name;size:32;not null"`
 	LimitTokens          int64      `gorm:"column:limit_tokens;not null"`
 	UsedTokens           int64      `gorm:"column:used_tokens;not null;default:0"`

@@ -48,25 +48,6 @@ func (h *UserAPIKeyHandler) ListTeam(c *gin.Context) {
 	response.ResponseSuccess(c, data)
 }
 
-func (h *UserAPIKeyHandler) Reveal(c *gin.Context) {
-	userID, ok := ginMiddleware.UserIDFromContext(c)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "unauthorized", "data": nil})
-		return
-	}
-	keyID, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil || keyID == 0 {
-		response.ResponseErr(c, errorx.ErrParamsError)
-		return
-	}
-	data, err := h.svc.RevealKey(c.Request.Context(), userID, uint(keyID))
-	if err != nil {
-		response.ResponseErr(c, err)
-		return
-	}
-	response.ResponseSuccess(c, data)
-}
-
 func (h *UserAPIKeyHandler) CreateSub(c *gin.Context) {
 	userID, ok := ginMiddleware.UserIDFromContext(c)
 	if !ok {

@@ -23,7 +23,6 @@ type Service struct {
 	users           repository.UsersRepo
 	enterpriseUsers repository.EnterpriseUsersRepo
 	inquiries       repository.EnterpriseInquiryRepo
-	vault           *apikey.Vault
 }
 
 func NewService(
@@ -33,7 +32,6 @@ func NewService(
 	users repository.UsersRepo,
 	enterpriseUsers repository.EnterpriseUsersRepo,
 	inquiries repository.EnterpriseInquiryRepo,
-	vault *apikey.Vault,
 ) *Service {
 	return &Service{
 		tx:              tx,
@@ -42,7 +40,6 @@ func NewService(
 		users:           users,
 		enterpriseUsers: enterpriseUsers,
 		inquiries:       inquiries,
-		vault:           vault,
 	}
 }
 
@@ -79,29 +76,9 @@ func (s *Service) ListTeamSubKeys(ctx context.Context, ownerUserID uint) ([]resp
 	return items, nil
 }
 
-func (s *Service) RevealKey(ctx context.Context, actorUserID, keyID uint) (*response.UserAPIKeyRevealResp, error) {
-	row, err := s.apiKeys.FindByID(ctx, keyID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errorx.ErrAPIKeyNotFound
-		}
-		return nil, errorx.ErrDbError
-	}
-	if !canAccessKey(actorUserID, row) {
-		return nil, errorx.ErrAPIKeyForbidden
-	}
-	if len(row.KeyCiphertext) == 0 {
-		return nil, errorx.ErrAPIKeyRevealFailed
-	}
-	plain, err := s.vault.Open(row.KeyCiphertext)
-	if err != nil {
-		return nil, errorx.ErrAPIKeyRevealFailed
-	}
-	return &response.UserAPIKeyRevealResp{APIKey: plain}, nil
-}
-
 func (s *Service) CreateSubKey(ctx context.Context, ownerUserID uint, req *request.CreateSubAPIKeyReq) (*response.UserAPIKeyItem, error) {
 	var created *entity.UserAPIKeys
+	var createdPlain string
 	err := s.tx.Transaction(ctx, func(tx *gorm.DB) error {
 		sub, err := s.subs.FindOne(ctx, tx, map[string]interface{}{
 			"id":      req.UserSubscriptionID,
@@ -133,11 +110,11 @@ func (s *Service) CreateSubKey(ctx context.Context, ownerUserID uint, req *reque
 			return errorx.ErrSubKeyDuplicate
 		}
 
-		sum, err := s.apiKeys.SumActiveLimitTokensBySubscription(ctx, req.UserSubscriptionID, 0)
+		sumSub, err := s.apiKeys.SumActiveSubKeyLimitTokensBySubscription(ctx, req.UserSubscriptionID, 0)
 		if err != nil {
 			return errorx.ErrDbError
 		}
-		if sum+req.LimitTokens > sub.LimitTokens {
+		if sumSub+req.LimitTokens > sub.LimitTokens {
 			return errorx.ErrSubKeyLimitExceeded
 		}
 
@@ -150,10 +127,7 @@ func (s *Service) CreateSubKey(ctx context.Context, ownerUserID uint, req *reque
 		if err != nil {
 			return err
 		}
-		cipher, err := s.vault.Seal(plain)
-		if err != nil {
-			return err
-		}
+		createdPlain = plain
 		now := time.Now()
 		row := entity.UserAPIKeys{
 			UserID:               req.MemberUserID,
@@ -162,8 +136,6 @@ func (s *Service) CreateSubKey(ctx context.Context, ownerUserID uint, req *reque
 			UserSubscriptionID:   sub.ID,
 			KeyType:              constants.APIKeyTypeSub,
 			KeyHash:              hash,
-			KeyPrefix:            apikey.PrefixFromPlaintext(plain),
-			KeyCiphertext:        cipher,
 			ProductsCategoryName: sub.ProductsCategoryName,
 			LimitTokens:          req.LimitTokens,
 			UsedTokens:           0,
@@ -183,6 +155,7 @@ func (s *Service) CreateSubKey(ctx context.Context, ownerUserID uint, req *reque
 	names, _ := s.subscriptionNameMap(ctx, ownerUserID)
 	nick, email := s.memberLabels(ctx, created.UserID)
 	item := mapKeyItem(created, names[created.UserSubscriptionID], nick, email)
+	item.APIKey = createdPlain
 	return &item, nil
 }
 
@@ -208,11 +181,11 @@ func (s *Service) UpdateSubKeyLimit(ctx context.Context, ownerUserID, keyID uint
 			}
 			return errorx.ErrDbError
 		}
-		sum, err := s.apiKeys.SumActiveLimitTokensBySubscription(ctx, row.UserSubscriptionID, row.ID)
+		sumSub, err := s.apiKeys.SumActiveSubKeyLimitTokensBySubscription(ctx, row.UserSubscriptionID, row.ID)
 		if err != nil {
 			return errorx.ErrDbError
 		}
-		if sum+req.LimitTokens > sub.LimitTokens {
+		if sumSub+req.LimitTokens > sub.LimitTokens {
 			return errorx.ErrSubKeyLimitExceeded
 		}
 		now := time.Now()
@@ -377,7 +350,7 @@ func mapKeyItem(row *entity.UserAPIKeys, subName, memberNick, memberEmail string
 	return response.UserAPIKeyItem{
 		ID:                 row.ID,
 		KeyType:            row.KeyType,
-		KeyMasked:          apikey.Masked(row.KeyPrefix),
+		KeyMasked:          apikey.MaskedFromHash(row.KeyHash),
 		Status:             row.Status,
 		UserSubscriptionID: row.UserSubscriptionID,
 		SubscriptionName:   subName,
@@ -389,15 +362,3 @@ func mapKeyItem(row *entity.UserAPIKeys, subName, memberNick, memberEmail string
 	}
 }
 
-func canAccessKey(actorUserID uint, row *entity.UserAPIKeys) bool {
-	if row.UserID == actorUserID {
-		return true
-	}
-	if row.OwnerUserID == actorUserID && row.KeyType == constants.APIKeyTypeSub {
-		return true
-	}
-	if row.OwnerUserID == actorUserID && row.KeyType == constants.APIKeyTypeMain {
-		return true
-	}
-	return false
-}

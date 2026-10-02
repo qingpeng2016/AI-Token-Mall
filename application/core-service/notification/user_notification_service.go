@@ -60,7 +60,7 @@ var notificationTemplates = map[string]templateView{
 	"key_issued": {
 		Category: "subscription",
 		Title:    "API Key 已下发",
-		Body:     "新的 API Key 已生成，请在「API Key」中查看与复制。",
+		Body:     "新的 API Key 已生成，完整 Key 仅在开通/下发时展示一次，请妥善保存。",
 		LinkTab:  "api-keys",
 	},
 	"commission_transferred_to_wallet": {

@@ -297,8 +297,6 @@ CREATE TABLE IF NOT EXISTS `user_api_keys` (
   `user_subscription_id` BIGINT UNSIGNED NOT NULL COMMENT '归属的用户订阅；同订阅下可有多条 Key',
   `key_type`        VARCHAR(16)  NOT NULL DEFAULT 'main' COMMENT 'main=主Key，sub=子Key',
   `key_hash`        CHAR(64)     NOT NULL COMMENT '平台 Key 的 SHA-256（明文仅创建时展示一次，不入库）',
-  `key_prefix`      VARCHAR(16)  NOT NULL DEFAULT '' COMMENT 'Key 前缀用于脱敏展示',
-  `key_ciphertext`  VARBINARY(512) DEFAULT NULL COMMENT 'AES-GCM 加密的完整 Key，供归属用户复制',
   `products_category_name` VARCHAR(32)  NOT NULL COMMENT '网关 Path 隔离，如 openai',
   `limit_tokens`      BIGINT       NOT NULL COMMENT '该 Key 本周期 token 上限（多条 Key 分配之和不超过 user_subscriptions.limit_tokens）',
   `used_tokens`       BIGINT       NOT NULL DEFAULT 0 COMMENT '该 Key 本周期已用；剩余=limit_tokens-used_tokens',

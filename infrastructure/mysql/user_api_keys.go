@@ -66,6 +66,17 @@ func (r *UserAPIKeysImpl) SumActiveLimitTokensBySubscription(ctx context.Context
 	return total, err
 }
 
+func (r *UserAPIKeysImpl) SumActiveSubKeyLimitTokensBySubscription(ctx context.Context, subscriptionID uint, excludeKeyID uint) (int64, error) {
+	var total int64
+	q := r.db.WithContext(ctx).Model(&entity.UserAPIKeys{}).
+		Where("user_subscription_id = ? AND key_type = ? AND status <> ?", subscriptionID, "sub", "rotated")
+	if excludeKeyID > 0 {
+		q = q.Where("id <> ?", excludeKeyID)
+	}
+	err := q.Select("COALESCE(SUM(limit_tokens), 0)").Scan(&total).Error
+	return total, err
+}
+
 func (r *UserAPIKeysImpl) ExistsActiveSubKey(ctx context.Context, subscriptionID, memberUserID uint) (bool, error) {
 	var n int64
 	err := r.db.WithContext(ctx).Model(&entity.UserAPIKeys{}).

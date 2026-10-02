@@ -23,12 +23,6 @@ export function createApiKeyApi(options: HttpClientOptions) {
       const res = await http.get<ApiEnvelope<UserAPIKeyItem[]>>('/api/v1/users/api-keys/team')
       return unwrap(res)
     },
-    async revealKey(id: number): Promise<string> {
-      const res = await http.get<ApiEnvelope<{ api_key: string }>>(
-        `/api/v1/users/api-keys/${id}/reveal`,
-      )
-      return unwrap(res).api_key
-    },
     async createSubKey(body: {
       user_subscription_id: number
       member_user_id: number
