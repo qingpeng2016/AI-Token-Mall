@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import SiteLogo from '@/components/brand/SiteLogo.vue'
-import { isLoggedIn } from '@/composables/useSessionUser'
+import { authSessionRevision, isLoggedIn } from '@/composables/useSessionUser'
 import NavMegaMenuSkeleton from '@/components/layout/NavMegaMenuSkeleton.vue'
 import { reloadNavMenu, useNavMenu } from '@/composables/useNavMenu'
 import { isNavDropdown, type NavMenuEntry } from '@/mocks/nav'
@@ -33,6 +33,7 @@ const route = useRoute()
 const loggedIn = ref(isLoggedIn())
 
 function syncAuthState() {
+  authSessionRevision.value
   loggedIn.value = isLoggedIn()
 }
 

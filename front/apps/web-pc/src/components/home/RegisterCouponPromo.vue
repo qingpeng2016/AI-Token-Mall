@@ -1,50 +1,68 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
-import { createCouponApi } from '@ai-token-mall/shared'
+import { couponApi } from '@/api'
 import type { RegisterCouponPromo } from '@ai-token-mall/shared'
-
-const DISMISS_KEY = 'atm_register_coupon_promo_dismiss'
+import {
+  dismissRegisterCouponPromoForSession,
+  isRegisterCouponPromoDismissed,
+} from '@/composables/useSessionUser'
 
 const props = defineProps<{
-  apiBaseUrl: string
+  /** 与 guestPromoRemountKey 同步，退出登录后递增以重新拉取 */
+  generation: number
 }>()
 
 const visible = ref(false)
 const promo = ref<RegisterCouponPromo | null>(null)
 
-function dismiss() {
-  sessionStorage.setItem(DISMISS_KEY, '1')
+function dismissForSession() {
+  dismissRegisterCouponPromoForSession()
   visible.value = false
 }
 
-onMounted(async () => {
-  if (sessionStorage.getItem(DISMISS_KEY)) return
-  const api = createCouponApi({ baseURL: props.apiBaseUrl })
+async function loadPromo() {
+  if (isRegisterCouponPromoDismissed()) {
+    visible.value = false
+    return
+  }
   try {
-    const data = await api.registerPromo()
-    if (!data.active) return
+    const data = await couponApi.registerPromo()
+    if (!data.active) {
+      visible.value = false
+      promo.value = null
+      return
+    }
     promo.value = data
     visible.value = true
-  } catch {
-    /* ignore */
+  } catch (e) {
+    visible.value = false
+    if (import.meta.env.DEV) {
+      console.warn('[RegisterCouponPromo] register-promo failed', e)
+    }
   }
-})
+}
+
+watch(
+  () => props.generation,
+  () => {
+    void loadPromo()
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
   <Teleport to="body">
     <div v-if="visible && promo" class="promo-root" role="dialog" aria-modal="true" aria-labelledby="promo-title">
-      <div class="promo-backdrop" @click="dismiss" />
+      <div class="promo-backdrop" @click="dismissForSession" />
       <div class="promo-card">
-        <button type="button" class="promo-close" aria-label="关闭" @click="dismiss">×</button>
-        <div class="promo-badge">新人礼</div>
+        <button type="button" class="promo-close" aria-label="关闭" @click="dismissForSession">×</button>
         <h2 id="promo-title" class="promo-title">{{ promo.title }}</h2>
         <p v-if="promo.subtitle" class="promo-sub">{{ promo.subtitle }}</p>
         <div class="promo-amount">{{ promo.discount_label }}</div>
         <p class="promo-meta">注册自动到账 · {{ promo.valid_days }} 天内有效</p>
-        <RouterLink class="promo-cta" to="/register" @click="dismiss">立即注册领取</RouterLink>
-        <button type="button" class="promo-later" @click="dismiss">稍后再说</button>
+        <RouterLink class="promo-cta" to="/register">立即注册领取</RouterLink>
       </div>
     </div>
   </Teleport>
@@ -87,15 +105,6 @@ onMounted(async () => {
   line-height: 1;
   cursor: pointer;
 }
-.promo-badge {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.2);
-  margin-bottom: 0.75rem;
-}
 .promo-title {
   margin: 0 0 0.5rem;
   font-size: 1.35rem;
@@ -132,14 +141,5 @@ onMounted(async () => {
 }
 .promo-cta:hover {
   filter: brightness(1.02);
-}
-.promo-later {
-  margin-top: 0.75rem;
-  border: none;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 0.85rem;
-  cursor: pointer;
-  text-decoration: underline;
 }
 </style>

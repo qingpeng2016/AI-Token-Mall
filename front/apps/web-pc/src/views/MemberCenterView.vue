@@ -473,8 +473,9 @@ function couponDiscountLabel(c: UserCouponItem) {
 
 function couponStatusTagClass(status: string) {
   if (status === 'available') return 'tag--active'
-  if (status === 'used') return 'tag--cancelled'
-  return 'tag--expired'
+  if (status === 'used') return 'tag--used'
+  if (status === 'expired') return 'tag--expired'
+  return ''
 }
 
 async function fetchCouponsTabData() {
@@ -662,8 +663,8 @@ function findCatalogProductById(productId: number) {
 }
 
 function logout() {
-  clearSessionUser()
   void userApi.logout()
+  clearSessionUser()
   ElMessage.success('已退出登录')
   router.push('/')
 }
@@ -3364,6 +3365,16 @@ async function confirmAddTeamMember() {
 .tag--pending_payment {
   background: #fef3c7;
   color: #b45309;
+}
+
+.tag--used {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.tag--expired {
+  background: #f1f5f9;
+  color: #94a3b8;
 }
 
 .tag--failed,
