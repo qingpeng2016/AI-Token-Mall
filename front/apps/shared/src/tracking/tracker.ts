@@ -15,6 +15,10 @@ let lastPageEnterKey = ''
 let lastPageEnterAt = 0
 let currentPage = { page_id: '', page_path: '', page_title: '', referrer: '' }
 let clickBound = false
+/** 与 fgmm 一致：仅关联用户点击后 8s 内的接口，避免首屏自动 GET 刷屏 */
+let lastClickContext: { element_id: string; element_name: string; at: number } | null =
+  null
+const API_TRACK_WINDOW_MS = 8000
 
 function uuid(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -206,12 +210,15 @@ export function pageEnter(extra?: Partial<TrackEventItem>) {
 }
 
 export function click(elementId: string, elementName: string, targetUrl = '') {
+  const id = elementId.slice(0, 128)
+  const name = elementName.slice(0, 128)
+  lastClickContext = { element_id: id, element_name: name, at: Date.now() }
   enqueue({
     ...basePayload(),
     event_type: 'click',
     action: 'click',
-    element_id: elementId.slice(0, 128),
-    element_name: elementName.slice(0, 128),
+    element_id: id,
+    element_name: name,
     target_url: targetUrl.slice(0, 512),
   })
 }
@@ -236,12 +243,18 @@ function trackClick(el: HTMLElement) {
 
 export function apiCall(method: string, apiPath: string, apiParams?: unknown) {
   if (apiPath.startsWith('/tracking/')) return
+  if (
+    !lastClickContext ||
+    Date.now() - lastClickContext.at >= API_TRACK_WINDOW_MS
+  ) {
+    return
+  }
   enqueue({
     ...basePayload(),
     event_type: 'click',
     action: 'click',
-    element_id: 'api-call',
-    element_name: `${method.toUpperCase()} ${apiPath}`.slice(0, 128),
+    element_id: lastClickContext.element_id,
+    element_name: lastClickContext.element_name,
     api_method: method.toUpperCase(),
     api_path: apiPath,
     api_params: apiParams,
