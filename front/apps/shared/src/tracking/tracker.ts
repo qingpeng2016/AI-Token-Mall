@@ -2,7 +2,7 @@
  * 用户端埋点（对齐 fgmm FgTracking / AppTracker）
  * POST /api/v1/tracking/events · 异步批量，不阻塞 UI
  */
-import type { TrackEventItem, TrackerInitOptions } from './types'
+import type { TrackEventBase, TrackEventItem, TrackerInitOptions } from './types'
 
 const VISITOR_KEY = 'atm_track_visitor_id'
 const SESSION_KEY = 'atm_track_session_id'
@@ -72,7 +72,7 @@ function deviceContext(): Pick<
   return { device_type: deviceType, screen_width: w, screen_height: h }
 }
 
-function basePayload(): TrackEventItem {
+function basePayload(): TrackEventBase {
   return {
     visitor_id: visitorId(),
     session_id: sessionId(),

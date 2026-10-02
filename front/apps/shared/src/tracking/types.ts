@@ -1,6 +1,4 @@
-export type TrackEventItem = {
-  event_type: 'page_view' | 'click' | string
-  action: 'enter' | 'click' | string
+export type TrackEventBase = {
   visitor_id?: string
   session_id?: string
   channel?: string
@@ -24,6 +22,11 @@ export type TrackEventItem = {
   referrer?: string
   extra?: unknown
   event_at?: string
+}
+
+export type TrackEventItem = TrackEventBase & {
+  event_type: 'page_view' | 'click' | string
+  action: 'enter' | 'click' | string
 }
 
 export type ReportTrackEventsBody = {
