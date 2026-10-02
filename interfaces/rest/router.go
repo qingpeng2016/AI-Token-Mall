@@ -27,6 +27,7 @@ type Router struct {
 	invoiceConfigHandler       *handler.InvoiceConfigHandler
 	userNotificationHandler    *handler.UserNotificationHandler
 	inviteRebateHandler        *handler.InviteRebateHandler
+	userAPIKeyHandler          *handler.UserAPIKeyHandler
 }
 
 func NewRouter(
@@ -40,6 +41,7 @@ func NewRouter(
 	invoiceConfigHandler *handler.InvoiceConfigHandler,
 	userNotificationHandler *handler.UserNotificationHandler,
 	inviteRebateHandler *handler.InviteRebateHandler,
+	userAPIKeyHandler *handler.UserAPIKeyHandler,
 ) *Router {
 	return &Router{
 		setting:                   setting,
@@ -52,6 +54,7 @@ func NewRouter(
 		invoiceConfigHandler:      invoiceConfigHandler,
 		userNotificationHandler:   userNotificationHandler,
 		inviteRebateHandler:     inviteRebateHandler,
+		userAPIKeyHandler:       userAPIKeyHandler,
 	}
 }
 
@@ -97,6 +100,16 @@ func (r *Router) setupRouters() *gin.Engine {
 		userAuth.GET("/users/invite-rebate/payout-config", r.inviteRebateHandler.GetPayoutConfig)
 		userAuth.POST("/users/invite-rebate/payout-config/upload", r.inviteRebateHandler.UploadPayoutQR)
 		userAuth.POST("/users/invite-rebate/commission/transfer-to-balance", r.inviteRebateHandler.TransferCommissionToBalance)
+		userAuth.GET("/users/api-keys/main", r.userAPIKeyHandler.ListMain)
+		userAuth.GET("/users/api-keys/team", r.userAPIKeyHandler.ListTeam)
+		userAuth.GET("/users/api-keys/:id/reveal", r.userAPIKeyHandler.Reveal)
+		userAuth.POST("/users/api-keys/sub", r.userAPIKeyHandler.CreateSub)
+		userAuth.PATCH("/users/api-keys/:id/limit", r.userAPIKeyHandler.UpdateSubLimit)
+		userAuth.GET("/users/api-team/members", r.userAPIKeyHandler.ListTeamMembers)
+		userAuth.GET("/users/api-team/addable-invitees", r.userAPIKeyHandler.ListAddableInvitees)
+		userAuth.POST("/users/api-team/members", r.userAPIKeyHandler.AddTeamMember)
+		userAuth.GET("/users/api-team/enterprise-inquiry", r.userAPIKeyHandler.GetEnterpriseInquiry)
+		userAuth.POST("/users/api-team/enterprise-inquiry", r.userAPIKeyHandler.SubmitEnterpriseInquiry)
 	}
 
 	// 需登录；正式网关回调另开 /api/v1/payments/notify 且无鉴权

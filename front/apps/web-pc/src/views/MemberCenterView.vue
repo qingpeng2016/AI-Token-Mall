@@ -4,7 +4,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   formatCny,
-  formatNowBeijing,
   formatSignedCny,
   parseMoney,
   signedMoneyClass,
@@ -33,12 +32,15 @@ import {
   setSessionUser,
   userAccountLabel,
 } from '@/composables/useSessionUser'
-import { inviteRebateApi, invoiceApi, orderApi, subscriptionApi, userApi } from '@/api'
+import { apiKeyApi, inviteRebateApi, invoiceApi, orderApi, subscriptionApi, userApi } from '@/api'
 import type {
+  ApiTeamAddableInviteeItem,
+  ApiTeamMemberItem,
   InviteCommissionRecord,
   InviteRebateMember,
   InviteRebateOverview,
   InviteWithdrawalRecord,
+  UserAPIKeyItem,
   UserInvoiceItem,
   UserOrderItem,
   UserSubscriptionItem,
@@ -46,16 +48,10 @@ import type {
 import {
   formatTokens,
   memberNav,
-  mockApiTeamMembers,
-  mockInvitedUsers,
-  mockSubscriptions,
-  mockTeamSubKeys,
   orderStatusLabel,
   withdrawalChannelLabel,
   withdrawalStatusLabel,
   type MemberTab,
-  type MockSubAccount,
-  type MockTeamSubKey,
 } from '@/mocks/member'
 
 const router = useRouter()
@@ -105,9 +101,20 @@ const subscriptionStatusLabel: Record<string, string> = {
 }
 const teamInviteOpen = ref(false)
 const apiKeyPanelTab = ref<'mine' | 'team' | 'group'>('mine')
-const teamMembers = ref<MockSubAccount[]>([...mockApiTeamMembers])
+const mainApiKeys = ref<UserAPIKeyItem[]>([])
+const teamApiKeys = ref<UserAPIKeyItem[]>([])
+const teamMembers = ref<ApiTeamMemberItem[]>([])
+const addableInvitees = ref<ApiTeamAddableInviteeItem[]>([])
+const apiKeysLoaded = ref(false)
 const addTeamMemberOpen = ref(false)
 const addTeamMemberInvitedId = ref<number | null>(null)
+const addTeamMemberSubmitting = ref(false)
+const teamEnterpriseInquiryOpen = ref(false)
+const hasEnterpriseInquiry = ref(false)
+const pendingTeamFlow = ref<'addMember' | null>(null)
+const teamEnterpriseInquiryForm = reactive({
+  company_name: '',
+})
 const inviteRebatePanelTab = ref<'details' | 'members' | 'rebates' | 'withdrawals'>('details')
 const commissionAvailable = ref(0)
 const inviteRebateOverview = ref<InviteRebateOverview | null>(null)
@@ -146,11 +153,10 @@ const transferOpen = ref(false)
 const transferForm = reactive({
   amountYuan: '',
 })
-const teamSubKeys = ref<MockTeamSubKey[]>([...mockTeamSubKeys])
 const assignSubKeyOpen = ref(false)
 const assignSubKeyForm = reactive({
   subscriptionId: null as number | null,
-  memberId: null as number | null,
+  memberUserId: null as number | null,
   limitTokens: 0,
 })
 
@@ -159,74 +165,31 @@ const editSubKeyLimitTargetId = ref<number | null>(null)
 const editSubKeyLimitValue = ref(0)
 
 const assignSubKeySubscription = computed(() =>
-  mockSubscriptions.find((s) => s.id === assignSubKeyForm.subscriptionId),
+  memberSubscriptions.value.find((s) => s.id === assignSubKeyForm.subscriptionId),
 )
 
 const editSubKeyLimitTarget = computed(() =>
   editSubKeyLimitTargetId.value == null
     ? null
-    : teamSubKeys.value.find((k) => k.id === editSubKeyLimitTargetId.value) ?? null,
+    : teamApiKeys.value.find((k) => k.id === editSubKeyLimitTargetId.value) ?? null,
 )
 
 const editSubKeyLimitMainTotal = computed(() => {
   const k = editSubKeyLimitTarget.value
   if (!k) return 0
-  return mockSubscriptions.find((s) => s.id === k.subscriptionId)?.limitTokens ?? k.limitTokens
+  const sub = memberSubscriptions.value.find((s) => s.id === k.user_subscription_id)
+  return sub?.limit_tokens ?? k.limit_tokens
 })
 
 const activeTeamMembers = computed(() =>
   teamMembers.value.filter((m) => m.status === 'active'),
 )
 
-const apiTeamMemberIds = computed(() => new Set(teamMembers.value.map((m) => m.id)))
-
-const addableInvitedUsers = computed(() =>
-  mockInvitedUsers.filter((u) => !apiTeamMemberIds.value.has(u.id)),
-)
-
 const activeTeamSubKeys = computed(() =>
-  teamSubKeys.value.filter((k) => k.status === 'active'),
+  teamApiKeys.value.filter((k) => k.status === 'active'),
 )
 
-type MyApiKeyRow =
-  | {
-      keyType: 'main'
-      rowKey: string
-      planName: string
-      apiKeyMasked: string
-      apiKeyCopyValue: string
-      active: boolean
-    }
-  | {
-      keyType: 'team'
-      rowKey: string
-      planName: string
-      memberNickname: string
-      apiKeyMasked: string
-      apiKeyCopyValue: string
-      active: boolean
-    }
-
-const myApiKeyRows = computed<MyApiKeyRow[]>(() => {
-  const mains: MyApiKeyRow[] = mockSubscriptions.map((sub) => ({
-    keyType: 'main',
-    rowKey: `main-${sub.id}`,
-    planName: sub.productName,
-    apiKeyMasked: sub.apiKeyMasked,
-    apiKeyCopyValue: sub.apiKeyCopyValue,
-    active: sub.status === 'active',
-  }))
-  const teams: MyApiKeyRow[] = activeTeamSubKeys.value.map((k) => ({
-    keyType: 'team',
-    rowKey: `team-${k.id}`,
-    planName: k.subscriptionName,
-    memberNickname: k.memberNickname,
-    apiKeyMasked: k.apiKeyMasked,
-    apiKeyCopyValue: k.apiKeyCopyValue,
-    active: k.status === 'active',
-  }))
-  return [...mains, ...teams]
-})
+const myApiKeyRows = computed(() => mainApiKeys.value)
 
 const validTabs = new Set<MemberTab>([...memberNav.map((n) => n.id), 'messages'])
 
@@ -265,6 +228,9 @@ watch(
     if (tab === 'sub-accounts') {
       void fetchInviteRebateTabData()
     }
+    if (tab === 'api-keys') {
+      void fetchApiKeysTabData()
+    }
   },
   { immediate: true },
 )
@@ -288,12 +254,6 @@ const displayName = computed(() =>
 const overviewSubscriptions = computed(() =>
   memberSubscriptions.value.filter((s) => s.status === 'active'),
 )
-
-const teamInviteLink = computed(() => {
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const uid = user.value?.id ?? 'guest'
-  return `${origin}/register?team_invite=${uid}`
-})
 
 const exclusivePromoDomain = computed(
   () => inviteRebateOverview.value?.promo_domain_url?.trim() ?? '',
@@ -463,6 +423,41 @@ async function fetchInvoicesTabData() {
 function onInvoicesPageChange(page: number) {
   invoicesPage.value = page
   void fetchInvoicesTabData()
+}
+
+async function fetchApiKeysTabData() {
+  await withTopLoading(async () => {
+    try {
+      if (!plansLoaded.value) {
+        await fetchPlansTabData()
+      }
+      if (!inviteRebateOverview.value) {
+        const overview = await inviteRebateApi.overview()
+        inviteRebateOverview.value = overview
+      }
+      const [mainKeys, teamKeys, members] = await Promise.all([
+        apiKeyApi.listMainKeys(),
+        apiKeyApi.listTeamKeys(),
+        apiKeyApi.listTeamMembers(),
+      ])
+      mainApiKeys.value = mainKeys
+      teamApiKeys.value = teamKeys
+      teamMembers.value = members
+      const inquiryStatus = await apiKeyApi.getEnterpriseInquiry()
+      hasEnterpriseInquiry.value = inquiryStatus.has_inquiry
+      apiKeysLoaded.value = true
+    } catch (e) {
+      handleMemberAuthError(e, 'API Key 加载失败')
+    }
+  })
+}
+
+async function fetchAddableInvitees() {
+  try {
+    addableInvitees.value = await apiKeyApi.listAddableInvitees()
+  } catch (e) {
+    handleMemberAuthError(e, '可添加成员加载失败')
+  }
 }
 
 async function fetchInviteRebateTabData() {
@@ -700,8 +695,11 @@ function onCatalogBuy(p: CatalogProduct) {
 
 function onPurchasePaid() {
   catalogOpen.value = false
-  if (activeTab.value === 'plans') {
+  if (activeTab.value === 'plans' || activeTab.value === 'api-keys') {
     void fetchPlansTabData()
+  }
+  if (activeTab.value === 'api-keys') {
+    void fetchApiKeysTabData()
   }
 }
 
@@ -709,25 +707,90 @@ function mockAction(msg: string) {
   ElMessage.info(msg)
 }
 
-async function copyToClipboard(text: string, successMessage: string) {
+const toastAboveModal = { zIndex: 10000 }
+
+function fallbackCopyText(text: string): boolean {
   try {
-    await navigator.clipboard.writeText(text)
-    ElMessage.success(successMessage)
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.setAttribute('readonly', 'true')
+    ta.style.position = 'fixed'
+    ta.style.left = '-9999px'
+    document.body.appendChild(ta)
+    ta.select()
+    const ok = document.execCommand('copy')
+    document.body.removeChild(ta)
+    return ok
   } catch {
-    ElMessage.warning('复制失败，请手动选择复制')
+    return false
   }
 }
 
-function copyPlanApiKey(fullKey: string) {
-  void copyToClipboard(fullKey, '已复制 API Key')
+async function copyToClipboard(text: string, successMessage: string) {
+  const value = text.trim()
+  if (!value) {
+    ElMessage.warning({ message: '没有可复制的内容', ...toastAboveModal })
+    return
+  }
+  let copied = false
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(value)
+      copied = true
+    } catch {
+      copied = fallbackCopyText(value)
+    }
+  } else {
+    copied = fallbackCopyText(value)
+  }
+  if (copied) {
+    ElMessage.success({ message: successMessage, ...toastAboveModal })
+  } else {
+    ElMessage.warning({ message: '复制失败，请手动选择输入框内容复制', ...toastAboveModal })
+  }
 }
 
-function openTeamInviteModal() {
+async function copyApiKey(keyId: number) {
+  try {
+    const fullKey = await apiKeyApi.revealKey(keyId)
+    void copyToClipboard(fullKey, '已复制 API Key')
+  } catch (e) {
+    handleMemberAuthError(e, '无法复制 Key')
+  }
+}
+
+async function openTeamInviteModal() {
+  if (!exclusivePromoDomain.value) {
+    try {
+      const overview = await inviteRebateApi.overview()
+      inviteRebateOverview.value = overview
+    } catch (e) {
+      handleMemberAuthError(e, '推广域名加载失败')
+      return
+    }
+  }
+  if (!exclusivePromoDomain.value) {
+    ElMessage.warning('请先在「邀请返利」配置专属推广域名')
+    return
+  }
   teamInviteOpen.value = true
 }
 
 function copyTeamInviteLink() {
-  void copyToClipboard(teamInviteLink.value, '已复制邀请链接')
+  const value = exclusivePromoDomain.value.trim()
+  teamInviteOpen.value = false
+  void nextTick(() => {
+    if (!value) {
+      ElMessage.warning('暂无可复制的推广域名')
+      return
+    }
+    const copied = fallbackCopyText(value)
+    if (copied) {
+      ElMessage.success('已复制邀请地址')
+    } else {
+      ElMessage.warning('复制失败，请手动复制')
+    }
+  })
 }
 
 function copyExclusivePromoDomain() {
@@ -857,12 +920,13 @@ const payoutQrSetupTitle = computed(() =>
 )
 
 function syncAssignSubKeyLimitFromPlan() {
-  const sub = mockSubscriptions.find((s) => s.id === assignSubKeyForm.subscriptionId)
-  assignSubKeyForm.limitTokens = sub?.limitTokens ?? 0
+  const sub = memberSubscriptions.value.find((s) => s.id === assignSubKeyForm.subscriptionId)
+  assignSubKeyForm.limitTokens = sub?.limit_tokens ?? 0
 }
 
 function openAssignSubKeyModal() {
-  if (!mockSubscriptions.length) {
+  const activeSubs = memberSubscriptions.value.filter((s) => s.status === 'active')
+  if (!activeSubs.length) {
     ElMessage.warning('请先开通套餐')
     return
   }
@@ -870,19 +934,19 @@ function openAssignSubKeyModal() {
     ElMessage.warning('请先在「我的团队」添加成员')
     return
   }
-  assignSubKeyForm.subscriptionId = mockSubscriptions[0]?.id ?? null
-  assignSubKeyForm.memberId = activeTeamMembers.value[0]?.id ?? null
+  assignSubKeyForm.subscriptionId = activeSubs[0]?.id ?? null
+  assignSubKeyForm.memberUserId = activeTeamMembers.value[0]?.user_id ?? null
   syncAssignSubKeyLimitFromPlan()
   assignSubKeyOpen.value = true
 }
 
-function openEditSubKeyLimitModal(k: MockTeamSubKey) {
+function openEditSubKeyLimitModal(k: UserAPIKeyItem) {
   editSubKeyLimitTargetId.value = k.id
-  editSubKeyLimitValue.value = k.limitTokens
+  editSubKeyLimitValue.value = k.limit_tokens
   editSubKeyLimitOpen.value = true
 }
 
-function confirmEditSubKeyLimit() {
+async function confirmEditSubKeyLimit() {
   const k = editSubKeyLimitTarget.value
   if (!k) return
   const max = editSubKeyLimitMainTotal.value
@@ -895,39 +959,31 @@ function confirmEditSubKeyLimit() {
     ElMessage.warning(`不能超过主 Key 套餐总量（${formatTokens(max)}）`)
     return
   }
-  if (next < k.usedTokens) {
-    ElMessage.warning(`上限不能低于已用量（${formatTokens(k.usedTokens)}）`)
+  if (next < k.used_tokens) {
+    ElMessage.warning(`上限不能低于已用量（${formatTokens(k.used_tokens)}）`)
     return
   }
-  k.limitTokens = next
-  editSubKeyLimitOpen.value = false
-  ElMessage.success('子 Key 用量上限已更新')
+  try {
+    await apiKeyApi.updateSubKeyLimit(k.id, next)
+    k.limit_tokens = next
+    editSubKeyLimitOpen.value = false
+    ElMessage.success('子 Key 用量上限已更新')
+  } catch (e) {
+    handleMemberAuthError(e, '更新失败')
+  }
 }
 
-function confirmAssignSubKey() {
+async function confirmAssignSubKey() {
   const subId = assignSubKeyForm.subscriptionId
-  const memberId = assignSubKeyForm.memberId
-  if (subId == null || memberId == null) {
+  const memberUserId = assignSubKeyForm.memberUserId
+  if (subId == null || memberUserId == null) {
     ElMessage.warning('请选择套餐与团队成员')
     return
   }
-  const subscription = mockSubscriptions.find((s) => s.id === subId)
-  const member = teamMembers.value.find((m) => m.id === memberId)
-  if (!subscription || !member) return
+  const subscription = memberSubscriptions.value.find((s) => s.id === subId)
+  if (!subscription) return
 
-  const duplicate = teamSubKeys.value.some(
-    (k) => k.subscriptionId === subId && k.memberId === memberId && k.status === 'active',
-  )
-  if (duplicate) {
-    ElMessage.warning('该成员在此套餐下已有子 Key')
-    return
-  }
-
-  const suffix = Math.random().toString(36).slice(2, 8)
-  const full = `ap_sub_${subId}m${memberId}_${suffix}`
-  const masked = `${full.slice(0, 12)}••••••${full.slice(-4)}`
-
-  const mainLimit = subscription.limitTokens
+  const mainLimit = subscription.limit_tokens
   let limitTokens = Math.floor(assignSubKeyForm.limitTokens)
   if (!Number.isFinite(limitTokens) || limitTokens <= 0) limitTokens = mainLimit
   if (limitTokens > mainLimit) {
@@ -935,57 +991,99 @@ function confirmAssignSubKey() {
     return
   }
 
-  teamSubKeys.value.push({
-    id: Date.now(),
-    subscriptionId: subId,
-    subscriptionName: subscription.productName,
-    memberId,
-    memberNickname: member.nickname,
-    memberEmail: member.email,
-    apiKeyMasked: masked,
-    apiKeyCopyValue: full,
-    usedTokens: 0,
-    limitTokens,
-    status: 'active',
-    createdAt: formatNowBeijing('date'),
-  })
-
-  assignSubKeyOpen.value = false
-  apiKeyPanelTab.value = 'team'
-  ElMessage.success('子 Key 已分配')
+  try {
+    const created = await apiKeyApi.createSubKey({
+      user_subscription_id: subId,
+      member_user_id: memberUserId,
+      limit_tokens: limitTokens,
+    })
+    teamApiKeys.value.unshift(created)
+    assignSubKeyOpen.value = false
+    apiKeyPanelTab.value = 'team'
+    ElMessage.success('子 Key 已分配')
+  } catch (e) {
+    handleMemberAuthError(e, '分配子 Key 失败')
+  }
 }
 
-function openAddTeamMemberModal() {
-  if (!addableInvitedUsers.value.length) {
-    ElMessage.warning('暂无已邀请且未加入团队的成员，请先在「邀请返利」分享邀请链接')
+function prefillTeamEnterpriseInquiryForm() {
+  teamEnterpriseInquiryForm.company_name = ''
+}
+
+async function ensureEnterpriseInquiryForTeam(): Promise<boolean> {
+  if (hasEnterpriseInquiry.value) return true
+  try {
+    const status = await apiKeyApi.getEnterpriseInquiry()
+    hasEnterpriseInquiry.value = status.has_inquiry
+    if (status.has_inquiry) return true
+    prefillTeamEnterpriseInquiryForm()
+    teamEnterpriseInquiryOpen.value = true
+    return false
+  } catch (e) {
+    handleMemberAuthError(e, '企业信息校验失败')
+    return false
+  }
+}
+
+async function proceedOpenAddTeamMemberModal() {
+  await fetchAddableInvitees()
+  if (!addableInvitees.value.length) {
+    ElMessage.warning('暂无已邀请且未加入团队的成员，请先分享专属推广域名')
     return
   }
-  addTeamMemberInvitedId.value = addableInvitedUsers.value[0]?.id ?? null
+  addTeamMemberInvitedId.value = addableInvitees.value[0]?.user_id ?? null
   addTeamMemberOpen.value = true
 }
 
-function confirmAddTeamMember() {
-  const invitedId = addTeamMemberInvitedId.value
-  if (invitedId == null) {
+async function openAddTeamMemberModal() {
+  const ready = await ensureEnterpriseInquiryForTeam()
+  if (!ready) {
+    pendingTeamFlow.value = 'addMember'
+    return
+  }
+  await proceedOpenAddTeamMemberModal()
+}
+
+async function confirmTeamEnterpriseInquiry() {
+  const company = teamEnterpriseInquiryForm.company_name.trim()
+  if (!company) {
+    ElMessage.warning('请填写企业 / 团队名称')
+    return
+  }
+  try {
+    await apiKeyApi.submitEnterpriseInquiry({ company_name: company })
+    hasEnterpriseInquiry.value = true
+    teamEnterpriseInquiryOpen.value = false
+    ElMessage.success('企业信息已保存')
+    const flow = pendingTeamFlow.value
+    pendingTeamFlow.value = null
+    if (flow === 'addMember') {
+      await proceedOpenAddTeamMemberModal()
+    }
+  } catch (e) {
+    handleMemberAuthError(e, '保存企业信息失败')
+  }
+}
+
+async function confirmAddTeamMember() {
+  if (addTeamMemberSubmitting.value) return
+  const invitedId = Number(addTeamMemberInvitedId.value)
+  if (!Number.isFinite(invitedId) || invitedId <= 0) {
     ElMessage.warning('请选择成员')
     return
   }
-  const invited = mockInvitedUsers.find((u) => u.id === invitedId)
-  if (!invited) return
-  if (apiTeamMemberIds.value.has(invited.id)) {
-    ElMessage.warning('该成员已在团队中')
-    return
+  addTeamMemberSubmitting.value = true
+  try {
+    await apiKeyApi.addTeamMember(invitedId)
+    teamMembers.value = await apiKeyApi.listTeamMembers()
+    addableInvitees.value = addableInvitees.value.filter((u) => u.user_id !== invitedId)
+    addTeamMemberOpen.value = false
+    ElMessage.success('已加入团队')
+  } catch (e) {
+    handleMemberAuthError(e, '添加成员失败')
+  } finally {
+    addTeamMemberSubmitting.value = false
   }
-  teamMembers.value.push({
-    id: invited.id,
-    nickname: invited.nickname,
-    email: invited.email,
-    usedTokens: 0,
-    limitTokens: 0,
-    status: 'active',
-  })
-  addTeamMemberOpen.value = false
-  ElMessage.success('已加入团队')
 }
 </script>
 
@@ -1299,33 +1397,22 @@ function confirmAddTeamMember() {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="row in myApiKeyRows" :key="row.rowKey">
+                    <tr v-for="row in myApiKeyRows" :key="row.id">
+                      <td>
+                        <span class="tag tag--key-main">主 Key</span>
+                      </td>
+                      <td>{{ row.subscription_name }}</td>
+                      <td class="mono">{{ row.key_masked }}</td>
                       <td>
                         <span
                           class="tag"
-                          :class="row.keyType === 'main' ? 'tag--key-main' : 'tag--key-team'"
-                        >
-                          {{ row.keyType === 'main' ? '主 Key' : '团队子 Key' }}
-                        </span>
-                      </td>
-                      <td>
-                        {{ row.planName }}
-                        <span v-if="row.keyType === 'team'" class="cell-sub muted">
-                          {{ row.memberNickname }}
-                        </span>
-                      </td>
-                      <td class="mono">{{ row.apiKeyMasked }}</td>
-                      <td>
-                        <span class="tag" :class="row.active ? 'tag--active' : ''">{{
-                          row.active ? '使用中' : '不可用'
+                          :class="row.status === 'active' ? 'tag--active' : ''"
+                        >{{
+                          row.status === 'active' ? '使用中' : '不可用'
                         }}</span>
                       </td>
                       <td>
-                        <button
-                          type="button"
-                          class="link-btn"
-                          @click="copyPlanApiKey(row.apiKeyCopyValue)"
-                        >
+                        <button type="button" class="link-btn" @click="copyApiKey(row.id)">
                           复制
                         </button>
                       </td>
@@ -1355,29 +1442,25 @@ function confirmAddTeamMember() {
                   <tbody>
                     <tr v-for="k in activeTeamSubKeys" :key="k.id">
                       <td>
-                        <strong>{{ k.memberNickname }}</strong>
-                        <span class="cell-sub muted">{{ k.memberEmail }}</span>
+                        <strong>{{ k.member_nickname }}</strong>
+                        <span class="cell-sub muted">{{ k.member_email }}</span>
                       </td>
-                      <td>{{ k.subscriptionName }}</td>
+                      <td>{{ k.subscription_name }}</td>
                       <td class="subkey-usage">
                         <span class="subkey-usage-text">
-                          {{ formatTokens(k.usedTokens) }} / {{ formatTokens(k.limitTokens) }}
+                          {{ formatTokens(k.used_tokens) }} / {{ formatTokens(k.limit_tokens) }}
                         </span>
                         <div class="progress-track progress-track--sm">
                           <div
                             class="progress-fill"
                             :style="{
-                              width: `${usagePercent(k.usedTokens, k.limitTokens)}%`,
+                              width: `${usagePercent(k.used_tokens, k.limit_tokens)}%`,
                             }"
                           />
                         </div>
                       </td>
                       <td class="subkey-row-actions">
-                        <button
-                          type="button"
-                          class="link-btn"
-                          @click="copyPlanApiKey(k.apiKeyCopyValue)"
-                        >
+                        <button type="button" class="link-btn" @click="copyApiKey(k.id)">
                           复制
                         </button>
                         <button
@@ -1399,14 +1482,13 @@ function confirmAddTeamMember() {
 
             <div v-else role="tabpanel">
               <div class="panel-tab-toolbar">
-                <button type="button" class="atm-btn-ghost btn-xs" @click="openTeamInviteModal">
+                <button type="button" class="atm-btn-primary btn-xs" @click="openTeamInviteModal">
                   邀请链接
                 </button>
                 <button type="button" class="atm-btn-primary btn-xs" @click="openAddTeamMemberModal">
                   添加成员
                 </button>
               </div>
-              <p class="rebate-lead muted">请从已通过邀请链接注册的用户中添加。</p>
               <div v-if="activeTeamMembers.length" class="table-wrap">
                 <table class="data-table">
                   <thead>
@@ -1878,16 +1960,74 @@ function confirmAddTeamMember() {
               ×
             </button>
           </header>
-          <p class="team-invite-lead">将下方链接发给同事，对方打开并完成注册即可加入你的团队。</p>
-          <label class="team-invite-field">
-            <span class="metric-label">邀请链接</span>
+          <div class="team-invite-field">
+            <span class="metric-label">专属推广域名</span>
             <div class="team-invite-row">
-              <input class="team-invite-input" type="text" readonly :value="teamInviteLink" />
-              <button type="button" class="atm-btn-primary btn-xs" @click="copyTeamInviteLink">
+              <input
+                class="team-invite-input"
+                type="text"
+                readonly
+                :value="exclusivePromoDomain"
+                aria-label="专属推广域名"
+              />
+              <button
+                type="button"
+                class="atm-btn-primary btn-xs"
+                @click.stop="copyTeamInviteLink"
+              >
                 复制链接
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-if="teamEnterpriseInquiryOpen"
+        class="team-invite-backdrop"
+        @click.self="teamEnterpriseInquiryOpen = false"
+      >
+        <div class="team-invite-panel" role="dialog" aria-labelledby="team-enterprise-inquiry-title">
+          <header class="team-invite-head">
+            <h3 id="team-enterprise-inquiry-title">完善企业信息</h3>
+            <button
+              type="button"
+              class="team-invite-close"
+              aria-label="关闭"
+              @click="teamEnterpriseInquiryOpen = false"
+            >
+              ×
+            </button>
+          </header>
+          <p class="team-invite-lead">
+            添加 API 团队成员前，请先填写企业/团队名称，便于团队管理与后续企业服务。
+          </p>
+          <label class="team-invite-field">
+            <span class="metric-label">
+              企业 / 团队名称
+              <span class="field-required" aria-hidden="true">*</span>
+            </span>
+            <input
+              v-model="teamEnterpriseInquiryForm.company_name"
+              class="team-invite-input"
+              type="text"
+              maxlength="256"
+              placeholder="公司或团队全称"
+              autocomplete="organization"
+            />
           </label>
+          <div class="assign-subkey-actions">
+            <button
+              type="button"
+              class="atm-btn-ghost btn-xs"
+              @click="teamEnterpriseInquiryOpen = false"
+            >
+              取消
+            </button>
+            <button type="button" class="atm-btn-primary btn-xs" @click="confirmTeamEnterpriseInquiry">
+              保存并继续
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1909,12 +2049,11 @@ function confirmAddTeamMember() {
             </button>
           </header>
           <p class="team-invite-lead">
-            选择已通过您的邀请链接注册、尚未加入 API 团队的用户。
+            选择已通过邀请链接注册的用户、且尚未加入团队。
           </p>
           <label class="team-invite-field">
-            <span class="metric-label">已邀请用户</span>
-            <select v-model="addTeamMemberInvitedId" class="member-select">
-              <option v-for="u in addableInvitedUsers" :key="u.id" :value="u.id">
+            <select v-model.number="addTeamMemberInvitedId" class="member-select">
+              <option v-for="u in addableInvitees" :key="u.user_id" :value="u.user_id">
                 {{ u.nickname }}（{{ u.email }}）
               </option>
             </select>
@@ -1923,8 +2062,13 @@ function confirmAddTeamMember() {
             <button type="button" class="atm-btn-ghost btn-xs" @click="addTeamMemberOpen = false">
               取消
             </button>
-            <button type="button" class="atm-btn-primary btn-xs" @click="confirmAddTeamMember">
-              确认添加
+            <button
+              type="button"
+              class="atm-btn-primary btn-xs"
+              :disabled="addTeamMemberSubmitting"
+              @click="confirmAddTeamMember"
+            >
+              {{ addTeamMemberSubmitting ? '提交中…' : '确认添加' }}
             </button>
           </div>
         </div>
@@ -2091,8 +2235,12 @@ function confirmAddTeamMember() {
               class="member-select"
               @change="syncAssignSubKeyLimitFromPlan"
             >
-              <option v-for="s in mockSubscriptions" :key="s.id" :value="s.id">
-                {{ s.productName }}
+              <option
+                v-for="s in memberSubscriptions.filter((x) => x.status === 'active')"
+                :key="s.id"
+                :value="s.id"
+              >
+                {{ s.product_name }}
               </option>
             </select>
           </label>
@@ -2103,16 +2251,16 @@ function confirmAddTeamMember() {
               type="number"
               class="team-invite-input"
               min="1"
-              :max="assignSubKeySubscription?.limitTokens"
+              :max="assignSubKeySubscription?.limit_tokens"
             />
             <p v-if="assignSubKeySubscription" class="field-hint">
-              默认与主 Key 一致：{{ formatTokens(assignSubKeySubscription.limitTokens) }}（本周期套餐总量）
+              默认与主 Key 一致：{{ formatTokens(assignSubKeySubscription.limit_tokens) }}（本周期套餐总量）
             </p>
           </label>
           <label class="team-invite-field">
             <span class="metric-label">团队成员</span>
-            <select v-model="assignSubKeyForm.memberId" class="member-select">
-              <option v-for="m in activeTeamMembers" :key="m.id" :value="m.id">
+            <select v-model="assignSubKeyForm.memberUserId" class="member-select">
+              <option v-for="m in activeTeamMembers" :key="m.id" :value="m.user_id">
                 {{ m.nickname }}（{{ m.email }}）
               </option>
             </select>
@@ -2146,7 +2294,8 @@ function confirmAddTeamMember() {
             </button>
           </header>
           <p class="team-invite-lead">
-            {{ editSubKeyLimitTarget.memberNickname }} · {{ editSubKeyLimitTarget.subscriptionName }}
+            {{ editSubKeyLimitTarget.member_nickname }} ·
+            {{ editSubKeyLimitTarget.subscription_name }}
           </p>
           <label class="team-invite-field">
             <span class="metric-label">用量上限（tokens）</span>
@@ -2159,7 +2308,7 @@ function confirmAddTeamMember() {
             />
             <p class="field-hint">
               主 Key 套餐总量 {{ formatTokens(editSubKeyLimitMainTotal) }}；已用
-              {{ formatTokens(editSubKeyLimitTarget.usedTokens) }}
+              {{ formatTokens(editSubKeyLimitTarget.used_tokens) }}
             </p>
           </label>
           <div class="assign-subkey-actions">
@@ -2540,7 +2689,9 @@ function confirmAddTeamMember() {
 
 .panel-tab-toolbar {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-start;
+  gap: 10px;
   margin-bottom: 16px;
 }
 
@@ -3196,6 +3347,12 @@ function confirmAddTeamMember() {
 
 .team-invite-field {
   display: block;
+}
+
+.field-required {
+  margin-left: 2px;
+  color: #e53935;
+  font-weight: 600;
 }
 
 .team-invite-row {

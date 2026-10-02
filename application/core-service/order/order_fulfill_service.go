@@ -30,6 +30,7 @@ type OrderFulfillService struct {
 	callbacks     repository.PaymentCallbacksRepo
 	invoices      repository.UserInvoicesRepo
 	inviteRebate  *invite_rebate.Service
+	keyVault      *apikey.Vault
 }
 
 func NewOrderFulfillService(
@@ -44,6 +45,7 @@ func NewOrderFulfillService(
 	callbacks repository.PaymentCallbacksRepo,
 	invoices repository.UserInvoicesRepo,
 	inviteRebate *invite_rebate.Service,
+	keyVault *apikey.Vault,
 ) *OrderFulfillService {
 	return &OrderFulfillService{
 		tx:            tx,
@@ -57,6 +59,7 @@ func NewOrderFulfillService(
 		callbacks:     callbacks,
 		invoices:      invoices,
 		inviteRebate:  inviteRebate,
+		keyVault:      keyVault,
 	}
 }
 
@@ -254,14 +257,30 @@ func (s *OrderFulfillService) createSubscriptionForPurchase(ctx context.Context,
 }
 
 func (s *OrderFulfillService) createAPIKeyForNewSubscription(ctx context.Context, tx *gorm.DB, order *entity.UserOrders, sub *entity.UserSubscriptions, product *entity.Products, now time.Time) (*entity.UserAPIKeys, error) {
-	_, hash, err := apikey.Generate()
+	plain, hash, err := apikey.Generate()
+	if err != nil {
+		return nil, err
+	}
+	var cipher []byte
+	if s.keyVault != nil {
+		cipher, err = s.keyVault.Seal(plain)
+		if err != nil {
+			return nil, err
+		}
+	}
+	ownerUserID, enterpriseInquiryID, err := MainAPIKeyEnterpriseFields(ctx, tx, order.UserID)
 	if err != nil {
 		return nil, err
 	}
 	row := entity.UserAPIKeys{
 		UserID:               order.UserID,
+		OwnerUserID:          ownerUserID,
+		EnterpriseInquiryID:  enterpriseInquiryID,
 		UserSubscriptionID:   sub.ID,
+		KeyType:              constants.APIKeyTypeMain,
 		KeyHash:              hash,
+		KeyPrefix:            apikey.PrefixFromPlaintext(plain),
+		KeyCiphertext:        cipher,
 		ProductsCategoryName: product.ProductsCategoryName,
 		LimitTokens:          sub.LimitTokens,
 		UsedTokens:           0,

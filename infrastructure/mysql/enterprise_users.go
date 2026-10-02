@@ -74,3 +74,26 @@ func (r *EnterpriseUsersImpl) CountByOwnerUserID(ctx context.Context, ownerUserI
 		Where("owner_user_id = ?", ownerUserID).Count(&n).Error
 	return n, err
 }
+
+func (r *EnterpriseUsersImpl) FindActiveByLinkedUserID(ctx context.Context, userID uint) (*entity.EnterpriseUsers, error) {
+	var row entity.EnterpriseUsers
+	err := r.db.WithContext(ctx).
+		Where("user_id = ? AND status = ?", userID, "active").
+		Order("id DESC").
+		First(&row).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &row, nil
+}
+
+func (r *EnterpriseUsersImpl) LinkedUserIDsByOwner(ctx context.Context, ownerUserID uint) ([]uint, error) {
+	var ids []uint
+	err := r.db.WithContext(ctx).Model(&entity.EnterpriseUsers{}).
+		Where("owner_user_id = ? AND user_id IS NOT NULL AND status = ?", ownerUserID, "active").
+		Pluck("user_id", &ids).Error
+	return ids, err
+}

@@ -8,4 +8,5 @@ import (
 
 type EnterpriseInquiryRepo interface {
 	Create(ctx context.Context, row *entity.EnterpriseInquiry) error
+	FindLatestByOwnerUserID(ctx context.Context, ownerUserID uint) (*entity.EnterpriseInquiry, error)
 }

@@ -14,4 +14,6 @@ type EnterpriseUsersRepo interface {
 	FindByIDForOwner(ctx context.Context, ownerUserID, id uint) (*entity.EnterpriseUsers, error)
 	ListByOwnerUserID(ctx context.Context, ownerUserID uint, offset, limit int) ([]entity.EnterpriseUsers, error)
 	CountByOwnerUserID(ctx context.Context, ownerUserID uint) (int64, error)
+	FindActiveByLinkedUserID(ctx context.Context, userID uint) (*entity.EnterpriseUsers, error)
+	LinkedUserIDsByOwner(ctx context.Context, ownerUserID uint) ([]uint, error)
 }

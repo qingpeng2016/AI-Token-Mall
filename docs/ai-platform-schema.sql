@@ -292,8 +292,13 @@ CREATE TABLE IF NOT EXISTS `user_subscriptions` (
 CREATE TABLE IF NOT EXISTS `user_api_keys` (
   `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`         BIGINT UNSIGNED NOT NULL,
+  `owner_user_id`   BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '企业主账号 users.id；个人订阅与 user_id 相同',
+  `enterprise_inquiry_id` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'enterprise_inquiry.id，0 表示未关联',
   `user_subscription_id` BIGINT UNSIGNED NOT NULL COMMENT '归属的用户订阅；同订阅下可有多条 Key',
+  `key_type`        VARCHAR(16)  NOT NULL DEFAULT 'main' COMMENT 'main=主Key，sub=子Key',
   `key_hash`        CHAR(64)     NOT NULL COMMENT '平台 Key 的 SHA-256（明文仅创建时展示一次，不入库）',
+  `key_prefix`      VARCHAR(16)  NOT NULL DEFAULT '' COMMENT 'Key 前缀用于脱敏展示',
+  `key_ciphertext`  VARBINARY(512) DEFAULT NULL COMMENT 'AES-GCM 加密的完整 Key，供归属用户复制',
   `products_category_name` VARCHAR(32)  NOT NULL COMMENT '网关 Path 隔离，如 openai',
   `limit_tokens`      BIGINT       NOT NULL COMMENT '该 Key 本周期 token 上限（多条 Key 分配之和不超过 user_subscriptions.limit_tokens）',
   `used_tokens`       BIGINT       NOT NULL DEFAULT 0 COMMENT '该 Key 本周期已用；剩余=limit_tokens-used_tokens',
@@ -304,7 +309,10 @@ CREATE TABLE IF NOT EXISTS `user_api_keys` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_user_api_keys_hash` (`key_hash`),
   KEY `idx_user_api_keys_subscription` (`user_subscription_id`),
-  KEY `idx_user_api_keys_user` (`user_id`)
+  KEY `idx_user_api_keys_user` (`user_id`),
+  KEY `idx_user_api_keys_owner` (`owner_user_id`),
+  KEY `idx_user_api_keys_enterprise_inquiry` (`enterprise_inquiry_id`),
+  KEY `idx_user_api_keys_sub_key_type` (`user_subscription_id`, `key_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户 API Key（同 user_subscriptions 下多条平级）';
 
 CREATE TABLE IF NOT EXISTS `user_notifications` (

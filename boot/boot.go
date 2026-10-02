@@ -13,6 +13,8 @@ import (
 	"github.com/qingpeng2016/ai-token-mall/application/core-service/order"
 	productsvc "github.com/qingpeng2016/ai-token-mall/application/core-service/product"
 	"github.com/qingpeng2016/ai-token-mall/application/core-service/subscription"
+	userAPIKeySvc "github.com/qingpeng2016/ai-token-mall/application/core-service/user_api_key"
+	"github.com/qingpeng2016/ai-token-mall/common/apikey"
 	"github.com/qingpeng2016/ai-token-mall/application/core-service/tutorial"
 	"github.com/qingpeng2016/ai-token-mall/application/core-service/user"
 	log2 "github.com/qingpeng2016/ai-token-mall/common/dederi/logger"
@@ -51,6 +53,8 @@ func BuildContainer() *dig.Container {
 	_ = c.Provide(handler.NewInvoiceConfigHandler)
 	_ = c.Provide(handler.NewUserNotificationHandler)
 	_ = c.Provide(handler.NewInviteRebateHandler)
+	_ = c.Provide(handler.NewUserAPIKeyHandler)
+	_ = c.Provide(userAPIKeySvc.NewService)
 	_ = c.Provide(inviteRebateSvc.NewService)
 	_ = c.Provide(user.NewUserService)
 	_ = c.Provide(notificationsvc.NewUserNotificationService)
@@ -87,6 +91,7 @@ func BuildContainer() *dig.Container {
 	_ = c.Provide(mysql.NewUserWalletFlowsImpl)
 	_ = c.Provide(mysql.NewUserNotificationsImpl)
 	_ = c.Provide(mysql.NewUserAPIKeysImpl)
+	_ = c.Provide(func(cfg *conf.Config) *apikey.Vault { return apikey.NewVaultFromConfig(cfg) })
 	_ = c.Provide(mysql.NewPaymentCallbacksImpl)
 	_ = c.Provide(mysql.NewUserInvoicesImpl)
 	_ = c.Provide(mysql.NewUserInvoiceConfigImpl)

@@ -27,3 +27,50 @@ func (r *UserAPIKeysImpl) UpdateWhere(ctx context.Context, tx *gorm.DB, where ma
 	}
 	return db.Updates(updateData).Error
 }
+
+func (r *UserAPIKeysImpl) FindByID(ctx context.Context, id uint) (*entity.UserAPIKeys, error) {
+	var row entity.UserAPIKeys
+	err := r.db.WithContext(ctx).First(&row, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &row, nil
+}
+
+func (r *UserAPIKeysImpl) ListMainByUserID(ctx context.Context, userID uint) ([]entity.UserAPIKeys, error) {
+	var rows []entity.UserAPIKeys
+	err := r.db.WithContext(ctx).
+		Where("user_id = ? AND key_type = ? AND status <> ?", userID, "main", "rotated").
+		Order("id DESC").
+		Find(&rows).Error
+	return rows, err
+}
+
+func (r *UserAPIKeysImpl) ListSubByOwnerUserID(ctx context.Context, ownerUserID uint) ([]entity.UserAPIKeys, error) {
+	var rows []entity.UserAPIKeys
+	err := r.db.WithContext(ctx).
+		Where("owner_user_id = ? AND key_type = ? AND status <> ?", ownerUserID, "sub", "rotated").
+		Order("id DESC").
+		Find(&rows).Error
+	return rows, err
+}
+
+func (r *UserAPIKeysImpl) SumActiveLimitTokensBySubscription(ctx context.Context, subscriptionID uint, excludeKeyID uint) (int64, error) {
+	var total int64
+	q := r.db.WithContext(ctx).Model(&entity.UserAPIKeys{}).
+		Where("user_subscription_id = ? AND status <> ?", subscriptionID, "rotated")
+	if excludeKeyID > 0 {
+		q = q.Where("id <> ?", excludeKeyID)
+	}
+	err := q.Select("COALESCE(SUM(limit_tokens), 0)").Scan(&total).Error
+	return total, err
+}
+
+func (r *UserAPIKeysImpl) ExistsActiveSubKey(ctx context.Context, subscriptionID, memberUserID uint) (bool, error) {
+	var n int64
+	err := r.db.WithContext(ctx).Model(&entity.UserAPIKeys{}).
+		Where("user_subscription_id = ? AND user_id = ? AND key_type = ? AND status = ?",
+			subscriptionID, memberUserID, "sub", "active").
+		Count(&n).Error
+	return n > 0, err
+}
