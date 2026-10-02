@@ -1,8 +1,12 @@
+import { apiCall as trackApiCall } from '../tracking/tracker'
+
 export type HttpClientOptions = {
   baseURL: string
   getToken?: () => string | null
   /** 请求超时（毫秒），默认 12s */
   timeoutMs?: number
+  /** 是否上报 API 埋点，默认 true */
+  tracking?: boolean
 }
 
 const DEFAULT_TIMEOUT_MS = 12_000
@@ -20,7 +24,7 @@ function fetchWithTimeout(
 }
 
 export function createHttpClient(options: HttpClientOptions) {
-  const { baseURL, getToken, timeoutMs = DEFAULT_TIMEOUT_MS } = options
+  const { baseURL, getToken, timeoutMs = DEFAULT_TIMEOUT_MS, tracking = true } = options
 
   async function request<T>(
     path: string,
@@ -72,6 +76,14 @@ export function createHttpClient(options: HttpClientOptions) {
         : Number(envelope.code)
     if (!Number.isNaN(bizCode) && bizCode !== 200) {
       throw new Error(envelope.message ?? `业务错误 ${bizCode}`)
+    }
+    if (tracking && !path.startsWith('/api/v1/tracking/')) {
+      const method = (init.method || 'GET').toUpperCase()
+      const apiParams =
+        init.json !== undefined && typeof init.json === 'object'
+          ? init.json
+          : undefined
+      trackApiCall(method, path, apiParams)
     }
     return parsed as T
   }

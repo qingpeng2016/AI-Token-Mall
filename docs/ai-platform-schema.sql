@@ -499,4 +499,41 @@ CREATE TABLE IF NOT EXISTS `user_coupons` (
   KEY `idx_user_coupons_user_status` (`user_id`, `status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户优惠券';
 
+CREATE TABLE IF NOT EXISTS `user_track_events` (
+  `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `event_type`    VARCHAR(16)  NOT NULL COMMENT 'page_view|click',
+  `action`        VARCHAR(16)  NOT NULL COMMENT 'enter|click',
+  `user_id`       BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `visitor_id`    VARCHAR(64)  NOT NULL DEFAULT '',
+  `session_id`    VARCHAR(64)  NOT NULL DEFAULT '',
+  `channel`       VARCHAR(16)  NOT NULL DEFAULT '',
+  `app_version`   VARCHAR(32)  NOT NULL DEFAULT '',
+  `page_id`       VARCHAR(64)  NOT NULL DEFAULT '',
+  `page_path`     VARCHAR(256) NOT NULL DEFAULT '',
+  `page_title`    VARCHAR(128) NOT NULL DEFAULT '',
+  `element_id`    VARCHAR(128) NOT NULL DEFAULT '',
+  `element_name`  VARCHAR(128) NOT NULL DEFAULT '',
+  `target_url`    VARCHAR(512) NOT NULL DEFAULT '',
+  `api_method`    VARCHAR(16)  NOT NULL DEFAULT '',
+  `api_path`      VARCHAR(256) NOT NULL DEFAULT '',
+  `api_params`    JSON DEFAULT NULL,
+  `locale`        VARCHAR(16)  NOT NULL DEFAULT 'zh-Hans',
+  `ip`            VARCHAR(64)  NOT NULL DEFAULT '',
+  `user_agent`    VARCHAR(512) NOT NULL DEFAULT '',
+  `device_type`   VARCHAR(32)  NOT NULL DEFAULT '',
+  `device_model`  VARCHAR(128) NOT NULL DEFAULT '',
+  `os_name`       VARCHAR(32)  NOT NULL DEFAULT '',
+  `os_version`    VARCHAR(32)  NOT NULL DEFAULT '',
+  `screen_width`  INT NOT NULL DEFAULT 0,
+  `screen_height` INT NOT NULL DEFAULT 0,
+  `referrer`      VARCHAR(512) NOT NULL DEFAULT '',
+  `extra_json`    JSON DEFAULT NULL,
+  `event_at`      DATETIME NOT NULL,
+  `created_at`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_track_events_user_time` (`user_id`, `event_at`),
+  KEY `idx_user_track_events_page_time` (`page_id`, `event_at`),
+  KEY `idx_user_track_events_visitor_time` (`visitor_id`, `event_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户端行为埋点';
+
 SET FOREIGN_KEY_CHECKS = 1;

@@ -29,6 +29,7 @@ type Router struct {
 	inviteRebateHandler        *handler.InviteRebateHandler
 	userAPIKeyHandler          *handler.UserAPIKeyHandler
 	couponHandler              *handler.CouponHandler
+	trackingHandler            *handler.TrackingHandler
 }
 
 func NewRouter(
@@ -44,6 +45,7 @@ func NewRouter(
 	inviteRebateHandler *handler.InviteRebateHandler,
 	userAPIKeyHandler *handler.UserAPIKeyHandler,
 	couponHandler *handler.CouponHandler,
+	trackingHandler *handler.TrackingHandler,
 ) *Router {
 	return &Router{
 		setting:                   setting,
@@ -58,6 +60,7 @@ func NewRouter(
 		inviteRebateHandler:     inviteRebateHandler,
 		userAPIKeyHandler:       userAPIKeyHandler,
 		couponHandler:           couponHandler,
+		trackingHandler:         trackingHandler,
 	}
 }
 
@@ -79,6 +82,7 @@ func (r *Router) setupRouters() *gin.Engine {
 		v1.GET("/enterprise/products/:code", r.enterpriseHandler.GetProduct)
 		v1.POST("/enterprise/inquiries", r.enterpriseHandler.SubmitInquiry)
 		v1.GET("/coupon-campaigns/register-promo", r.couponHandler.RegisterPromo)
+		v1.POST("/tracking/events", r.trackingHandler.ReportEvents)
 	}
 
 	userAuth := engine.Group("/api/v1", ginMiddleware.RequireAuth)

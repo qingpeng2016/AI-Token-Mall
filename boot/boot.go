@@ -17,6 +17,7 @@ import (
 	userAPIKeySvc "github.com/qingpeng2016/ai-token-mall/application/core-service/user_api_key"
 	"github.com/qingpeng2016/ai-token-mall/application/core-service/tutorial"
 	couponSvc "github.com/qingpeng2016/ai-token-mall/application/core-service/coupon"
+	trackingSvc "github.com/qingpeng2016/ai-token-mall/application/core-service/tracking"
 	"github.com/qingpeng2016/ai-token-mall/application/core-service/user"
 	log2 "github.com/qingpeng2016/ai-token-mall/common/dederi/logger"
 	"github.com/qingpeng2016/ai-token-mall/common/notification"
@@ -56,6 +57,8 @@ func BuildContainer() *dig.Container {
 	_ = c.Provide(handler.NewInviteRebateHandler)
 	_ = c.Provide(handler.NewUserAPIKeyHandler)
 	_ = c.Provide(handler.NewCouponHandler)
+	_ = c.Provide(handler.NewTrackingHandler)
+	_ = c.Provide(trackingSvc.NewService)
 	_ = c.Provide(userAPIKeySvc.NewService)
 	_ = c.Provide(couponSvc.NewService)
 	_ = c.Provide(inviteRebateSvc.NewService)
@@ -107,6 +110,7 @@ func BuildContainer() *dig.Container {
 	_ = c.Provide(mysql.NewBotScheduleConfigImpl)
 	_ = c.Provide(mysql.NewCouponCampaignsImpl)
 	_ = c.Provide(mysql.NewUserCouponsImpl)
+	_ = c.Provide(mysql.NewUserTrackEventsImpl)
 	_ = c.Provide(redis.NewClient)
 	_ = c.Provide(http.NewHTTPClient)
 	_ = c.Provide(payinfra.NewClient)
