@@ -10,9 +10,14 @@ import {
   formatSubscriptionDate,
   parseSubscriptionDate,
   formatTokenCount,
+  couponDiscountAmount,
+  couponOptionLabel,
+  isCouponEligibleForSubtotal,
+  pickBestCoupon,
+  type UserCouponItem,
 } from '@ai-token-mall/shared'
 import type { OrderType, UserProfile } from '@ai-token-mall/shared'
-import { orderApi } from '@/api'
+import { couponApi, orderApi } from '@/api'
 import type { CatalogProduct } from '@/mocks/home'
 
 const props = withDefaults(
@@ -41,8 +46,9 @@ const emit = defineEmits<{
   paid: []
 }>()
 
-const couponInput = ref('')
-const couponApplied = ref<{ code: string; percentOff: number } | null>(null)
+const checkoutCoupons = ref<UserCouponItem[]>([])
+const selectedCouponId = ref(0)
+const couponsLoading = ref(false)
 const paying = ref(false)
 
 const billingPeriodUnit = computed(() => {
@@ -76,15 +82,70 @@ const upgradeExpiresLabel = computed(() => {
   return exp ? formatSubscriptionDate(exp) : props.subscriptionExpiresAt
 })
 
+const unitPrice = computed(() => parseMoney(props.product?.price))
+
+const subtotalAmount = computed(() => unitPrice.value * checkoutQuantity.value)
+
+const eligibleCoupons = computed(() =>
+  checkoutCoupons.value.filter((c) => isCouponEligibleForSubtotal(c, subtotalAmount.value)),
+)
+
+const selectedCoupon = computed(() =>
+  eligibleCoupons.value.find((c) => c.id === selectedCouponId.value) ?? null,
+)
+
+const couponOffAmount = computed(() => {
+  if (!selectedCoupon.value) return 0
+  return couponDiscountAmount(selectedCoupon.value, subtotalAmount.value)
+})
+
+const totalAmount = computed(() =>
+  Math.max(0, Math.round((subtotalAmount.value - couponOffAmount.value) * 100) / 100),
+)
+
+const quotaAddonGrantTokens = computed(() => {
+  if (props.orderType !== 'quota_addon' || !props.product) return 0
+  return props.product.limit_tokens
+})
+
+async function loadCheckoutCoupons() {
+  if (!props.user) {
+    checkoutCoupons.value = []
+    selectedCouponId.value = 0
+    return
+  }
+  couponsLoading.value = true
+  try {
+    const data = await couponApi.listMine()
+    checkoutCoupons.value = data.items
+    const best = pickBestCoupon(checkoutCoupons.value, subtotalAmount.value)
+    selectedCouponId.value = best?.id ?? 0
+  } catch {
+    checkoutCoupons.value = []
+    selectedCouponId.value = 0
+  } finally {
+    couponsLoading.value = false
+  }
+}
+
 watch(
   () => props.open,
   (visible) => {
     if (visible) {
-      couponInput.value = ''
-      couponApplied.value = null
+      void loadCheckoutCoupons()
+    } else {
+      checkoutCoupons.value = []
+      selectedCouponId.value = 0
     }
   },
 )
+
+watch(subtotalAmount, () => {
+  if (selectedCouponId.value <= 0) return
+  if (eligibleCoupons.value.some((c) => c.id === selectedCouponId.value)) return
+  const best = pickBestCoupon(checkoutCoupons.value, subtotalAmount.value)
+  selectedCouponId.value = best?.id ?? 0
+})
 
 const dialogTitle = computed(() => {
   const title = props.product?.card_title ?? '套餐'
@@ -108,41 +169,8 @@ const planLabel = computed(() => {
   return '单次'
 })
 
-const unitPrice = computed(() => parseMoney(props.product?.price))
-
-const subtotalAmount = computed(() => unitPrice.value * checkoutQuantity.value)
-
-const couponOffAmount = computed(() => {
-  if (!couponApplied.value) return 0
-  return Math.round(subtotalAmount.value * (couponApplied.value.percentOff / 100) * 100) / 100
-})
-
-const totalAmount = computed(() =>
-  Math.max(0, Math.round((subtotalAmount.value - couponOffAmount.value) * 100) / 100),
-)
-
-const quotaAddonGrantTokens = computed(() => {
-  if (props.orderType !== 'quota_addon' || !props.product) return 0
-  return props.product.limit_tokens
-})
-
 function close() {
   emit('update:open', false)
-}
-
-function applyCoupon() {
-  const code = couponInput.value.trim()
-  if (!code) {
-    couponApplied.value = null
-    return
-  }
-  if (code.toUpperCase() === 'AIPlan10') {
-    couponApplied.value = { code, percentOff: 10 }
-    ElMessage.success('优惠券已应用：9 折')
-    return
-  }
-  ElMessage.warning('优惠券无效')
-  couponApplied.value = null
 }
 
 async function submitPay(channel: 'alipay' | 'paypal') {
@@ -165,6 +193,9 @@ async function submitPay(channel: 'alipay' | 'paypal') {
     }
     if (props.userSubscriptionId > 0) {
       body.user_subscription_id = props.userSubscriptionId
+    }
+    if (selectedCouponId.value > 0) {
+      body.user_coupon_id = selectedCouponId.value
     }
     const created = await orderApi.checkout(body)
     if (created.status !== 'completed') {
@@ -203,14 +234,27 @@ async function submitPay(channel: 'alipay' | 'paypal') {
             </label>
           </div>
 
-          <div class="purchase-coupon">
-            <input
-              v-model="couponInput"
-              type="text"
-              placeholder="优惠券代码（可选）"
-              @keyup.enter="applyCoupon"
-            />
-            <button type="button" class="coupon-apply" @click="applyCoupon">应用</button>
+          <div v-if="user" class="purchase-coupon">
+            <label class="coupon-label" for="checkout-coupon">优惠券</label>
+            <select
+              id="checkout-coupon"
+              v-model.number="selectedCouponId"
+              class="coupon-select"
+              :disabled="couponsLoading || paying"
+            >
+              <option :value="0">
+                {{
+                  couponsLoading
+                    ? '加载中…'
+                    : eligibleCoupons.length
+                      ? '不使用优惠券'
+                      : '暂无可用优惠券'
+                }}
+              </option>
+              <option v-for="c in eligibleCoupons" :key="c.id" :value="c.id">
+                {{ couponOptionLabel(c, subtotalAmount) }}
+              </option>
+            </select>
           </div>
 
           <div class="purchase-total">
@@ -220,6 +264,10 @@ async function submitPay(channel: 'alipay' | 'paypal') {
             <p v-if="orderType === 'upgrade'" class="upgrade-expires-line">
               含 {{ upgradeBillingCycles }} 个{{ billingPeriodUnit }}计费周期（含当前周期）· 升档后服务到期
               {{ upgradeExpiresLabel }}
+            </p>
+            <p v-if="couponOffAmount > 0" class="discount-line">
+              优惠券抵扣
+              <strong>-{{ formatCny(couponOffAmount) }}</strong>
             </p>
             <p class="total-line">
               合计
@@ -361,32 +409,36 @@ async function submitPay(channel: 'alipay' | 'paypal') {
 }
 
 .purchase-coupon {
-  display: flex;
-  gap: 0;
   margin-bottom: 20px;
-  overflow: hidden;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
 }
 
-.purchase-coupon input {
-  flex: 1;
-  min-width: 0;
+.coupon-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--atm-text-muted);
+}
+
+.coupon-select {
+  width: 100%;
   padding: 12px 14px;
   font-size: 14px;
-  border: none;
+  color: var(--atm-text);
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
   outline: none;
 }
 
-.coupon-apply {
-  padding: 0 18px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--atm-primary);
-  cursor: pointer;
-  background: #f5f3ff;
-  border: none;
-  border-left: 1px solid #e2e8f0;
+.coupon-select:focus {
+  border-color: var(--atm-primary);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+}
+
+.coupon-select:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 .purchase-total {
@@ -399,6 +451,17 @@ async function submitPay(channel: 'alipay' | 'paypal') {
   font-size: 14px;
   font-weight: 600;
   color: var(--atm-text);
+}
+
+.discount-line {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #15803d;
+}
+
+.discount-line strong {
+  margin-left: 6px;
+  font-weight: 700;
 }
 
 .total-line {

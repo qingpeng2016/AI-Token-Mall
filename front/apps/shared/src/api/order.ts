@@ -12,6 +12,8 @@ export type CreateOrderBody = {
   quantity: number
   channel: 'alipay' | 'wechat' | 'paypal'
   enterprise_invoice?: boolean
+  /** 用户优惠券 user_coupons.id，0 或不传表示不使用 */
+  user_coupon_id?: number
 }
 
 export type UserOrderListPage = {

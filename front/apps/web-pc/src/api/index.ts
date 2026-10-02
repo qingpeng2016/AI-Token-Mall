@@ -9,6 +9,7 @@ import {
   createTutorialApi,
   createUserApi,
   createApiKeyApi,
+  createCouponApi,
 } from '@ai-token-mall/shared'
 import { getAuthToken } from '@/utils/auth-cookie'
 
@@ -60,6 +61,11 @@ export const inviteRebateApi = createInviteRebateApi({
 })
 
 export const apiKeyApi = createApiKeyApi({
+  baseURL,
+  getToken: () => getAuthToken(),
+})
+
+export const couponApi = createCouponApi({
   baseURL,
   getToken: () => getAuthToken(),
 })

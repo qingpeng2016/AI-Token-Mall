@@ -28,6 +28,7 @@ type UserWalletFlowItem struct {
 }
 
 type LoginUserResp struct {
-	Token string          `json:"token"`
-	User  UserProfileResp `json:"user"`
+	Token                  string          `json:"token"`
+	User                   UserProfileResp `json:"user"`
+	RegisterCouponsGranted int             `json:"register_coupons_granted,omitempty"`
 }

@@ -53,14 +53,18 @@ async function onSubmit() {
             confirm_password: form.confirmPassword,
             registration_host: registrationHost,
           }
-    const { user } = await userApi.register(body)
+    const res = await userApi.register(body)
     setSessionUser({
-      id: user.id,
-      email: user.email ?? null,
-      phone: user.phone ?? null,
-      nickname: user.nickname ?? null,
+      id: res.user.id,
+      email: res.user.email ?? null,
+      phone: res.user.phone ?? null,
+      nickname: res.user.nickname ?? null,
     })
-    ElMessage.success('注册成功')
+    if (res.register_coupons_granted && res.register_coupons_granted > 0) {
+      ElMessage.success(`注册成功，已发放 ${res.register_coupons_granted} 张优惠券`)
+    } else {
+      ElMessage.success('注册成功')
+    }
     const redirect =
       typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/')
         ? route.query.redirect

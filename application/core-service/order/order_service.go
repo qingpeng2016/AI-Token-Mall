@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	couponSvc "github.com/qingpeng2016/ai-token-mall/application/core-service/coupon"
 	"github.com/qingpeng2016/ai-token-mall/common/billing"
 	"github.com/qingpeng2016/ai-token-mall/common/constants"
 	"github.com/qingpeng2016/ai-token-mall/common/money"
@@ -22,10 +23,16 @@ type OrderService struct {
 	orders   repository.UserOrdersRepo
 	products repository.ProductsRepo
 	fulfill  *OrderFulfillService
+	coupons  *couponSvc.Service
 }
 
-func NewOrderService(orders repository.UserOrdersRepo, products repository.ProductsRepo, fulfill *OrderFulfillService) *OrderService {
-	return &OrderService{orders: orders, products: products, fulfill: fulfill}
+func NewOrderService(
+	orders repository.UserOrdersRepo,
+	products repository.ProductsRepo,
+	fulfill *OrderFulfillService,
+	coupons *couponSvc.Service,
+) *OrderService {
+	return &OrderService{orders: orders, products: products, fulfill: fulfill, coupons: coupons}
 }
 
 func (s *OrderService) ListMine(ctx context.Context, userID uint, q *request.ListOrdersQuery) (*response.UserOrderListPageResp, error) {
@@ -116,12 +123,26 @@ func (s *OrderService) CreateMockOrder(ctx context.Context, userID uint, req *re
 		qty = computed
 	}
 	subtotal := money.MulQty(product.Price, qty)
-	total := subtotal
+	now := time.Now()
+	couponDiscount := money.Zero
+	var appliedCouponID uint
+	if req.UserCouponID > 0 && s.coupons != nil {
+		_, off, err := s.coupons.ResolveForCheckout(ctx, userID, req.UserCouponID, subtotal, now)
+		if err != nil {
+			return nil, err
+		}
+		couponDiscount = off
+		appliedCouponID = req.UserCouponID
+	}
+	afterCoupon := subtotal.Sub(couponDiscount).Round(money.Scale)
+	if afterCoupon.LessThan(money.Zero) {
+		afterCoupon = money.Zero
+	}
+	total := afterCoupon
 	if req.EnterpriseInvoice {
-		total = money.AddInvoiceSurcharge(subtotal, 6)
+		total = money.AddInvoiceSurcharge(afterCoupon, 6)
 	}
 
-	now := time.Now()
 	orderNo := fmt.Sprintf("AP%d%04d", now.Unix(), userID%10000)
 	outTradeNo := fmt.Sprintf("PAY%d%d", now.UnixNano()/1e6, userID)
 
@@ -143,12 +164,15 @@ func (s *OrderService) CreateMockOrder(ctx context.Context, userID uint, req *re
 	}
 
 	rawReq, _ := json.Marshal(map[string]interface{}{
-		"product_id":         product.ID,
-		"order_type":            orderType,
+		"product_id":           product.ID,
+		"order_type":           orderType,
 		"user_subscription_id": userSubID,
-		"quantity":              qty,
-		"channel":            channel,
-		"enterprise_invoice": req.EnterpriseInvoice,
+		"quantity":             qty,
+		"channel":              channel,
+		"enterprise_invoice":   req.EnterpriseInvoice,
+		"user_coupon_id":       appliedCouponID,
+		"coupon_discount":      couponDiscount.StringFixed(money.Scale),
+		"subtotal":             subtotal.StringFixed(money.Scale),
 	})
 	order.PayChannel = channel
 	order.OutTradeNo = outTradeNo

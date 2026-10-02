@@ -6,6 +6,7 @@ export type MemberTab =
   | 'plans'
   | 'api-keys'
   | 'orders'
+  | 'coupons'
   | 'account'
   | 'invoices'
   | 'sub-accounts'
@@ -13,6 +14,7 @@ export type MemberTab =
 
 export const memberNav: { id: MemberTab; label: string }[] = [
   { id: 'overview', label: '概览' },
+  { id: 'coupons', label: '优惠券' },
   { id: 'plans', label: '我的套餐' },
   { id: 'api-keys', label: 'API Key' },
   { id: 'sub-accounts', label: '邀请返利' },

@@ -32,7 +32,7 @@ import {
   setSessionUser,
   userAccountLabel,
 } from '@/composables/useSessionUser'
-import { apiKeyApi, inviteRebateApi, invoiceApi, orderApi, subscriptionApi, userApi } from '@/api'
+import { apiKeyApi, couponApi, inviteRebateApi, invoiceApi, orderApi, subscriptionApi, userApi } from '@/api'
 import type {
   ApiTeamAddableInviteeItem,
   ApiTeamMemberItem,
@@ -42,6 +42,7 @@ import type {
   InviteWithdrawalRecord,
   UserAPIKeyItem,
   UserInvoiceItem,
+  UserCouponItem,
   UserOrderItem,
   UserSubscriptionItem,
 } from '@ai-token-mall/shared'
@@ -83,6 +84,8 @@ const invoicesPage = ref(1)
 const invoicesPageSize = 9
 const invoicesTotal = ref(0)
 const invoicesLoaded = ref(false)
+const memberCoupons = ref<UserCouponItem[]>([])
+const couponsLoaded = ref(false)
 const invoiceConfigOpen = ref(false)
 const changePasswordOpen = ref(false)
 const walletBalance = ref(0)
@@ -249,6 +252,9 @@ watch(
     if (tab === 'invoices') {
       void fetchInvoicesTabData()
     }
+    if (tab === 'coupons') {
+      void fetchCouponsTabData()
+    }
     if (tab === 'sub-accounts') {
       void fetchInviteRebateTabData()
     }
@@ -303,7 +309,8 @@ function isSubscriptionActive(status: string) {
 
 function subscriptionTagClass(status: string) {
   if (status === 'active') return 'tag--active'
-  if (status === 'expired') return 'tag--cancelled'
+  // 与 API Key 非 active 一致：默认灰底标签，不用红色 cancelled
+  if (status === 'expired') return ''
   return `tag--${status}`
 }
 
@@ -449,6 +456,38 @@ async function fetchInvoicesTabData() {
 function onInvoicesPageChange(page: number) {
   invoicesPage.value = page
   void fetchInvoicesTabData()
+}
+
+const couponStatusLabel: Record<string, string> = {
+  available: '可使用',
+  used: '已使用',
+  expired: '已过期',
+}
+
+function couponDiscountLabel(c: UserCouponItem) {
+  if (c.discount_type === 'percent') {
+    return `${parseFloat(c.discount_value)}% 折扣`
+  }
+  return `立减 ¥${parseFloat(c.discount_value).toFixed(0)}`
+}
+
+function couponStatusTagClass(status: string) {
+  if (status === 'available') return 'tag--active'
+  if (status === 'used') return 'tag--cancelled'
+  return 'tag--expired'
+}
+
+async function fetchCouponsTabData() {
+  await withTopLoading(async () => {
+    try {
+      const data = await couponApi.listMine()
+      memberCoupons.value = data.items
+    } catch (e) {
+      handleMemberAuthError(e, '优惠券加载失败')
+    } finally {
+      couponsLoaded.value = true
+    }
+  })
 }
 
 async function fetchApiKeysTabData() {
@@ -1395,7 +1434,12 @@ async function confirmAddTeamMember() {
 
             <!-- 我的套餐 -->
             <div v-else-if="activeTab === 'plans'" class="panel-body">
-              <article v-for="sub in memberSubscriptions" :key="sub.id" class="plan-card">
+              <article
+                v-for="sub in memberSubscriptions"
+                :key="sub.id"
+                class="plan-card"
+                :class="{ 'plan-card--inactive': !isSubscriptionActive(sub.status) }"
+              >
                 <div class="plan-card-head">
                   <div>
                     <h2>{{ sub.product_name }}</h2>
@@ -1670,6 +1714,44 @@ async function confirmAddTeamMember() {
             </div>
 
             <!-- 资金流水 -->
+            <div v-else-if="activeTab === 'coupons'" class="panel-body">
+              <div v-if="memberCoupons.length" class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>名称</th>
+                      <th>优惠</th>
+                      <th>门槛</th>
+                      <th>有效期</th>
+                      <th>状态</th>
+                      <th>券码</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="c in memberCoupons" :key="c.id">
+                      <td>{{ c.title || c.campaign_code }}</td>
+                      <td>{{ couponDiscountLabel(c) }}</td>
+                      <td>
+                        {{
+                          parseFloat(c.min_order_amount) > 0
+                            ? `满 ¥${parseFloat(c.min_order_amount).toFixed(0)}`
+                            : '无门槛'
+                        }}
+                      </td>
+                      <td class="muted">{{ c.valid_from }} ~ {{ c.valid_until }}</td>
+                      <td>
+                        <span class="tag" :class="couponStatusTagClass(c.status)">{{
+                          couponStatusLabel[c.status] ?? c.status
+                        }}</span>
+                      </td>
+                      <td class="mono">{{ c.coupon_code }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p v-else-if="couponsLoaded" class="empty">暂无优惠券，新用户注册可领取新人礼</p>
+            </div>
+
             <div v-else-if="activeTab === 'account'" class="panel-body">
             <div v-if="walletFlows.length" class="table-wrap">
               <table class="data-table">
@@ -3109,6 +3191,17 @@ async function confirmAddTeamMember() {
 
 .plan-card:last-child {
   margin-bottom: 0;
+}
+
+.plan-card--inactive {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+  box-shadow: none;
+}
+
+.plan-card--inactive .plan-card-head h2,
+.plan-card--inactive .plan-metrics strong {
+  color: #64748b;
 }
 
 .plan-card-head {

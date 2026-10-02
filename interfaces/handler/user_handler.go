@@ -41,7 +41,11 @@ func (h *UserHandler) Register(c *gin.Context) {
 		false,
 		false,
 	)
-	response.ResponseSuccess(c, gin.H{"user": data.User})
+	payload := gin.H{"user": data.User}
+	if data.RegisterCouponsGranted > 0 {
+		payload["register_coupons_granted"] = data.RegisterCouponsGranted
+	}
+	response.ResponseSuccess(c, payload)
 }
 
 // Login 用户登录

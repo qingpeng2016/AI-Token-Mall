@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	couponexpire "github.com/qingpeng2016/ai-token-mall/application/bot/scripts/coupon_expire"
 	subscriptionlifecycle "github.com/qingpeng2016/ai-token-mall/application/bot/scripts/subscription_lifecycle"
 	viplevelsync "github.com/qingpeng2016/ai-token-mall/application/bot/scripts/vip_level_sync"
 	botscheduleconfig "github.com/qingpeng2016/ai-token-mall/application/core-service/bot_schedule_config"
@@ -24,6 +25,7 @@ type Scheduler struct {
 	botScheduleConfigService *botscheduleconfig.BotScheduleConfigService
 	subscriptionLifecycleJob *subscriptionlifecycle.SubscriptionLifecycleJob
 	vipLevelSyncJob          *viplevelsync.VipLevelSyncJob
+	couponExpireJob          *couponexpire.CouponExpireJob
 	ns                       *gocron.Scheduler
 	jobMap                   map[string]*gocron.Job
 	configMap                map[string]float64
@@ -36,11 +38,13 @@ func NewScheduler(
 	botScheduleConfigService *botscheduleconfig.BotScheduleConfigService,
 	subscriptionLifecycleJob *subscriptionlifecycle.SubscriptionLifecycleJob,
 	vipLevelSyncJob *viplevelsync.VipLevelSyncJob,
+	couponExpireJob *couponexpire.CouponExpireJob,
 ) *Scheduler {
 	return &Scheduler{
 		botScheduleConfigService: botScheduleConfigService,
 		subscriptionLifecycleJob: subscriptionLifecycleJob,
 		vipLevelSyncJob:          vipLevelSyncJob,
+		couponExpireJob:          couponExpireJob,
 		ns:                       gocron.NewScheduler(time.Local),
 		jobMap:                   make(map[string]*gocron.Job),
 		configMap:                make(map[string]float64),
@@ -228,6 +232,10 @@ func (s *Scheduler) getAITokenMallHandleFunc(taskName string) func() {
 	case viplevelsync.TaskVipLevelSync:
 		return func() {
 			s.vipLevelSyncJob.Run(context.Background())
+		}
+	case couponexpire.TaskCouponExpire:
+		return func() {
+			s.couponExpireJob.Run(context.Background())
 		}
 	default:
 		return nil

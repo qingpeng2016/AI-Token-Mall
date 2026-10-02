@@ -50,6 +50,8 @@ export interface ChangePasswordRequest {
 
 export interface LoginResponse {
   user: UserProfile
+  token?: string
+  register_coupons_granted?: number
 }
 
 /** 与 common/dederi/gin/response.ApiResp 一致 */

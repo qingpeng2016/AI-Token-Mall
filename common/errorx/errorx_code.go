@@ -24,4 +24,5 @@ var (
 	ErrTeamMemberExists      = NewRespErr(100312, "该成员已在团队中", "該成員已在團隊中", "Member already in team.")
 	ErrSubKeyDuplicate       = NewRespErr(100313, "该成员在此套餐下已有子 Key", "該成員在此套餐下已有子 Key", "Sub key already exists for this plan.")
 	ErrSubKeyLimitExceeded   = NewRespErr(100314, "子 Key 额度之和超过套餐总量", "子 Key 額度之和超過套餐總量", "Sub key limits exceed subscription cap.")
+	ErrCouponUnavailable     = NewRespErr(100315, "优惠券不可用或已失效", "優惠券不可用或已失效", "Coupon unavailable or expired.")
 )

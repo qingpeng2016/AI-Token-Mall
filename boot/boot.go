@@ -2,6 +2,7 @@ package boot
 
 import (
 	bot "github.com/qingpeng2016/ai-token-mall/application/bot"
+	couponexpire "github.com/qingpeng2016/ai-token-mall/application/bot/scripts/coupon_expire"
 	subscriptionlifecycle "github.com/qingpeng2016/ai-token-mall/application/bot/scripts/subscription_lifecycle"
 	viplevelsync "github.com/qingpeng2016/ai-token-mall/application/bot/scripts/vip_level_sync"
 	alipaysvc "github.com/qingpeng2016/ai-token-mall/application/core-service/alipay"
@@ -15,6 +16,7 @@ import (
 	"github.com/qingpeng2016/ai-token-mall/application/core-service/subscription"
 	userAPIKeySvc "github.com/qingpeng2016/ai-token-mall/application/core-service/user_api_key"
 	"github.com/qingpeng2016/ai-token-mall/application/core-service/tutorial"
+	couponSvc "github.com/qingpeng2016/ai-token-mall/application/core-service/coupon"
 	"github.com/qingpeng2016/ai-token-mall/application/core-service/user"
 	log2 "github.com/qingpeng2016/ai-token-mall/common/dederi/logger"
 	"github.com/qingpeng2016/ai-token-mall/common/notification"
@@ -53,7 +55,9 @@ func BuildContainer() *dig.Container {
 	_ = c.Provide(handler.NewUserNotificationHandler)
 	_ = c.Provide(handler.NewInviteRebateHandler)
 	_ = c.Provide(handler.NewUserAPIKeyHandler)
+	_ = c.Provide(handler.NewCouponHandler)
 	_ = c.Provide(userAPIKeySvc.NewService)
+	_ = c.Provide(couponSvc.NewService)
 	_ = c.Provide(inviteRebateSvc.NewService)
 	_ = c.Provide(user.NewUserService)
 	_ = c.Provide(notificationsvc.NewUserNotificationService)
@@ -72,6 +76,7 @@ func BuildContainer() *dig.Container {
 	// Bot
 	_ = c.Provide(subscriptionlifecycle.NewSubscriptionLifecycleJob)
 	_ = c.Provide(viplevelsync.NewVipLevelSyncJob)
+	_ = c.Provide(couponexpire.NewCouponExpireJob)
 	_ = c.Provide(bot.NewScheduler)
 	_ = c.Provide(bot.NewEntry)
 
@@ -100,6 +105,8 @@ func BuildContainer() *dig.Container {
 	_ = c.Provide(mysql.NewUserCommissionWithdrawalsImpl)
 	_ = c.Provide(mysql.NewTransactorImpl)
 	_ = c.Provide(mysql.NewBotScheduleConfigImpl)
+	_ = c.Provide(mysql.NewCouponCampaignsImpl)
+	_ = c.Provide(mysql.NewUserCouponsImpl)
 	_ = c.Provide(redis.NewClient)
 	_ = c.Provide(http.NewHTTPClient)
 	_ = c.Provide(payinfra.NewClient)

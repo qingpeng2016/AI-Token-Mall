@@ -28,6 +28,7 @@ type Router struct {
 	userNotificationHandler    *handler.UserNotificationHandler
 	inviteRebateHandler        *handler.InviteRebateHandler
 	userAPIKeyHandler          *handler.UserAPIKeyHandler
+	couponHandler              *handler.CouponHandler
 }
 
 func NewRouter(
@@ -42,6 +43,7 @@ func NewRouter(
 	userNotificationHandler *handler.UserNotificationHandler,
 	inviteRebateHandler *handler.InviteRebateHandler,
 	userAPIKeyHandler *handler.UserAPIKeyHandler,
+	couponHandler *handler.CouponHandler,
 ) *Router {
 	return &Router{
 		setting:                   setting,
@@ -55,6 +57,7 @@ func NewRouter(
 		userNotificationHandler:   userNotificationHandler,
 		inviteRebateHandler:     inviteRebateHandler,
 		userAPIKeyHandler:       userAPIKeyHandler,
+		couponHandler:           couponHandler,
 	}
 }
 
@@ -75,6 +78,7 @@ func (r *Router) setupRouters() *gin.Engine {
 		v1.GET("/enterprise/products", r.enterpriseHandler.ListProducts)
 		v1.GET("/enterprise/products/:code", r.enterpriseHandler.GetProduct)
 		v1.POST("/enterprise/inquiries", r.enterpriseHandler.SubmitInquiry)
+		v1.GET("/coupon-campaigns/register-promo", r.couponHandler.RegisterPromo)
 	}
 
 	userAuth := engine.Group("/api/v1", ginMiddleware.RequireAuth)
@@ -85,6 +89,7 @@ func (r *Router) setupRouters() *gin.Engine {
 		userAuth.GET("/users/notifications/unread-count", r.userNotificationHandler.UnreadCount)
 		userAuth.POST("/users/notifications/read-all", r.userNotificationHandler.MarkAllRead)
 		userAuth.POST("/users/notifications/:id/read", r.userNotificationHandler.MarkRead)
+		userAuth.GET("/users/coupons", r.couponHandler.ListMine)
 		userAuth.GET("/users/wallet-flows", r.userHandler.ListWalletFlows)
 		userAuth.GET("/users/invoices", r.userHandler.ListInvoices)
 		userAuth.GET("/users/invoice-configs", r.invoiceConfigHandler.ListMine)

@@ -12,6 +12,7 @@ type CreateOrderReq struct {
 	Quantity           int    `json:"quantity" binding:"required,min=1,max=99"`
 	Channel           string `json:"channel" binding:"required"`
 	EnterpriseInvoice bool   `json:"enterprise_invoice"`
+	UserCouponID      uint   `json:"user_coupon_id" binding:"omitempty"`
 }
 
 type PaymentNotifyReq struct {

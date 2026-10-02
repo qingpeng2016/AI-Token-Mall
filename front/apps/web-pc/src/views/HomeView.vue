@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import PurchaseModal from '@/components/checkout/PurchaseModal.vue'
+import RegisterCouponPromo from '@/components/home/RegisterCouponPromo.vue'
 import {
   getSessionUser,
   isLoggedIn,
@@ -41,6 +42,8 @@ const selectedProductId = ref<number | null>(null)
 const purchaseOpen = ref(false)
 const purchaseProduct = ref<CatalogProduct | null>(null)
 const sessionUser = ref(getSessionUser())
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? ''
+const showRegisterCouponPromo = computed(() => !isLoggedIn())
 
 const activePillStyle = computed(() => {
   const pill = catalogFilterPills.value.find((p) => p.value === filter.value)
@@ -353,6 +356,7 @@ function reviewInitial(user: string) {
       :product="purchaseProduct"
       :user="sessionUser"
     />
+    <RegisterCouponPromo v-if="showRegisterCouponPromo" :api-base-url="apiBaseUrl" />
   </div>
 </template>
 

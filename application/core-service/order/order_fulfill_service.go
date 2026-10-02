@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	couponSvc "github.com/qingpeng2016/ai-token-mall/application/core-service/coupon"
 	"github.com/qingpeng2016/ai-token-mall/application/core-service/invite_rebate"
 	"github.com/qingpeng2016/ai-token-mall/common/apikey"
 	"github.com/qingpeng2016/ai-token-mall/common/billing"
@@ -30,6 +31,7 @@ type OrderFulfillService struct {
 	callbacks     repository.PaymentCallbacksRepo
 	invoices      repository.UserInvoicesRepo
 	inviteRebate *invite_rebate.Service
+	coupons      *couponSvc.Service
 }
 
 func NewOrderFulfillService(
@@ -44,6 +46,7 @@ func NewOrderFulfillService(
 	callbacks repository.PaymentCallbacksRepo,
 	invoices repository.UserInvoicesRepo,
 	inviteRebate *invite_rebate.Service,
+	coupons *couponSvc.Service,
 ) *OrderFulfillService {
 	return &OrderFulfillService{
 		tx:            tx,
@@ -57,6 +60,7 @@ func NewOrderFulfillService(
 		callbacks:     callbacks,
 		invoices:      invoices,
 		inviteRebate: inviteRebate,
+		coupons:      coupons,
 	}
 }
 
@@ -117,6 +121,12 @@ func (s *OrderFulfillService) ApplyPaymentNotifySuccess(ctx context.Context, in 
 
 		if err := s.fulfillPaidOrderByType(ctx, tx, order, product, in.Channel, now); err != nil {
 			return err
+		}
+
+		if s.coupons != nil {
+			if err := s.coupons.MarkUsedFromOrderRawRequest(ctx, tx, order.UserID, order.ID, order.RawRequestJSON, now); err != nil {
+				return err
+			}
 		}
 
 		if err := s.inviteRebate.AccrueInviteRebateForPaidOrder(ctx, tx, order, product, now); err != nil {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 
+	couponSvc "github.com/qingpeng2016/ai-token-mall/application/core-service/coupon"
 	"github.com/qingpeng2016/ai-token-mall/common/auth"
 	"github.com/qingpeng2016/ai-token-mall/common/dederi/logger"
 	"github.com/qingpeng2016/ai-token-mall/common/errorx"
@@ -30,6 +31,7 @@ type UserService struct {
 	invoices   repository.UserInvoicesRepo
 	vipConfigs repository.VipConfigRepo
 	vipDomains repository.VipDomainConfigRepo
+	coupons    *couponSvc.Service
 }
 
 func NewUserService(
@@ -38,6 +40,7 @@ func NewUserService(
 	invoices repository.UserInvoicesRepo,
 	vipConfigs repository.VipConfigRepo,
 	vipDomains repository.VipDomainConfigRepo,
+	coupons *couponSvc.Service,
 ) *UserService {
 	return &UserService{
 		users:      users,
@@ -45,6 +48,7 @@ func NewUserService(
 		invoices:   invoices,
 		vipConfigs: vipConfigs,
 		vipDomains: vipDomains,
+		coupons:    coupons,
 	}
 }
 
@@ -243,14 +247,33 @@ func (s *UserService) Register(ctx context.Context, req *request.RegisterUserReq
 				logger.WarnZ(ctx, "users-register-invite-columns-missing-fallback",
 					zap.String("registration_host", req.RegistrationHost),
 					zap.Error(err))
-				return s.loginUserResp(u)
+				return s.finishRegistration(ctx, u)
 			}
 			err = fallbackErr
 		}
 		logger.ErrorZ(ctx, "users-register-create-failed", zap.Error(err))
 		return nil, errorx.ErrDbError
 	}
-	return s.loginUserResp(u)
+	return s.finishRegistration(ctx, u)
+}
+
+func (s *UserService) finishRegistration(ctx context.Context, u *entity.Users) (*response.LoginUserResp, error) {
+	resp, err := s.loginUserResp(u)
+	if err != nil {
+		return nil, err
+	}
+	if s.coupons == nil {
+		return resp, nil
+	}
+	n, grantErr := s.coupons.GrantRegisterCoupons(ctx, u.ID)
+	if grantErr != nil {
+		logger.WarnZ(ctx, "register-coupon-grant-failed", zap.Error(grantErr))
+		return resp, nil
+	}
+	if n > 0 {
+		resp.RegisterCouponsGranted = n
+	}
+	return resp, nil
 }
 
 func (s *UserService) Login(ctx context.Context, req *request.LoginUserReq) (*response.LoginUserResp, error) {
