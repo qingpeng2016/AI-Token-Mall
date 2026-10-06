@@ -29,6 +29,7 @@ type Config struct {
 	NotificationConf  *Notification  `mapstructure:"notification"`
 	AlipayConf        *Alipay        `mapstructure:"alipay"`
 	InvoiceLookupConf *InvoiceLookup `mapstructure:"invoice_lookup"`
+	LiteratureConf    *Literature    `mapstructure:"literature"`
 }
 
 // InvoiceLookup 企业开票抬头外部查询（诚数 API 支持名称/税号；Mgtv 发票抬头库按名称模糊查）。
@@ -88,6 +89,12 @@ type Alipay struct {
 	AppID      string `mapstructure:"app_id"`
 	PrivateKey string `mapstructure:"private_key"`
 	Gateway    string `mapstructure:"gateway"`
+}
+
+// Literature 文献数据源 HTTP 配置（Paper Agent RAG）
+type Literature struct {
+	SemanticScholarAPIKey string `mapstructure:"semantic_scholar_api_key"`
+	OpenAlexMailto        string `mapstructure:"openalex_mailto"`
 }
 
 var GlobalConf *Config
@@ -211,5 +218,18 @@ func GetAlipayConf() *Alipay {
 		return nil
 	}
 	return GlobalConf.AlipayConf
+}
+
+func GetLiteratureConf() *Literature {
+	if GlobalConf == nil || GlobalConf.LiteratureConf == nil {
+		return &Literature{
+			SemanticScholarAPIKey: os.Getenv("SEMANTIC_SCHOLAR_API_KEY"),
+		}
+	}
+	l := *GlobalConf.LiteratureConf
+	if l.SemanticScholarAPIKey == "" {
+		l.SemanticScholarAPIKey = os.Getenv("SEMANTIC_SCHOLAR_API_KEY")
+	}
+	return &l
 }
 

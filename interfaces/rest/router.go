@@ -30,6 +30,7 @@ type Router struct {
 	userAPIKeyHandler          *handler.UserAPIKeyHandler
 	couponHandler              *handler.CouponHandler
 	trackingHandler            *handler.TrackingHandler
+	paperLiteratureHandler     *handler.PaperLiteratureHandler
 }
 
 func NewRouter(
@@ -46,6 +47,7 @@ func NewRouter(
 	userAPIKeyHandler *handler.UserAPIKeyHandler,
 	couponHandler *handler.CouponHandler,
 	trackingHandler *handler.TrackingHandler,
+	paperLiteratureHandler *handler.PaperLiteratureHandler,
 ) *Router {
 	return &Router{
 		setting:                   setting,
@@ -61,6 +63,7 @@ func NewRouter(
 		userAPIKeyHandler:       userAPIKeyHandler,
 		couponHandler:           couponHandler,
 		trackingHandler:         trackingHandler,
+		paperLiteratureHandler:  paperLiteratureHandler,
 	}
 }
 
@@ -118,6 +121,7 @@ func (r *Router) setupRouters() *gin.Engine {
 		userAuth.POST("/users/api-team/members", r.userAPIKeyHandler.AddTeamMember)
 		userAuth.GET("/users/api-team/enterprise-inquiry", r.userAPIKeyHandler.GetEnterpriseInquiry)
 		userAuth.POST("/users/api-team/enterprise-inquiry", r.userAPIKeyHandler.SubmitEnterpriseInquiry)
+		userAuth.GET("/paper/literature/search", r.paperLiteratureHandler.Search)
 	}
 
 	// 需登录；正式网关回调另开 /api/v1/payments/notify 且无鉴权
