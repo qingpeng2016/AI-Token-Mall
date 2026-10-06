@@ -855,7 +855,7 @@ async function onPrimaryAction() {
   color: #fff;
   font-weight: 600;
   background: rgba(255, 255, 255, 0.14);
-  box-shadow: inset 3px 0 0 #fff;
+  box-shadow: inset 2px 0 0 #fff;
 }
 
 .paper-nav-item--active:hover {
