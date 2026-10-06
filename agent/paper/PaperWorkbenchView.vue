@@ -14,6 +14,7 @@ import {
   type PaperManuscriptItem,
   type PaperModuleId,
   type TopicCheckpointKey,
+  type TopicDiscoveryArtifactSnapshot,
   type TopicDiscoveryForm,
   type TopicFlowStepStatus,
 } from './types'
@@ -189,13 +190,24 @@ const isSecondaryWorkflowModule = computed(() =>
   (SECONDARY_WORKFLOW_MODULES as readonly string[]).includes(activeModule.value),
 )
 
+function ensureTopicRunForManuscript(id: string) {
+  if (!topicRunsByManuscript.value[id]) {
+    topicRunsByManuscript.value = { ...topicRunsByManuscript.value, [id]: createIdleTopicRun() }
+  }
+}
+
+watch(
+  activeManuscriptId,
+  (id) => {
+    if (id) ensureTopicRunForManuscript(id)
+  },
+  { immediate: true },
+)
+
 const currentTopicRun = computed((): TopicRunDemo => {
   const id = activeManuscriptId.value
   if (!id) return createIdleTopicRun()
-  if (!topicRunsByManuscript.value[id]) {
-    topicRunsByManuscript.value[id] = createIdleTopicRun()
-  }
-  return topicRunsByManuscript.value[id]
+  return topicRunsByManuscript.value[id] ?? createIdleTopicRun()
 })
 
 const topicRunVisible = computed(
@@ -205,6 +217,45 @@ const topicRunVisible = computed(
 const topicRunBusy = computed(
   () => currentTopicRun.value.status === 'running' || running.value,
 )
+
+/** 文献综述只读：当前论文最近一次选题 run 的 artifact 快照 */
+const topicDiscoveryArtifact = computed((): TopicDiscoveryArtifactSnapshot => {
+  const run = currentTopicRun.value
+  const retrieve = run.steps.find((s) => s.stageCode === 'retrieve')
+  const novelty = run.steps.find((s) => s.stageCode === 'novelty')
+  const planStep = run.steps.find((s) => s.stageCode === 'experiment_plan')
+  const corpusReady = retrieve?.status === 'completed'
+  const runCompleted = run.status === 'completed'
+  const sourceLabels = topicForm.sourceCodes.map(
+    (c) => LITERATURE_SOURCE_OPTIONS.find((o) => o.code === c)?.label ?? c,
+  )
+  const direction =
+    topicForm.direction.trim() ||
+    (corpusReady ? '（本次 run 未保留方向文案 · 演示）' : '（尚未填写研究方向）')
+
+  const noveltyReady =
+    novelty?.status === 'completed' ||
+    run.status === 'checkpoint' ||
+    runCompleted
+  const planReady =
+    planStep?.status === 'completed' ||
+    (run.status === 'checkpoint' && run.checkpoint?.key === 'plan_ready') ||
+    runCompleted
+
+  return {
+    runStatus: run.status,
+    corpusReady,
+    runCompleted,
+    direction,
+    venue: topicForm.venue,
+    sourceLabels,
+    literatureHitCount: corpusReady ? 86 : 0,
+    verifiedHitCount: corpusReady ? 79 : 0,
+    candidateIdeas: noveltyReady ? [...CHECKPOINT_COPY.ideas_ready.lines] : [],
+    noveltyLines: noveltyReady ? [...CHECKPOINT_COPY.ideas_ready.lines] : [],
+    experimentPlanLines: planReady ? [...CHECKPOINT_COPY.plan_ready.lines] : [],
+  }
+})
 
 const topicPrimaryDisabled = computed(() => {
   if (isEnvironmentModule.value) return running.value
@@ -406,10 +457,27 @@ function isLiteratureSourceChecked(code: string) {
   return envPreference.literatureSourceCodes.includes(code)
 }
 
+function toggleTopicSource(code: string, checked: boolean) {
+  const set = new Set(topicForm.sourceCodes)
+  if (checked) set.add(code)
+  else set.delete(code)
+  topicForm.sourceCodes = [...set]
+}
+
+function isTopicSourceChecked(code: string) {
+  return topicForm.sourceCodes.includes(code)
+}
+
 async function onPrimaryAction() {
-  if (activeModule.value === 'topic-discovery' && !topicForm.direction.trim()) {
-    ElMessage.warning('请填写研究方向')
-    return
+  if (activeModule.value === 'topic-discovery') {
+    if (!topicForm.direction.trim()) {
+      ElMessage.warning('请填写研究方向')
+      return
+    }
+    if (topicForm.sourceCodes.length === 0) {
+      ElMessage.warning('请至少选择一个文献来源（检索在选题发现完成）')
+      return
+    }
   }
   if (activeModule.value === 'environment') {
     if (envPreference.literatureSourceCodes.length === 0) {
@@ -526,17 +594,22 @@ async function onPrimaryAction() {
         </p>
       </div>
 
-      <!-- 选题发现 -->
-      <section v-if="activeModule === 'topic-discovery'" class="paper-panel">
-        <h2 class="paper-panel-title">参数</h2>
+      <div class="paper-module-body">
+      <!-- 选题发现（与运行进度同属一块，避免 v-else-if 链误绑） -->
+      <template v-if="activeModule === 'topic-discovery'">
+      <section class="paper-panel">
+        <h2 class="paper-panel-title">检索、选题与计划</h2>
+        <p class="paper-section-lead">
+          <strong>文献只在这里查一次</strong>（多源 API → 校验 → 入库）。「文献综述」模块只读这些结果写 Related Work，不会再次查库。
+        </p>
 
         <label class="paper-field paper-field--block">
-          <span class="paper-label">研究方向 <em class="req">*</em></span>
+          <span class="paper-label">研究方向 / 检索主题 <em class="req">*</em></span>
           <textarea
             v-model="topicForm.direction"
             class="paper-textarea"
             rows="4"
-            placeholder="输入要探索的研究主题、问题或关键词。"
+            placeholder="输入要探索的研究主题、问题或关键词（也作为检索 query 依据）。"
           />
         </label>
 
@@ -544,26 +617,38 @@ async function onPrimaryAction() {
           <label class="paper-field">
             <span class="paper-label">目标会议/期刊</span>
             <input v-model="topicForm.venue" type="text" class="paper-input" />
-            <span class="paper-hint">用于约束贡献类型、实验标准与写作风格</span>
-          </label>
-
-          <label class="paper-field">
-            <span class="paper-label">文献来源</span>
-            <input v-model="topicForm.literatureSources" type="text" class="paper-input" />
-            <span class="paper-hint">检索结果须进入真实文献校验流程</span>
+            <span class="paper-hint">贡献类型、实验门槛、写作调性</span>
           </label>
 
           <label class="paper-field">
             <span class="paper-label">执行强度</span>
             <PaperSelect v-model="topicForm.intensity" :options="intensityOptions" />
-            <span class="paper-hint">控制检索数量、迭代轮数与输出深度</span>
+            <span class="paper-hint">检索条数、脑暴轮数、计划深度</span>
           </label>
 
           <label class="paper-field">
             <span class="paper-label">审计等级</span>
             <PaperSelect v-model="topicForm.auditLevel" :options="auditOptions" />
-            <span class="paper-hint">citation / claim / kill argument 门禁强度</span>
+            <span class="paper-hint">检索校验、选题断言、kill argument</span>
           </label>
+        </div>
+
+        <div class="paper-field paper-field--block">
+          <span class="paper-label">文献来源（检索用）</span>
+          <div class="paper-check-group">
+            <label
+              v-for="src in LITERATURE_SOURCE_OPTIONS"
+              :key="src.code"
+              class="paper-check paper-check--inline"
+            >
+              <input
+                type="checkbox"
+                :checked="isTopicSourceChecked(src.code)"
+                @change="toggleTopicSource(src.code, ($event.target as HTMLInputElement).checked)"
+              />
+              <span>{{ src.label }}</span>
+            </label>
+          </div>
         </div>
 
         <label class="paper-check">
@@ -575,14 +660,14 @@ async function onPrimaryAction() {
           <span>
             <strong>人工检查点</strong>
             <span class="paper-hint paper-hint--inline">
-              开启后会在 <em>2 个节点</em> 暂停：① 选题与新颖性完成后 ② 实验计划生成后；关闭则一口气跑完 5 个阶段
+              开启后会在 <em>2 个节点</em> 暂停：① 选题与新颖性完成后 ② 实验计划生成后
             </span>
           </span>
         </label>
       </section>
 
       <section
-        v-if="activeModule === 'topic-discovery' && topicRunVisible"
+        v-if="topicRunVisible"
         class="paper-panel paper-panel--flow"
       >
         <div class="paper-flow-head">
@@ -660,6 +745,7 @@ async function onPrimaryAction() {
           产出将写入当前论文（idea 列表、新颖性报告、实验计划 · 演示）。
         </div>
       </section>
+      </template>
 
       <!-- 环境配置 -->
       <section v-else-if="activeModule === 'environment'" class="paper-panel paper-panel--env">
@@ -724,9 +810,12 @@ async function onPrimaryAction() {
 
       <PaperWorkflowPanels
         v-else-if="isSecondaryWorkflowModule"
+        :key="activeModule"
         ref="workflowPanelsRef"
         :module-id="activeModule"
+        :topic-artifact="topicDiscoveryArtifact"
       />
+      </div>
     </main>
   </div>
 </template>
@@ -880,6 +969,12 @@ async function onPrimaryAction() {
   flex: 1;
   min-width: 0;
   padding: 28px 32px 40px;
+}
+
+.paper-module-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
 .paper-main-head {

@@ -3,6 +3,14 @@
 export const DEMO_LIT_REVIEW = {
   retrieved: 86,
   verified: 79,
+  /** 合并选题 artifact 后的综述大纲（演示） */
+  outline: [
+    '1. 领域背景（来自 retrieve + 研究方向）',
+    '2. 分主题 Related Work（入库 79 篇归纳）',
+    '3. 候选 idea 与新颖性对照（选题 checkpoint 产出）',
+    '4. 实验语境与已有基线（实验计划摘要）',
+    '5. Research gap → 支撑 Introduction 贡献表述',
+  ],
   sections: [
     {
       title: '静态与动态稀疏注意力',
@@ -22,6 +30,8 @@ export const DEMO_LIT_REVIEW = {
   gap: '现有工作较少在统一预算下同时比较训练-free 路由与可学习路由；跨 32k+ 任务的系统消融仍不足。',
   excerpt:
     'We organize prior work into three lines: fixed sparsity patterns, input-dependent routing, and cache compression…',
+  unifiedExcerpt:
+    '【综述正文 · 演示】\n\nBackground. Motivated by the topic direction on budget-aware sparse attention…\n\nRelated Work. (1) Static/dynamic sparsity… (2) KV compression…\n\nPositioning. Among candidate ideas, Idea A (dynamic routing) remains best supported by novelty check…\n\nGap. Prior work rarely compares training-free routers under a unified KV budget…',
 }
 
 export const DEMO_EXPERIMENT_PLAN = {

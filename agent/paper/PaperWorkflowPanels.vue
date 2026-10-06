@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { reactive, ref, withDefaults } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
   DEMO_AUTO_REVIEW,
@@ -26,11 +26,19 @@ import {
   type ManuscriptAnalysisForm,
   type PaperModuleId,
   type PaperWritingForm,
+  EMPTY_TOPIC_DISCOVERY_ARTIFACT,
+  type TopicDiscoveryArtifactSnapshot,
 } from './types'
 
-const { moduleId } = defineProps<{
-  moduleId: PaperModuleId
-}>()
+const { moduleId, topicArtifact } = withDefaults(
+  defineProps<{
+    moduleId: PaperModuleId
+    topicArtifact?: TopicDiscoveryArtifactSnapshot
+  }>(),
+  {
+    topicArtifact: () => EMPTY_TOPIC_DISCOVERY_ARTIFACT,
+  },
+)
 
 const litForm = reactive<LiteratureReviewForm>({ ...DEFAULT_LITERATURE_REVIEW })
 const planForm = reactive<ExperimentPlanningForm>({ ...DEFAULT_EXPERIMENT_PLANNING })
@@ -98,9 +106,20 @@ function isChartChecked(value: string) {
 }
 
 async function runModule(id: PaperModuleId): Promise<boolean> {
-  if (id === 'literature-review' && !litForm.theme.trim()) {
-    ElMessage.warning('请填写综述主题')
-    return false
+  if (id === 'literature-review') {
+    if (!topicArtifact.runCompleted) {
+      ElMessage.warning('请先在「选题发现」跑完一整轮（检索 → idea → 新颖性 → 实验计划），再在此整理成综述')
+      return false
+    }
+    if (
+      !litForm.includeFieldSurvey &&
+      !litForm.includeIdeaAndNovelty &&
+      !litForm.includeExperimentContext &&
+      !litForm.includeGap
+    ) {
+      ElMessage.warning('请至少选择一项要纳入综述的内容')
+      return false
+    }
   }
   if (id === 'experiment-planning' && !planForm.ideaSummary.trim()) {
     ElMessage.warning('请填写核心 idea / 假设')
@@ -128,37 +147,106 @@ defineExpose({ runModule })
   <!-- 文献综述 -->
   <div v-if="moduleId === 'literature-review'" class="wf-stack">
     <section class="wf-panel">
-      <h2 class="wf-title">参数</h2>
-      <label class="wf-field wf-field--block">
-        <span class="wf-label">综述主题 <em class="req">*</em></span>
-        <textarea v-model="litForm.theme" class="wf-textarea" rows="3" />
-      </label>
-      <div class="wf-grid">
-        <label class="wf-field">
-          <span class="wf-label">起始年份</span>
-          <input v-model="litForm.yearFrom" type="text" class="wf-input" />
+      <h2 class="wf-title">整理选题产出 → 一篇综述</h2>
+      <p class="wf-lead">
+        本步<strong>不查文献、不填检索参数</strong>。把「选题发现」整轮结果（入库语料、候选 idea、新颖性、实验计划）合并成可引用的
+        <code>literature_review</code> artifact，供论文写作 Related Work 使用。
+      </p>
+      <div class="wf-pipeline" aria-label="文献综述流程">
+        <span>读选题 artifact</span>
+        <span class="wf-pipeline-sep" aria-hidden="true">→</span>
+        <span>分节归纳</span>
+        <span class="wf-pipeline-sep" aria-hidden="true">→</span>
+        <span>统一综述文稿</span>
+        <span class="wf-pipeline-sep" aria-hidden="true">→</span>
+        <span>gap + 引用表</span>
+      </div>
+
+      <p v-if="!topicArtifact.runCompleted" class="wf-callout wf-callout--warn">
+        当前选题 run 状态：<strong>{{ topicArtifact.runStatus }}</strong>。
+        请先在「选题发现」跑完一整轮后再点运行；下方为只读预览（有则显示）。
+      </p>
+
+      <h3 class="wf-subhead">输入 · 选题发现产出（只读）</h3>
+      <div class="wf-artifact-grid">
+        <article class="wf-artifact-card wf-artifact-card--wide">
+          <h4 class="wf-artifact-title">研究方向与 venue</h4>
+          <p class="wf-artifact-body">{{ topicArtifact.direction }}</p>
+          <p class="wf-artifact-meta">目标：{{ topicArtifact.venue }}</p>
+        </article>
+        <article class="wf-artifact-card">
+          <h4 class="wf-artifact-title">文献语料（retrieve）</h4>
+          <p class="wf-artifact-stat">
+            {{ topicArtifact.corpusReady ? topicArtifact.verifiedHitCount : '—' }}
+            <span>/ {{ topicArtifact.corpusReady ? topicArtifact.literatureHitCount : '—' }} 已验证</span>
+          </p>
+          <p class="wf-artifact-meta">
+            {{
+              topicArtifact.sourceLabels.length
+                ? topicArtifact.sourceLabels.join(' · ')
+                : '尚未检索'
+            }}
+          </p>
+        </article>
+        <article class="wf-artifact-card wf-artifact-card--wide">
+          <h4 class="wf-artifact-title">候选 idea · 新颖性</h4>
+          <ul v-if="topicArtifact.noveltyLines.length" class="wf-list wf-list--tight">
+            <li v-for="(line, i) in topicArtifact.noveltyLines" :key="i">{{ line }}</li>
+          </ul>
+          <p v-else class="wf-artifact-empty">选题 run 未到新颖性阶段</p>
+        </article>
+        <article class="wf-artifact-card wf-artifact-card--wide">
+          <h4 class="wf-artifact-title">实验计划摘要</h4>
+          <ul v-if="topicArtifact.experimentPlanLines.length" class="wf-list wf-list--tight">
+            <li v-for="(line, i) in topicArtifact.experimentPlanLines" :key="i">{{ line }}</li>
+          </ul>
+          <p v-else class="wf-artifact-empty">尚未生成实验计划</p>
+        </article>
+      </div>
+
+      <h3 class="wf-subhead">成稿方式</h3>
+      <div class="wf-radios">
+        <label><input v-model="litForm.structure" type="radio" value="thematic" /> 按主题分节（Related Work 常用）</label>
+        <label><input v-model="litForm.structure" type="radio" value="chronological" /> 按时间线</label>
+        <label><input v-model="litForm.structure" type="radio" value="method" /> 按方法族</label>
+      </div>
+
+      <div class="wf-check-group wf-check-group--tight">
+        <label class="wf-check wf-check--inline">
+          <input v-model="litForm.includeFieldSurvey" type="checkbox" />
+          <span>领域脉络 + 分主题文献归纳（来自入库 hit）</span>
         </label>
-        <label class="wf-field">
-          <span class="wf-label">最大文献数</span>
-          <input v-model.number="litForm.maxPapers" type="number" class="wf-input" min="10" />
+        <label class="wf-check wf-check--inline">
+          <input v-model="litForm.includeIdeaAndNovelty" type="checkbox" />
+          <span>候选 idea 与新颖性结论（写入定位段）</span>
         </label>
-        <label class="wf-field wf-field--span2">
-          <span class="wf-label">文献来源</span>
-          <input v-model="litForm.literatureSources" type="text" class="wf-input" />
+        <label class="wf-check wf-check--inline">
+          <input v-model="litForm.includeExperimentContext" type="checkbox" />
+          <span>实验计划中的基线 / 指标语境</span>
         </label>
+        <label class="wf-check wf-check--inline">
+          <input v-model="litForm.includeGap" type="checkbox" />
+          <span>Research gap（衔接 Introduction 贡献）</span>
+        </label>
+      </div>
+
+      <div class="wf-grid wf-grid--run">
         <label class="wf-field">
-          <span class="wf-label">执行强度</span>
+          <span class="wf-label">写作深度</span>
           <PaperSelect v-model="litForm.intensity" :options="intensityOptions" />
         </label>
         <label class="wf-field">
-          <span class="wf-label">审计等级</span>
+          <span class="wf-label">引用审计</span>
           <PaperSelect v-model="litForm.auditLevel" :options="auditOptions" />
         </label>
       </div>
     </section>
     <section v-if="resultVisible['literature-review']" class="wf-panel wf-panel--result">
-      <h2 class="wf-title">综述产出（演示）</h2>
-      <p class="wf-meta">检索 {{ DEMO_LIT_REVIEW.retrieved }} 篇 · 验证通过 {{ DEMO_LIT_REVIEW.verified }} 篇</p>
+      <h2 class="wf-title">literature_review artifact（演示）</h2>
+      <p class="wf-meta">由选题 run 合并生成 · 入库 {{ DEMO_LIT_REVIEW.verified }} 篇纳入正文引用</p>
+      <ol class="wf-list wf-list--ordered">
+        <li v-for="(item, i) in DEMO_LIT_REVIEW.outline" :key="i">{{ item }}</li>
+      </ol>
       <div v-for="sec in DEMO_LIT_REVIEW.sections" :key="sec.title" class="wf-block">
         <h3 class="wf-subtitle">{{ sec.title }}</h3>
         <ul class="wf-list">
@@ -166,7 +254,7 @@ defineExpose({ runModule })
         </ul>
       </div>
       <p class="wf-callout"><strong>Research gap：</strong>{{ DEMO_LIT_REVIEW.gap }}</p>
-      <pre class="wf-pre">{{ DEMO_LIT_REVIEW.excerpt }}</pre>
+      <pre class="wf-pre">{{ DEMO_LIT_REVIEW.unifiedExcerpt }}</pre>
     </section>
   </div>
 
@@ -421,11 +509,15 @@ defineExpose({ runModule })
 
 <style scoped>
 .wf-root {
-  display: contents;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
 .wf-stack {
-  display: contents;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
 .wf-panel {
@@ -454,6 +546,47 @@ defineExpose({ runModule })
   font-size: 14px;
   font-weight: 700;
   color: #1e1b4b;
+}
+
+.wf-pipeline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.wf-pipeline > span:not(.wf-pipeline-sep) {
+  padding: 6px 12px;
+  background: #f1f5f9;
+  border-radius: 999px;
+}
+
+.wf-pipeline-sep {
+  color: #94a3b8;
+}
+
+.wf-subhead {
+  margin: 22px 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.wf-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.wf-check-group--tight {
+  margin-top: 12px;
 }
 
 .wf-lead {
@@ -602,6 +735,74 @@ defineExpose({ runModule })
 
 .wf-callout--warn {
   background: #fffbeb;
+}
+
+.wf-artifact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.wf-artifact-card {
+  padding: 14px 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.wf-artifact-card--wide {
+  grid-column: 1 / -1;
+}
+
+.wf-artifact-title {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.wf-artifact-body {
+  margin: 0 0 6px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #1e1b4b;
+}
+
+.wf-artifact-meta {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.wf-artifact-stat {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #4f46e5;
+}
+
+.wf-artifact-stat span {
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.wf-artifact-empty {
+  margin: 0;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.wf-list--tight {
+  margin-top: 0;
+  font-size: 13px;
+}
+
+.wf-grid--run {
+  margin-top: 18px;
 }
 
 .wf-block {

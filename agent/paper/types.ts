@@ -18,12 +18,12 @@ export const PAPER_MODULES: PaperModuleMeta[] = [
   {
     id: 'topic-discovery',
     label: '选题发现',
-    description: '从研究方向生成候选 idea、novelty 检查和实验计划',
+    description: '多源检索与校验入库，并脑暴 idea、新颖性检查、实验计划',
   },
   {
     id: 'literature-review',
     label: '文献综述',
-    description: '基于真实数据源检索并生成可溯源的结构化综述',
+    description: '把选题发现整轮产出整理成一篇可引用的 literature_review（不查库）',
   },
   {
     id: 'experiment-planning',
@@ -86,7 +86,8 @@ export type AuditLevel = 'standard' | 'polished' | 'strict'
 export type TopicDiscoveryForm = {
   direction: string
   venue: string
-  literatureSources: string
+  /** 多源检索（写入 paper_literature_record / paper_run_literature_hit） */
+  sourceCodes: string[]
   intensity: ExecutionIntensity
   auditLevel: AuditLevel
   humanCheckpoint: boolean
@@ -102,11 +103,11 @@ export type TopicFlowStepDef = {
 }
 
 export const TOPIC_DISCOVERY_FLOW_STEPS: TopicFlowStepDef[] = [
-  { stageCode: 'retrieve', label: '文献检索与归纳' },
-  { stageCode: 'generate_ideas', label: '生成候选选题' },
+  { stageCode: 'retrieve', label: '多源文献检索与校验入库' },
+  { stageCode: 'generate_ideas', label: '脑暴候选选题' },
   { stageCode: 'novelty', label: '新颖性检查', checkpointKey: 'ideas_ready' },
   { stageCode: 'experiment_plan', label: '生成实验计划', checkpointKey: 'plan_ready' },
-  { stageCode: 'audit', label: '引用与断言初 audit' },
+  { stageCode: 'audit', label: '选题与计划初 audit' },
 ]
 
 export type TopicFlowStepStatus =
@@ -117,11 +118,46 @@ export type TopicFlowStepStatus =
   | 'skipped'
   | 'failed'
 
+export type LiteratureReviewStructure = 'thematic' | 'chronological' | 'method'
+
+/** 文献综述模块消费的选题发现 run 快照（只读输入） */
+export type TopicDiscoveryArtifactSnapshot = {
+  runStatus: 'idle' | 'running' | 'checkpoint' | 'completed' | 'failed'
+  /** retrieve 已完成，语料已入库 */
+  corpusReady: boolean
+  /** 整轮选题 run 已完成，可合并 idea / 新颖性 / 计划进综述 */
+  runCompleted: boolean
+  direction: string
+  venue: string
+  sourceLabels: string[]
+  literatureHitCount: number
+  verifiedHitCount: number
+  candidateIdeas: string[]
+  noveltyLines: string[]
+  experimentPlanLines: string[]
+}
+
+export const EMPTY_TOPIC_DISCOVERY_ARTIFACT: TopicDiscoveryArtifactSnapshot = {
+  runStatus: 'idle',
+  corpusReady: false,
+  runCompleted: false,
+  direction: '（尚未运行选题发现）',
+  venue: '—',
+  sourceLabels: [],
+  literatureHitCount: 0,
+  verifiedHitCount: 0,
+  candidateIdeas: [],
+  noveltyLines: [],
+  experimentPlanLines: [],
+}
+
 export type LiteratureReviewForm = {
-  theme: string
-  yearFrom: string
-  maxPapers: number
-  literatureSources: string
+  /** 如何把选题产出 + 入库文献排成一篇综述 */
+  structure: LiteratureReviewStructure
+  includeFieldSurvey: boolean
+  includeIdeaAndNovelty: boolean
+  includeExperimentContext: boolean
+  includeGap: boolean
   intensity: ExecutionIntensity
   auditLevel: AuditLevel
 }
@@ -163,10 +199,11 @@ export type ManuscriptAnalysisForm = {
 }
 
 export const DEFAULT_LITERATURE_REVIEW: LiteratureReviewForm = {
-  theme: '稀疏注意力与长上下文 KV 压缩',
-  yearFrom: '2022',
-  maxPapers: 80,
-  literatureSources: 'arxiv, openalex, semantic-scholar',
+  structure: 'thematic',
+  includeFieldSurvey: true,
+  includeIdeaAndNovelty: true,
+  includeExperimentContext: true,
+  includeGap: true,
   intensity: 'balanced',
   auditLevel: 'polished',
 }
@@ -226,7 +263,7 @@ export const FIGURE_CHART_OPTIONS = [
 export const DEFAULT_TOPIC_DISCOVERY: TopicDiscoveryForm = {
   direction: '',
   venue: 'NeurIPS/ICLR/ICML',
-  literatureSources: 'arxiv, openalex, semantic-scholar',
+  sourceCodes: ['arxiv', 'openalex', 'semantic_scholar'],
   intensity: 'balanced',
   auditLevel: 'polished',
   humanCheckpoint: true,
