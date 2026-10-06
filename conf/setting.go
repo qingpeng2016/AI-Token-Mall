@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/viper"
@@ -91,10 +92,34 @@ type Alipay struct {
 	Gateway    string `mapstructure:"gateway"`
 }
 
+const (
+	DefaultLiteratureArxivBaseURL           = "https://export.arxiv.org/api/query"
+	DefaultLiteratureOpenAlexBaseURL        = "https://api.openalex.org/works"
+	DefaultLiteratureSemanticScholarBaseURL = "https://api.semanticscholar.org/graph/v1/paper/search"
+)
+
 // Literature 文献数据源 HTTP 配置（Paper Agent RAG）
 type Literature struct {
-	SemanticScholarAPIKey string `mapstructure:"semantic_scholar_api_key"`
-	OpenAlexMailto        string `mapstructure:"openalex_mailto"`
+	Arxiv           *LiteratureArxiv           `mapstructure:"arxiv"`
+	OpenAlex        *LiteratureOpenAlex        `mapstructure:"openalex"`
+	SemanticScholar *LiteratureSemanticScholar `mapstructure:"semantic_scholar"`
+}
+
+// LiteratureArxiv 无需 API Key；公开 Atom API
+type LiteratureArxiv struct {
+	BaseURL string `mapstructure:"base_url"`
+}
+
+// LiteratureOpenAlex 无需 Key；建议配置 mailto 写入 User-Agent（礼貌池）
+type LiteratureOpenAlex struct {
+	BaseURL string `mapstructure:"base_url"`
+	Mailto  string `mapstructure:"mailto"`
+}
+
+// LiteratureSemanticScholar api_key 可选（x-api-key）；不配可用但限流更严
+type LiteratureSemanticScholar struct {
+	BaseURL string `mapstructure:"base_url"`
+	APIKey  string `mapstructure:"api_key"`
 }
 
 var GlobalConf *Config
@@ -221,15 +246,61 @@ func GetAlipayConf() *Alipay {
 }
 
 func GetLiteratureConf() *Literature {
+	out := defaultLiteratureConf()
 	if GlobalConf == nil || GlobalConf.LiteratureConf == nil {
-		return &Literature{
-			SemanticScholarAPIKey: os.Getenv("SEMANTIC_SCHOLAR_API_KEY"),
+		applyLiteratureEnvFallback(out)
+		return out
+	}
+	mergeLiteratureFromFile(out, GlobalConf.LiteratureConf)
+	applyLiteratureEnvFallback(out)
+	return out
+}
+
+func defaultLiteratureConf() *Literature {
+	return &Literature{
+		Arxiv:           &LiteratureArxiv{BaseURL: DefaultLiteratureArxivBaseURL},
+		OpenAlex:        &LiteratureOpenAlex{BaseURL: DefaultLiteratureOpenAlexBaseURL},
+		SemanticScholar: &LiteratureSemanticScholar{BaseURL: DefaultLiteratureSemanticScholarBaseURL},
+	}
+}
+
+func mergeLiteratureFromFile(dst, src *Literature) {
+	if src == nil {
+		return
+	}
+	if src.Arxiv != nil {
+		if u := stringsTrim(src.Arxiv.BaseURL); u != "" {
+			dst.Arxiv.BaseURL = u
 		}
 	}
-	l := *GlobalConf.LiteratureConf
-	if l.SemanticScholarAPIKey == "" {
-		l.SemanticScholarAPIKey = os.Getenv("SEMANTIC_SCHOLAR_API_KEY")
+	if src.OpenAlex != nil {
+		if u := stringsTrim(src.OpenAlex.BaseURL); u != "" {
+			dst.OpenAlex.BaseURL = u
+		}
+		if m := stringsTrim(src.OpenAlex.Mailto); m != "" {
+			dst.OpenAlex.Mailto = m
+		}
 	}
-	return &l
+	if src.SemanticScholar != nil {
+		if u := stringsTrim(src.SemanticScholar.BaseURL); u != "" {
+			dst.SemanticScholar.BaseURL = u
+		}
+		if k := stringsTrim(src.SemanticScholar.APIKey); k != "" {
+			dst.SemanticScholar.APIKey = k
+		}
+	}
+}
+
+func applyLiteratureEnvFallback(l *Literature) {
+	if l == nil || l.SemanticScholar == nil {
+		return
+	}
+	if l.SemanticScholar.APIKey == "" {
+		l.SemanticScholar.APIKey = os.Getenv("SEMANTIC_SCHOLAR_API_KEY")
+	}
+}
+
+func stringsTrim(s string) string {
+	return strings.TrimSpace(s)
 }
 

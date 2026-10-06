@@ -14,19 +14,24 @@ import (
 	httpx "github.com/qingpeng2016/ai-token-mall/infrastructure/http"
 )
 
-const worksAPI = "https://api.openalex.org/works"
-
 // Client 实现 domain/http/repository.OpenAlexRepo
 type Client struct {
-	http *httpx.Client
-	cfg  *conf.Literature
+	http    *httpx.Client
+	baseURL string
+	mailto  string
 }
 
 func NewClient(http *httpx.Client, cfg *conf.Config) httprepo.OpenAlexRepo {
-	return &Client{
-		http: http,
-		cfg:  conf.GetLiteratureConf(),
+	lit := conf.GetLiteratureConf()
+	baseURL := conf.DefaultLiteratureOpenAlexBaseURL
+	mailto := ""
+	if lit != nil && lit.OpenAlex != nil {
+		if u := strings.TrimSpace(lit.OpenAlex.BaseURL); u != "" {
+			baseURL = u
+		}
+		mailto = strings.TrimSpace(lit.OpenAlex.Mailto)
 	}
+	return &Client{http: http, baseURL: baseURL, mailto: mailto}
 }
 
 func (c *Client) Search(ctx context.Context, q httpentity.OpenAlexSearchQuery) ([]httpentity.OpenAlexWork, error) {
@@ -37,10 +42,10 @@ func (c *Client) Search(ctx context.Context, q httpentity.OpenAlexSearchQuery) (
 	headers := map[string]string{
 		"Accept": "application/json",
 	}
-	if c.cfg != nil && c.cfg.OpenAlexMailto != "" {
-		headers["User-Agent"] = "AI-Token-Mall/1.0 (mailto:" + c.cfg.OpenAlexMailto + ")"
+	if c.mailto != "" {
+		headers["User-Agent"] = "AI-Token-Mall/1.0 (mailto:" + c.mailto + ")"
 	}
-	resp, err := c.http.Get(ctx, worksAPI, params, headers)
+	resp, err := c.http.Get(ctx, c.baseURL, params, headers)
 	if err != nil {
 		return nil, err
 	}

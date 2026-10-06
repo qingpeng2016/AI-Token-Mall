@@ -10,27 +10,32 @@ import (
 	"strings"
 	"time"
 
+	"github.com/qingpeng2016/ai-token-mall/conf"
 	httpentity "github.com/qingpeng2016/ai-token-mall/domain/http/entity"
 	httprepo "github.com/qingpeng2016/ai-token-mall/domain/http/repository"
 	httpx "github.com/qingpeng2016/ai-token-mall/infrastructure/http"
 )
 
-const apiBase = "https://export.arxiv.org/api/query"
-
 var idFromURLRe = regexp.MustCompile(`arxiv\.org/abs/([^/]+)`)
 
 // Client 实现 domain/http/repository.ArxivRepo
 type Client struct {
-	http *httpx.Client
+	http    *httpx.Client
+	baseURL string
 }
 
-func NewClient(http *httpx.Client) httprepo.ArxivRepo {
-	return &Client{http: http}
+func NewClient(http *httpx.Client, cfg *conf.Config) httprepo.ArxivRepo {
+	lit := conf.GetLiteratureConf()
+	baseURL := conf.DefaultLiteratureArxivBaseURL
+	if lit != nil && lit.Arxiv != nil && strings.TrimSpace(lit.Arxiv.BaseURL) != "" {
+		baseURL = strings.TrimSpace(lit.Arxiv.BaseURL)
+	}
+	return &Client{http: http, baseURL: baseURL}
 }
 
 func (c *Client) Search(ctx context.Context, q httpentity.ArxivSearchQuery) ([]httpentity.ArxivPaper, error) {
 	searchQuery := url.QueryEscape("all:" + q.Query)
-	apiURL := fmt.Sprintf("%s?search_query=%s&start=0&max_results=%d", apiBase, searchQuery, q.MaxResults)
+	apiURL := fmt.Sprintf("%s?search_query=%s&start=0&max_results=%d", c.baseURL, searchQuery, q.MaxResults)
 	resp, err := c.http.Get(ctx, apiURL, nil, nil)
 	if err != nil {
 		return nil, err

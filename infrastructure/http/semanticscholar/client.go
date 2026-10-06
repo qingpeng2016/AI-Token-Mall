@@ -14,19 +14,24 @@ import (
 	httpx "github.com/qingpeng2016/ai-token-mall/infrastructure/http"
 )
 
-const paperSearchAPI = "https://api.semanticscholar.org/graph/v1/paper/search"
-
 // Client 实现 domain/http/repository.SemanticScholarRepo
 type Client struct {
-	http *httpx.Client
-	cfg  *conf.Literature
+	http    *httpx.Client
+	baseURL string
+	apiKey  string
 }
 
 func NewClient(http *httpx.Client, cfg *conf.Config) httprepo.SemanticScholarRepo {
-	return &Client{
-		http: http,
-		cfg:  conf.GetLiteratureConf(),
+	lit := conf.GetLiteratureConf()
+	baseURL := conf.DefaultLiteratureSemanticScholarBaseURL
+	apiKey := ""
+	if lit != nil && lit.SemanticScholar != nil {
+		if u := strings.TrimSpace(lit.SemanticScholar.BaseURL); u != "" {
+			baseURL = u
+		}
+		apiKey = strings.TrimSpace(lit.SemanticScholar.APIKey)
 	}
+	return &Client{http: http, baseURL: baseURL, apiKey: apiKey}
 }
 
 func (c *Client) Search(ctx context.Context, q httpentity.SemanticScholarSearchQuery) ([]httpentity.SemanticScholarPaper, error) {
@@ -38,10 +43,10 @@ func (c *Client) Search(ctx context.Context, q httpentity.SemanticScholarSearchQ
 	headers := map[string]string{
 		"Accept": "application/json",
 	}
-	if c.cfg != nil && c.cfg.SemanticScholarAPIKey != "" {
-		headers["x-api-key"] = c.cfg.SemanticScholarAPIKey
+	if c.apiKey != "" {
+		headers["x-api-key"] = c.apiKey
 	}
-	resp, err := c.http.Get(ctx, paperSearchAPI, params, headers)
+	resp, err := c.http.Get(ctx, c.baseURL, params, headers)
 	if err != nil {
 		return nil, err
 	}
