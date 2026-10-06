@@ -17,6 +17,7 @@ import {
   type TopicDiscoveryForm,
   type TopicFlowStepStatus,
 } from '@paper/types'
+import PaperSelect from '@paper/PaperSelect.vue'
 import PaperWorkflowPanels from './PaperWorkflowPanels.vue'
 
 type TopicFlowStepRuntime = {
@@ -381,13 +382,18 @@ const intensityOptions = [
   { value: 'fast', label: '更快' },
   { value: 'balanced', label: 'Balanced（平衡）' },
   { value: 'deep', label: '更深' },
-] as const
+]
 
 const auditOptions = [
   { value: 'standard', label: 'Standard' },
   { value: 'polished', label: 'Polished（精修）' },
   { value: 'strict', label: 'Strict' },
-] as const
+]
+
+const disciplineSelectOptions = DISCIPLINE_OPTIONS.map((d) => ({
+  value: d.code,
+  label: d.label,
+}))
 
 function toggleLiteratureSource(code: string, checked: boolean) {
   const set = new Set(envPreference.literatureSourceCodes)
@@ -549,21 +555,13 @@ async function onPrimaryAction() {
 
           <label class="paper-field">
             <span class="paper-label">执行强度</span>
-            <select v-model="topicForm.intensity" class="paper-select">
-              <option v-for="o in intensityOptions" :key="o.value" :value="o.value">
-                {{ o.label }}
-              </option>
-            </select>
+            <PaperSelect v-model="topicForm.intensity" :options="intensityOptions" />
             <span class="paper-hint">控制检索数量、迭代轮数与输出深度</span>
           </label>
 
           <label class="paper-field">
             <span class="paper-label">审计等级</span>
-            <select v-model="topicForm.auditLevel" class="paper-select">
-              <option v-for="o in auditOptions" :key="o.value" :value="o.value">
-                {{ o.label }}
-              </option>
-            </select>
+            <PaperSelect v-model="topicForm.auditLevel" :options="auditOptions" />
             <span class="paper-hint">citation / claim / kill argument 门禁强度</span>
           </label>
         </div>
@@ -671,11 +669,7 @@ async function onPrimaryAction() {
         <div class="paper-field-grid">
           <label class="paper-field">
             <span class="paper-label">默认学科</span>
-            <select v-model="envPreference.disciplineCode" class="paper-select">
-              <option v-for="d in DISCIPLINE_OPTIONS" :key="d.code" :value="d.code">
-                {{ d.label }}
-              </option>
-            </select>
+            <PaperSelect v-model="envPreference.disciplineCode" :options="disciplineSelectOptions" />
           </label>
 
           <label class="paper-field">
@@ -685,20 +679,12 @@ async function onPrimaryAction() {
 
           <label class="paper-field">
             <span class="paper-label">默认执行强度</span>
-            <select v-model="envPreference.intensity" class="paper-select">
-              <option v-for="o in intensityOptions" :key="o.value" :value="o.value">
-                {{ o.label }}
-              </option>
-            </select>
+            <PaperSelect v-model="envPreference.intensity" :options="intensityOptions" />
           </label>
 
           <label class="paper-field">
             <span class="paper-label">默认审计等级</span>
-            <select v-model="envPreference.auditLevel" class="paper-select">
-              <option v-for="o in auditOptions" :key="o.value" :value="o.value">
-                {{ o.label }}
-              </option>
-            </select>
+            <PaperSelect v-model="envPreference.auditLevel" :options="auditOptions" />
           </label>
         </div>
 
@@ -807,13 +793,18 @@ async function onPrimaryAction() {
 
 .paper-manuscript-select {
   width: 100%;
-  padding: 9px 10px;
+  padding: 9px 32px 9px 10px;
   font-size: 13px;
   font-weight: 600;
   color: #1e1b4b;
-  background: #fff;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
   border: none;
   border-radius: 8px;
+  appearance: none;
+  -webkit-appearance: none;
   cursor: pointer;
 }
 
@@ -862,8 +853,13 @@ async function onPrimaryAction() {
 
 .paper-nav-item--active {
   color: #fff;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: inset 3px 0 0 #fff;
+}
+
+.paper-nav-item--active:hover {
   background: rgba(255, 255, 255, 0.18);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
 .paper-sidebar-back {
@@ -1278,7 +1274,6 @@ async function onPrimaryAction() {
 }
 
 .paper-input,
-.paper-select,
 .paper-textarea {
   width: 100%;
   padding: 10px 12px;
@@ -1298,11 +1293,10 @@ async function onPrimaryAction() {
 }
 
 .paper-input:focus,
-.paper-select:focus,
 .paper-textarea:focus {
   outline: none;
-  border-color: var(--atm-primary, #7c3aed);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.22);
 }
 
 .paper-hint {

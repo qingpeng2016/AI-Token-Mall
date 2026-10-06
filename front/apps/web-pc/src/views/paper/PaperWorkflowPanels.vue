@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import PaperSelect from '@paper/PaperSelect.vue'
 import {
   DEMO_AUTO_REVIEW,
   DEMO_EXPERIMENT_PLAN,
@@ -50,13 +51,29 @@ const intensityOptions = [
   { value: 'fast', label: '更快' },
   { value: 'balanced', label: 'Balanced（平衡）' },
   { value: 'deep', label: '更深' },
-] as const
+]
 
 const auditOptions = [
   { value: 'standard', label: 'Standard' },
   { value: 'polished', label: 'Polished（精修）' },
   { value: 'strict', label: 'Strict' },
-] as const
+]
+
+const writeToneOptions = [
+  { value: 'concise', label: '简洁' },
+  { value: 'standard', label: '标准 conference' },
+]
+
+const figureDatasetOptions = [
+  { value: 'results_main.csv', label: 'results_main.csv（演示）' },
+  { value: 'ablation_B.csv', label: 'ablation_B.csv（演示）' },
+  { value: 'throughput.csv', label: 'throughput.csv（演示）' },
+]
+
+const captionLangOptions = [
+  { value: 'en', label: 'English' },
+  { value: 'zh', label: '中文' },
+]
 
 function toggleWritingSection(value: string, checked: boolean) {
   const set = new Set(writeForm.sections)
@@ -131,15 +148,11 @@ defineExpose({ runModule })
         </label>
         <label class="wf-field">
           <span class="wf-label">执行强度</span>
-          <select v-model="litForm.intensity" class="wf-select">
-            <option v-for="o in intensityOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-          </select>
+          <PaperSelect v-model="litForm.intensity" :options="intensityOptions" />
         </label>
         <label class="wf-field">
           <span class="wf-label">审计等级</span>
-          <select v-model="litForm.auditLevel" class="wf-select">
-            <option v-for="o in auditOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-          </select>
+          <PaperSelect v-model="litForm.auditLevel" :options="auditOptions" />
         </label>
       </div>
     </section>
@@ -172,9 +185,7 @@ defineExpose({ runModule })
         </label>
         <label class="wf-field">
           <span class="wf-label">执行强度</span>
-          <select v-model="planForm.intensity" class="wf-select">
-            <option v-for="o in intensityOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-          </select>
+          <PaperSelect v-model="planForm.intensity" :options="intensityOptions" />
         </label>
         <label class="wf-field wf-field--span2">
           <span class="wf-label">基线（逗号或换行）</span>
@@ -218,9 +229,7 @@ defineExpose({ runModule })
       <div class="wf-grid">
         <label class="wf-field">
           <span class="wf-label">审计等级</span>
-          <select v-model="reviewForm.auditLevel" class="wf-select">
-            <option v-for="o in auditOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-          </select>
+          <PaperSelect v-model="reviewForm.auditLevel" :options="auditOptions" />
         </label>
         <label class="wf-check wf-check--solo">
           <input v-model="reviewForm.strictKill" type="checkbox" />
@@ -256,10 +265,7 @@ defineExpose({ runModule })
         </label>
         <label class="wf-field">
           <span class="wf-label">文风</span>
-          <select v-model="writeForm.tone" class="wf-select">
-            <option value="concise">简洁</option>
-            <option value="standard">标准 conference</option>
-          </select>
+          <PaperSelect v-model="writeForm.tone" :options="writeToneOptions" />
         </label>
       </div>
       <div class="wf-field wf-field--block">
@@ -319,11 +325,7 @@ defineExpose({ runModule })
       <p class="wf-lead">基于实验数据生成可复现统计图（非通用美工工具）。</p>
       <label class="wf-field wf-field--block">
         <span class="wf-label">数据文件</span>
-        <select v-model="figureForm.datasetLabel" class="wf-select">
-          <option value="results_main.csv">results_main.csv（演示）</option>
-          <option value="ablation_B.csv">ablation_B.csv（演示）</option>
-          <option value="throughput.csv">throughput.csv（演示）</option>
-        </select>
+        <PaperSelect v-model="figureForm.datasetLabel" :options="figureDatasetOptions" />
       </label>
       <div class="wf-field wf-field--block">
         <span class="wf-label">图表类型</span>
@@ -344,10 +346,7 @@ defineExpose({ runModule })
       </label>
       <label class="wf-field">
         <span class="wf-label">Caption 语言</span>
-        <select v-model="figureForm.captionLang" class="wf-select">
-          <option value="en">English</option>
-          <option value="zh">中文</option>
-        </select>
+        <PaperSelect v-model="figureForm.captionLang" :options="captionLangOptions" />
       </label>
     </section>
     <section v-if="resultVisible['figure-generation']" class="wf-panel wf-panel--result">
@@ -388,9 +387,7 @@ defineExpose({ runModule })
       <div class="wf-grid">
         <label class="wf-field">
           <span class="wf-label">分析深度</span>
-          <select v-model="analysisForm.depth" class="wf-select">
-            <option v-for="o in auditOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-          </select>
+          <PaperSelect v-model="analysisForm.depth" :options="auditOptions" />
         </label>
       </div>
       <label class="wf-check">
@@ -503,7 +500,6 @@ defineExpose({ runModule })
 }
 
 .wf-input,
-.wf-select,
 .wf-textarea {
   width: 100%;
   padding: 10px 12px;
