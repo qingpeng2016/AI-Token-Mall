@@ -34,13 +34,58 @@ func NewLiteratureSearchService(
 	}
 }
 
-func (s *LiteratureSearchService) Search(ctx context.Context, query string, sources []string, limit int) (*response.PaperLiteratureSearchResult, error) {
+func (s *LiteratureSearchService) SearchArxiv(ctx context.Context, query string, limit int) (*response.PaperLiteratureSearchResult, error) {
+	query, limit, err := normalizeLiteratureQuery(query, limit)
+	if err != nil {
+		return nil, err
+	}
+	papers, err := s.arxiv.Search(ctx, httpentity.ArxivSearchQuery{Query: query, MaxResults: limit})
+	if err != nil {
+		return nil, err
+	}
+	return &response.PaperLiteratureSearchResult{
+		Query:      query,
+		SourceCode: sourceArxiv,
+		Hits:       arxivPapersToHits(papers),
+	}, nil
+}
+
+func (s *LiteratureSearchService) SearchOpenAlex(ctx context.Context, query string, limit int) (*response.PaperLiteratureSearchResult, error) {
+	query, limit, err := normalizeLiteratureQuery(query, limit)
+	if err != nil {
+		return nil, err
+	}
+	works, err := s.openalex.Search(ctx, httpentity.OpenAlexSearchQuery{Query: query, MaxResults: limit})
+	if err != nil {
+		return nil, err
+	}
+	return &response.PaperLiteratureSearchResult{
+		Query:      query,
+		SourceCode: sourceOpenAlex,
+		Hits:       openAlexWorksToHits(works),
+	}, nil
+}
+
+func (s *LiteratureSearchService) SearchSemanticScholar(ctx context.Context, query string, limit int) (*response.PaperLiteratureSearchResult, error) {
+	query, limit, err := normalizeLiteratureQuery(query, limit)
+	if err != nil {
+		return nil, err
+	}
+	papers, err := s.semanticScholar.Search(ctx, httpentity.SemanticScholarSearchQuery{Query: query, MaxResults: limit})
+	if err != nil {
+		return nil, err
+	}
+	return &response.PaperLiteratureSearchResult{
+		Query:      query,
+		SourceCode: sourceSemanticScholar,
+		Hits:       semanticScholarPapersToHits(papers),
+	}, nil
+}
+
+func normalizeLiteratureQuery(query string, limit int) (string, int, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
-		return nil, errorx.ErrParamsError
-	}
-	if len(sources) == 0 {
-		sources = []string{sourceArxiv, sourceOpenAlex, sourceSemanticScholar}
+		return "", 0, errorx.ErrParamsError
 	}
 	if limit <= 0 {
 		limit = 20
@@ -48,57 +93,7 @@ func (s *LiteratureSearchService) Search(ctx context.Context, query string, sour
 	if limit > 100 {
 		limit = 100
 	}
-
-	out := &response.PaperLiteratureSearchResult{
-		Query:   query,
-		Sources: make([]response.PaperLiteratureSourceBlock, 0, len(sources)),
-	}
-	for _, raw := range sources {
-		code := normalizeSourceCode(raw)
-		if code == "" {
-			continue
-		}
-		block := response.PaperLiteratureSourceBlock{SourceCode: code}
-		switch code {
-		case sourceArxiv:
-			papers, err := s.arxiv.Search(ctx, httpentity.ArxivSearchQuery{Query: query, MaxResults: limit})
-			if err != nil {
-				block.Error = err.Error()
-			} else {
-				block.Hits = arxivPapersToHits(papers)
-			}
-		case sourceOpenAlex:
-			works, err := s.openalex.Search(ctx, httpentity.OpenAlexSearchQuery{Query: query, MaxResults: limit})
-			if err != nil {
-				block.Error = err.Error()
-			} else {
-				block.Hits = openAlexWorksToHits(works)
-			}
-		case sourceSemanticScholar:
-			papers, err := s.semanticScholar.Search(ctx, httpentity.SemanticScholarSearchQuery{Query: query, MaxResults: limit})
-			if err != nil {
-				block.Error = err.Error()
-			} else {
-				block.Hits = semanticScholarPapersToHits(papers)
-			}
-		default:
-			continue
-		}
-		out.Sources = append(out.Sources, block)
-	}
-	if len(out.Sources) == 0 {
-		return nil, errorx.ErrParamsError
-	}
-	return out, nil
-}
-
-func normalizeSourceCode(s string) string {
-	s = strings.TrimSpace(strings.ToLower(s))
-	s = strings.ReplaceAll(s, "-", "_")
-	if s == "semanticscholar" {
-		return sourceSemanticScholar
-	}
-	return s
+	return query, limit, nil
 }
 
 func arxivPapersToHits(papers []httpentity.ArxivPaper) []response.PaperLiteratureHit {

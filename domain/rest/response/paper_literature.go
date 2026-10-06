@@ -11,13 +11,8 @@ type PaperLiteratureHit struct {
 	URL           string   `json:"url,omitempty"`
 }
 
-type PaperLiteratureSourceBlock struct {
+type PaperLiteratureSearchResult struct {
+	Query      string               `json:"query"`
 	SourceCode string               `json:"source_code"`
 	Hits       []PaperLiteratureHit `json:"hits"`
-	Error      string               `json:"error,omitempty"`
-}
-
-type PaperLiteratureSearchResult struct {
-	Query   string                       `json:"query"`
-	Sources []PaperLiteratureSourceBlock `json:"sources"`
 }

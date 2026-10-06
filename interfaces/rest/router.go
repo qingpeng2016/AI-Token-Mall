@@ -121,7 +121,17 @@ func (r *Router) setupRouters() *gin.Engine {
 		userAuth.POST("/users/api-team/members", r.userAPIKeyHandler.AddTeamMember)
 		userAuth.GET("/users/api-team/enterprise-inquiry", r.userAPIKeyHandler.GetEnterpriseInquiry)
 		userAuth.POST("/users/api-team/enterprise-inquiry", r.userAPIKeyHandler.SubmitEnterpriseInquiry)
-		userAuth.GET("/paper/literature/search", r.paperLiteratureHandler.Search)
+	}
+
+	// 服务端代请求外部 API（文献库等）；联调测试暂不鉴权
+	thirdParty := engine.Group("/api/v1/third-party")
+	{
+		literature := thirdParty.Group("/literature")
+		{
+			literature.GET("/arxiv", r.paperLiteratureHandler.SearchArxiv)
+			literature.GET("/openalex", r.paperLiteratureHandler.SearchOpenAlex)
+			literature.GET("/semantic-scholar", r.paperLiteratureHandler.SearchSemanticScholar)
+		}
 	}
 
 	// 需登录；正式网关回调另开 /api/v1/payments/notify 且无鉴权
