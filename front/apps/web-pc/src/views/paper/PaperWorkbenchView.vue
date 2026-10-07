@@ -25,6 +25,7 @@ import {
   type TopicFlowStepStatus,
 } from '@paper/types'
 import { DEMO_MODULE_TOKEN_ESTIMATES } from '@paper/demoOperationLogs'
+import PaperModuleNavIcon from '@paper/PaperModuleNavIcon.vue'
 import PaperPersonalCenterPanel from '@paper/PaperPersonalCenterPanel.vue'
 import PaperReferenceLibraryPanel from '@paper/PaperReferenceLibraryPanel.vue'
 import PaperSelect from '@paper/PaperSelect.vue'
@@ -637,7 +638,8 @@ async function onPrimaryAction() {
               :class="{ 'paper-nav-item--active': activeModule === moduleId }"
               @click="selectModule(moduleId)"
             >
-              {{ getPaperModuleMeta(moduleId).label }}
+              <PaperModuleNavIcon :module-id="moduleId" class="paper-nav-item-icon" />
+              <span class="paper-nav-item-label">{{ getPaperModuleMeta(moduleId).label }}</span>
             </button>
           </div>
         </div>
@@ -1031,6 +1033,9 @@ async function onPrimaryAction() {
 }
 
 .paper-nav-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
   padding: 10px 12px;
   font-size: 14px;
   font-weight: 500;
@@ -1041,6 +1046,19 @@ async function onPrimaryAction() {
   border-radius: 10px;
   cursor: pointer;
   transition: background 0.12s;
+}
+
+.paper-nav-item-icon {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.paper-nav-item--active .paper-nav-item-icon {
+  color: #fff;
+}
+
+.paper-nav-item-label {
+  min-width: 0;
 }
 
 .paper-nav-item:hover {
