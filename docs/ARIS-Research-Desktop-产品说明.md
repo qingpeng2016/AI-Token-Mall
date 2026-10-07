@@ -40,7 +40,7 @@
 |----|------|
 | **位置** | 侧栏品牌区下方、模块导航上方 |
 | **能力** | 下拉切换 `paper_manuscript`；**新建论文** 创建新的稿件线 |
-| **作用** | 同一用户可同时推进多篇论文；六个工作流模块的 **运行 / 产出 / paper_run** 均归属 **当前选中论文** |
+| **作用** | 同一用户可同时推进多篇论文；各模块 **产出与 progress** 均归属 **当前选中论文** |
 | **存储** | 工作区路径、Wiki、artifact 等由 **平台按稿件默认 provision**，用户无需填写 |
 
 ### 3.2 工作流模块（二级导航）
@@ -58,10 +58,10 @@
 | | 图表管理 | `figure-generation` | **Tab：上传图表**（本篇 figure 文件）→ **一键生成**（实验数据出图；仅后者显示「运行」） |
 | **资料与设置** | 我的论文 | `my-manuscripts` | 创建、切换、编辑、归档 `paper_manuscript` |
 | | 上传文献 | `reference-library` | 上传 / 管理本篇 PDF、BibTeX 等 |
-| | 个人中心 | `personal-center` | **Tab：我的信息**（余额/充值/用量）→ **环境配置** → **操作日志**（仅列表） |
+| | 个人中心 | `personal-center` | **Tab：我的信息**（余额/充值/用量）→ **默认配置** → **操作日志**（仅列表） |
 
 - 同一时间 **仅一个二级模块** 为选中态（高亮）；所有一级分组默认常开。
-- 各模块共享：**顶栏标题 + 「运行」主按钮**（上传文献、我的论文、个人中心等管理页无运行按钮；环境配置在个人中心 Tab 内保存）；模块内为 **独立表单与说明文案**。
+- 各模块共享：**顶栏标题 + 「运行」主按钮**（上传文献、我的论文、个人中心等管理页无运行按钮；默认配置在个人中心 Tab 内保存）；模块内为 **独立表单与说明文案**。
 
 ---
 
@@ -100,10 +100,10 @@
 
 | 字段名 | 必填 | 控件类型 | 默认值 / 占位 | 产品说明 |
 |--------|------|----------|---------------|----------|
-| **学科** | 否 | 下拉 | 默认与环境配置一致（如计算机 / 人工智能） | 对齐 `paper_ref_discipline`；影响默认文献源与 venue 关联 |
+| **学科** | 否 | 下拉 | 默认与个人中心「默认配置」一致（如计算机 / 人工智能） | 对齐 `paper_ref_discipline`；影响默认文献源与 venue 关联 |
 | **研究方向 / 检索主题** | 是 * | 多行文本 | 研究主题、问题或关键词 | 同时作为多源检索 query 依据 |
 | **目标会议/期刊** | 否 | 单行文本 | `NeurIPS/ICLR/ICML` | **风格约束**：贡献类型、实验严谨度、写作调性按目标 venue 调节 |
-| **文献来源** | 是 * | 多选 | 默认 arXiv / OpenAlex / Semantic Scholar | **仅此模块**发起多源检索，结果写入 `paper_run_literature_hit` |
+| **文献来源** | 是 * | 多选 | 默认 arXiv / OpenAlex / Semantic Scholar | **仅此模块**发起多源检索，结果写入 `paper_manuscript_literature_hit` |
 | **上传文献** | 否 | 复选框（选题内） | 默认不勾选 | 读本篇「上传文献」上传文件作模型语料（`user_library`，非 API 检索）；勾选时至少 1 篇已上传 |
 | **执行强度** | 否 | 下拉 | 默认 **Balanced（平衡）** | 检索条数、脑暴轮数、计划深度 |
 | **审计等级** | 否 | 下拉 | 默认 **Polished（精修）** | 控制门禁严格度，包含：**citation audit（引用审查）**、**claim audit（断言审查）**、**kill argument（反驳/杀论点审查）** |
@@ -127,7 +127,7 @@
 |------|------|
 | 候选选题报告 | 排序后的 idea 列表及依据 |
 | 新颖性结论 | 与已有工作的区分点 |
-| 已验证文献语料 | 写入 `paper_run_literature_hit`，供 **文献综述** 只读使用 |
+| 已验证文献语料 | 写入 `paper_manuscript_literature_hit`，供 **文献综述** 只读使用 |
 | （下一步）文献综述 | 顶栏 **生成文献综述** 或进入文献综述模块运行 |
 
 ### 5.5 模块：文献综述（与界面一致）
@@ -135,7 +135,7 @@
 - **标题**：整理选题产出 → 一篇综述  
 - **前置条件**：当前论文 **选题发现 run 已完成**（retrieve、idea、新颖性、audit）。  
 - **界面形态**：上方 **只读展示** 选题 artifact（方向、语料统计、idea/新颖性；实验规划摘要若有）；下方 **成稿方式**（分节结构、纳入哪些块、写作深度与引用审计）。**无** 第二套检索表单。  
-- **运行行为**：合并 `paper_run_literature_hit` + 选题各阶段 artifact → 一篇 `literature_review`（领域归纳 + 定位 + gap + 引用表），供论文写作 Related Work 引用。  
+- **运行行为**：合并 `paper_manuscript_literature_hit` + 选题产出 → `paper_output_literature_review`（领域归纳 + 定位 + gap + 引用表），供论文写作 Related Work 引用。  
 - **续跑**：综述生成完成后，在 **文献综述** 页顶栏主按钮变为 **「生成实验计划」**，跳转 **实验规划** 并运行（不在选题发现内出 plan）。
 
 ---
@@ -152,7 +152,7 @@
 | **论文写作** | 成稿 | 大纲 → 分节写作 → 编译；引用经门禁校验 |
 | **图表管理** | 论文级 figure | 上传 PNG/PDF/SVG 等；或在一键生成 Tab 自实验数据生成图表资产 |
 | **上传文献** | 自备文献库 | 上传 PDF / BibTeX，编辑标题与备注，按篇论文隔离 |
-| **个人中心** | 账号与偏好 | **我的信息**（余额、充值、套餐用量、Token 动态）、**环境配置**、**操作日志**（纯列表） |
+| **个人中心** | 账号与偏好 | **我的信息**（余额、充值、套餐用量、Token 动态）、**默认配置**（对应 `paper_user_preference`）、**操作日志**（纯列表） |
 
 ---
 
@@ -203,11 +203,11 @@
 
 | 类别 | 要求 |
 |------|------|
-| **部署形态** | 桌面端；支持本地运行，敏感数据可不出本机（视环境配置而定） |
+| **部署形态** | 桌面端；支持本地运行，敏感数据可不出本机（视默认配置与 runtime 而定） |
 | **可追溯** | 中间产物、引用来源可复查 |
 | **可中断** | 长任务可停；人工检查点可介入 |
 | **Provider** | 支持配置第三方 API / 自定义 Base URL（如 CC-Switch 场景） |
-| **算力** | 实验相关阶段可对接远程 GPU（环境配置中定义） |
+| **算力** | 实验相关阶段可对接远程 GPU（默认配置或 `paper_manuscript_runtime` 中定义） |
 
 ---
 
@@ -217,9 +217,9 @@
 |------|------|
 | `docs/migrations/20261005_paper_workflow_schema.sql` | **Paper Agent 唯一 DDL**（见下表架构） |
 
-**我的论文**：`paper_manuscript` + **`paper_manuscript_progress`**（当前阶段、各模块状态、指向当前生效产出 id）。**模块产出表**（前缀 `paper_output_*`，均含 `manuscript_id`）：`paper_output_topic` / `paper_output_topic_idea`（选题）、`paper_output_literature_review`（文献综述）、`paper_output_experiment_plan`（实验规划）、`paper_output_experiment_review`（结果审查）、`paper_output_manuscript_draft`（论文草稿）、`paper_output_manuscript_review`（论文审查）、`paper_output_figure`（图表）。**运行引擎**：`paper_run*`、`paper_run_literature_hit`、`paper_citation_gate`。**其它**：`paper_user_literature`、`paper_ref_*`、`paper_llm_*`、`paper_llm_call_logs`、`paper_operation_log`。
+**我的论文**：`paper_manuscript` + **`paper_manuscript_progress`**（当前阶段、各模块状态、指向当前生效产出 id）。**模块产出表**（前缀 `paper_output_*`，均含 `manuscript_id`）：`paper_output_topic` / `paper_output_topic_idea`（选题）、`paper_output_literature_review`（文献综述）、`paper_output_experiment_plan`（实验规划）、`paper_output_experiment_review`（结果审查）；**论文正文草稿**在 **`paper_manuscript.draft_*`**；**论文审查报告**在 **`paper_manuscript_review`**、`paper_output_figure`（图表）。**本篇文献与引用**：`paper_manuscript_literature_hit`、`paper_manuscript_citation_gate`。**其它**：`paper_user_literature`、`paper_ref_*`、`paper_llm_*`、`paper_llm_call_logs`、`paper_operation_log`。
 
-**LLM 路由**：`paper_llm_workflow_binding` 解析 **用哪条模型**；`paper_llm_prompt_template` 解析 **用什么话术**（`{{变量}}` 由代码注入 run/venue 等数据）。解析顺序均为：本篇 `manuscript_id` → `user_id` → `user_id=0` 平台默认。`paper_run` 可快照 `executor_model_config_id` / `reviewer_model_config_id`；`paper_llm_call_logs` 记录 `workflow_binding_id` 与 `prompt_template_id`。
+**LLM 路由**：`paper_llm_workflow_binding` / `paper_llm_prompt_template`；解析顺序：本篇 `manuscript_id` → `user_id` → `user_id=0`。`paper_llm_call_logs` 按 `manuscript_id` + `module_code` 记调用。
 
 ---
 

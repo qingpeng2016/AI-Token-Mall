@@ -9,7 +9,7 @@ export type PaperModuleId =
   | 'reference-library'
   | 'my-manuscripts'
   | 'personal-center'
-  /** 仅用于操作日志条目，侧栏无独立入口（环境配置在个人中心 Tab） */
+  /** 仅用于操作日志条目，侧栏无独立入口（默认配置在个人中心 Tab） */
   | 'environment'
 
 export type PaperModuleMeta = {
@@ -67,12 +67,12 @@ export const PAPER_MODULES: PaperModuleMeta[] = [
   {
     id: 'personal-center',
     label: '个人中心',
-    description: '我的信息、Token 操作日志与默认科研环境配置',
+    description: '我的信息、Token 操作日志与默认配置',
   },
   {
     id: 'environment',
-    label: '环境配置',
-    description: '默认科研偏好（入口在个人中心 · 环境配置 Tab）',
+    label: '默认配置',
+    description: '默认科研偏好（入口在个人中心 · 默认配置 Tab）',
   },
 ]
 
@@ -326,14 +326,14 @@ export type TopicDiscoveryForm = {
   disciplineCode: string
   direction: string
   venue: string
-  /** 多源检索（写入 paper_run_literature_hit） */
+  /** 多源检索（写入 paper_manuscript_literature_hit） */
   sourceCodes: string[]
   intensity: ExecutionIntensity
   auditLevel: AuditLevel
   humanCheckpoint: boolean
 }
 
-/** 选题发现 run 内阶段（对齐 paper_run_stage.stage_code） */
+/** 选题发现模块内阶段（产品/Agent 约定 stage_code） */
 export type TopicCheckpointKey = 'ideas_ready'
 
 export type TopicFlowStepDef = {

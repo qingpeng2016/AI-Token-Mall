@@ -44,7 +44,7 @@ const profileRefreshTick = ref(0)
 
 const tabs: { id: PersonalCenterTabId; label: string }[] = [
   { id: 'profile', label: '我的信息' },
-  { id: 'environment', label: '环境配置' },
+  { id: 'environment', label: '默认配置' },
   { id: 'operation-log', label: '操作日志' },
 ]
 
@@ -183,7 +183,7 @@ async function saveEnvironment() {
       JSON.stringify({ preference: { ...props.envPreference } }),
     )
     emit('environmentSaved')
-    ElMessage.success('环境配置已保存（本地演示）')
+    ElMessage.success('默认配置已保存（本地演示）')
   } finally {
     envSaving.value = false
   }
@@ -339,7 +339,7 @@ defineExpose({ reloadLogs })
 
       <div class="pc-env-actions">
         <button type="button" class="pc-btn-primary" :disabled="envSaving" @click="saveEnvironment">
-          {{ envSaving ? '保存中…' : '保存环境配置' }}
+          {{ envSaving ? '保存中…' : '保存默认配置' }}
         </button>
       </div>
     </div>

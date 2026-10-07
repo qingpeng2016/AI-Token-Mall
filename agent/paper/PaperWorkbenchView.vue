@@ -295,7 +295,7 @@ function onPersonalCenterEnvironmentSaved() {
   topicForm.intensity = envPreference.intensity
   topicForm.auditLevel = envPreference.auditLevel
   topicForm.humanCheckpoint = envPreference.humanCheckpoint
-  recordModuleOperationLog('environment', '保存环境配置')
+  recordModuleOperationLog('environment', '保存默认配置')
 }
 
 const SECONDARY_WORKFLOW_MODULES = [
@@ -893,7 +893,7 @@ async function onPrimaryAction() {
           <label class="paper-field">
             <span class="paper-label">学科</span>
             <PaperSelect v-model="topicForm.disciplineCode" :options="disciplineSelectOptions" />
-            <span class="paper-hint">与「环境配置」同一套学科；影响文献库与模板</span>
+            <span class="paper-hint">与个人中心「默认配置」同一套学科；影响默认文献源与 venue</span>
           </label>
 
           <label class="paper-field">
@@ -1002,8 +1002,7 @@ async function onPrimaryAction() {
           </button>
         </div>
         <p class="paper-section-lead">
-          对应 <code>paper_run</code> → <code>paper_run_stage</code>；暂停时写入
-          <code>paper_run_checkpoint</code>（演示交互，非真实 Agent）。
+          阶段进度由 <code>paper_manuscript_progress</code> 与各 <code>paper_output_*</code> 体现（演示交互，非真实 Agent）。
         </p>
 
         <ol class="paper-flow-steps">
