@@ -217,9 +217,9 @@
 |------|------|
 | `docs/migrations/20261005_paper_workflow_schema.sql` | **Paper Agent 唯一 DDL**：ref 字典、稿件/run、文献与门禁、artifact、LLM 配置与 binding、上传/里程碑/操作日志及种子数据 |
 
-核心表族：`paper_ref_*`、`paper_manuscript*`、`paper_user_literature` / `paper_user_figure`、`paper_run*`（含 `paper_run_literature_hit`）、`paper_citation_gate`、`paper_artifact*`、`paper_llm_model_config`、`paper_llm_workflow_binding`、`paper_llm_call_logs`。检索命中暂落在 hit 表 `meta` 快照，无全局文献缓存表。`paper_manuscript` 可选：`manuscript_kind`、`deadline_at`、`target_words`、`citation_style`。
+核心表族：`paper_ref_*`、`paper_manuscript*`、`paper_user_literature` / `paper_user_figure`、`paper_run*`（含 `paper_run_literature_hit`）、`paper_citation_gate`、`paper_artifact*`、`paper_llm_model_config`、`paper_llm_workflow_binding`、`paper_llm_prompt_template`、`paper_llm_call_logs`。检索命中暂落在 hit 表 `meta` 快照，无全局文献缓存表。`paper_manuscript` 可选：`manuscript_kind`、`deadline_at`、`target_words`、`citation_style`。
 
-**LLM 路由解析顺序**：`manuscript_id` binding → `user_id` binding → `user_id=0` 平台默认；`paper_run` 可快照 `executor_model_config_id` / `reviewer_model_config_id`。
+**LLM 路由**：`paper_llm_workflow_binding` 解析 **用哪条模型**；`paper_llm_prompt_template` 解析 **用什么话术**（`{{变量}}` 由代码注入 run/venue 等数据）。解析顺序均为：本篇 `manuscript_id` → `user_id` → `user_id=0` 平台默认。`paper_run` 可快照 `executor_model_config_id` / `reviewer_model_config_id`；`paper_llm_call_logs` 记录 `workflow_binding_id` 与 `prompt_template_id`。
 
 ---
 
