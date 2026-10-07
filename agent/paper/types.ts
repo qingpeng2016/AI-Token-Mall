@@ -122,6 +122,7 @@ export function findPaperModuleGroupId(moduleId: PaperModuleId): PaperModuleGrou
 
 export type UploadedReferenceKind = 'pdf' | 'bib' | 'other'
 
+/** 对齐 paper_user_literature（本地 id 暂为字符串，接 API 后为 BIGINT） */
 export type UploadedReferenceItem = {
   id: string
   fileName: string
@@ -182,6 +183,7 @@ export function createUploadedReferenceFromFile(file: File): UploadedReferenceIt
 
 export type UploadedFigureKind = 'image' | 'pdf' | 'vector' | 'other'
 
+/** 对齐 paper_user_figure */
 export type UploadedFigureItem = {
   id: string
   fileName: string
@@ -324,7 +326,7 @@ export type TopicDiscoveryForm = {
   disciplineCode: string
   direction: string
   venue: string
-  /** 多源检索（写入 paper_literature_record / paper_run_literature_hit） */
+  /** 多源检索（写入 paper_run_literature_hit） */
   sourceCodes: string[]
   intensity: ExecutionIntensity
   auditLevel: AuditLevel

@@ -11,11 +11,10 @@
 -- | 类型       | 表名 |
 -- |------------|------|
 -- | ref        | paper_ref_discipline, paper_ref_venue, paper_ref_literature_source, paper_ref_execution_intensity, paper_ref_audit_level |
--- | manuscript | paper_manuscript, paper_manuscript_runtime, paper_manuscript_upload, paper_manuscript_milestone |
--- | user       | paper_user_preference |
+-- | manuscript | paper_manuscript, paper_manuscript_runtime, paper_manuscript_milestone |
+-- | user       | paper_user_preference, paper_user_literature, paper_user_figure |
 -- | model      | paper_llm_model_config, paper_llm_workflow_binding |
 -- | run        | paper_run, paper_run_stage, paper_run_checkpoint, paper_run_literature_hit |
--- | literature | paper_literature_record |
 -- | citation   | paper_citation_gate |
 -- | artifact   | paper_artifact, paper_artifact_idea |
 -- | llm        | paper_llm_call_logs |
@@ -267,39 +266,25 @@ CREATE TABLE IF NOT EXISTS `paper_run_checkpoint` (
 -- 5. RAG：检索文献与引用门禁
 -- ---------------------------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS `paper_literature_record` (
-  `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `source_id`       BIGINT UNSIGNED NOT NULL,
-  `external_key`    VARCHAR(256) NOT NULL COMMENT 'arxiv:2401.12345 / doi:… / s2:…',
-  `title`           VARCHAR(1024) NOT NULL DEFAULT '',
-  `authors`         JSON         DEFAULT NULL,
-  `abstract`        TEXT         DEFAULT NULL,
-  `published_year`  SMALLINT     DEFAULT NULL,
-  `doi`             VARCHAR(128) DEFAULT NULL,
-  `url`             VARCHAR(512) DEFAULT NULL,
-  `raw_payload`     JSON         DEFAULT NULL,
-  `fetched_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_paper_literature_record` (`source_id`, `external_key`),
-  KEY `idx_paper_literature_record_doi` (`doi`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文献库缓存（跨 run 复用）';
-
 CREATE TABLE IF NOT EXISTS `paper_run_literature_hit` (
   `run_id`              BIGINT UNSIGNED NOT NULL,
-  `literature_record_id` BIGINT UNSIGNED NOT NULL,
+  `source_id`           BIGINT UNSIGNED NOT NULL COMMENT 'paper_ref_literature_source.id',
+  `external_key`        VARCHAR(256) NOT NULL COMMENT 'arxiv:2401.12345 / doi:… / s2:…',
   `stage_id`            BIGINT UNSIGNED DEFAULT NULL,
   `relevance_score`     DECIMAL(6,4) DEFAULT NULL,
   `query_text`          VARCHAR(512) DEFAULT NULL,
+  `meta`                JSON         DEFAULT NULL COMMENT 'title、authors、doi 等命中快照（暂无全局文献缓存表）',
   `created_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`run_id`, `literature_record_id`),
-  KEY `idx_paper_run_lit_record` (`literature_record_id`)
+  PRIMARY KEY (`run_id`, `source_id`, `external_key`),
+  KEY `idx_paper_run_lit_doi` (`external_key`(64))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='某次运行检索命中的文献';
 
 CREATE TABLE IF NOT EXISTS `paper_citation_gate` (
   `id`                  BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `run_id`              BIGINT UNSIGNED NOT NULL,
   `artifact_id`         BIGINT UNSIGNED DEFAULT NULL,
-  `literature_record_id` BIGINT UNSIGNED DEFAULT NULL,
+  `source_id`           BIGINT UNSIGNED DEFAULT NULL COMMENT '门禁关联文献源',
+  `external_key`        VARCHAR(256) DEFAULT NULL COMMENT '与 hit 表同源键',
   `cited_key`           VARCHAR(256) DEFAULT NULL COMMENT '正文中的 cite key',
   `gate_type`           VARCHAR(32)  NOT NULL COMMENT 'reference|citation_audit|claim_audit|kill_argument',
   `status`              VARCHAR(16)  NOT NULL COMMENT 'verified|rejected|pending|waived',
@@ -372,12 +357,30 @@ CREATE TABLE IF NOT EXISTS `paper_llm_call_logs` (
 -- 8. 上传、里程碑、操作日志
 -- ---------------------------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS `paper_manuscript_upload` (
+CREATE TABLE IF NOT EXISTS `paper_user_literature` (
   `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `manuscript_id` BIGINT UNSIGNED NOT NULL,
   `user_id`       BIGINT UNSIGNED NOT NULL COMMENT 'users.id',
-  `upload_scope`  VARCHAR(16)  NOT NULL COMMENT 'reference|figure',
-  `file_kind`     VARCHAR(16)  NOT NULL COMMENT 'pdf|bib|txt|image|vector|other',
+  `manuscript_id` BIGINT UNSIGNED NOT NULL COMMENT '本篇「上传文献」；选题 user_library 语料',
+  `file_kind`     VARCHAR(16)  NOT NULL COMMENT 'pdf|bib|txt|other',
+  `file_name`     VARCHAR(512) NOT NULL,
+  `title`         VARCHAR(512) NOT NULL,
+  `note`          TEXT         DEFAULT NULL,
+  `size_bytes`    BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `storage_uri`   VARCHAR(1024) DEFAULT NULL COMMENT '对象存储或工作区相对路径',
+  `content_hash`  CHAR(64)     DEFAULT NULL COMMENT 'SHA-256',
+  `status`        VARCHAR(16)  NOT NULL DEFAULT 'active' COMMENT 'active|deleted',
+  `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_paper_user_lit_ms` (`manuscript_id`, `status`),
+  KEY `idx_paper_user_lit_user` (`user_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户上传文献（上传文献模块 / 参考文献门禁语料）';
+
+CREATE TABLE IF NOT EXISTS `paper_user_figure` (
+  `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`       BIGINT UNSIGNED NOT NULL COMMENT 'users.id',
+  `manuscript_id` BIGINT UNSIGNED NOT NULL COMMENT '本篇「图表管理·上传图表」',
+  `file_kind`     VARCHAR(16)  NOT NULL COMMENT 'image|pdf|vector|other',
   `file_name`     VARCHAR(512) NOT NULL,
   `title`         VARCHAR(512) NOT NULL,
   `note`          TEXT         DEFAULT NULL,
@@ -388,9 +391,9 @@ CREATE TABLE IF NOT EXISTS `paper_manuscript_upload` (
   `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_paper_ms_upload_ms` (`manuscript_id`, `upload_scope`, `status`),
-  KEY `idx_paper_ms_upload_user` (`user_id`, `created_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='本篇上传文件（文献库/figure 资产）';
+  KEY `idx_paper_user_fig_ms` (`manuscript_id`, `status`),
+  KEY `idx_paper_user_fig_user` (`user_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户上传图表资产';
 
 CREATE TABLE IF NOT EXISTS `paper_manuscript_milestone` (
   `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
