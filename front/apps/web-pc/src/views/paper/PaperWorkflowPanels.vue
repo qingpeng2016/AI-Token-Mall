@@ -407,7 +407,7 @@ defineExpose({ runModule })
     </section>
   </div>
 
-  <!-- 图表生成 -->
+  <!-- 图表管理 -->
   <div v-else-if="moduleId === 'figure-generation'" class="wf-stack">
     <section class="wf-panel">
       <h2 class="wf-title">参数</h2>

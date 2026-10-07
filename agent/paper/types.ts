@@ -7,6 +7,7 @@ export type PaperModuleId =
   | 'figure-generation'
   | 'manuscript-analysis'
   | 'reference-library'
+  | 'my-manuscripts'
   | 'personal-center'
   /** 仅用于操作日志条目，侧栏无独立入口（环境配置在个人中心 Tab） */
   | 'environment'
@@ -45,8 +46,8 @@ export const PAPER_MODULES: PaperModuleMeta[] = [
   },
   {
     id: 'figure-generation',
-    label: '图表生成',
-    description: '基于实验数据生成可复现的论文统计图（曲线、柱状、消融等）',
+    label: '图表管理',
+    description: '上传自有 figure 资产，或基于实验数据一键生成可复现统计图',
   },
   {
     id: 'manuscript-analysis',
@@ -55,8 +56,13 @@ export const PAPER_MODULES: PaperModuleMeta[] = [
   },
   {
     id: 'reference-library',
-    label: '我的文献',
+    label: '上传文献',
     description: '上传并管理本篇论文的 PDF、BibTeX 等文献文件',
+  },
+  {
+    id: 'my-manuscripts',
+    label: '我的论文',
+    description: '创建、切换、编辑与归档工作台下的论文项目（paper_manuscript）',
   },
   {
     id: 'personal-center',
@@ -98,7 +104,7 @@ export const PAPER_MODULE_GROUPS: PaperModuleGroup[] = [
   {
     id: 'resources',
     label: '资料与设置',
-    moduleIds: ['reference-library', 'personal-center'],
+    moduleIds: ['my-manuscripts', 'reference-library', 'personal-center'],
   },
 ]
 
@@ -130,12 +136,12 @@ export const REFERENCE_UPLOAD_STORAGE_KEY = 'atm:paper:reference-uploads:v1'
 
 export const REFERENCE_UPLOAD_ACCEPT = '.pdf,.bib,.txt,.md,.json'
 
-/** 选题发现：用户在本篇「我的文献」中上传的文件，作为模型分析语料（非第三方 API 检索） */
+/** 选题发现：用户在本篇「上传文献」中上传的文件，作为模型分析语料（非第三方 API 检索） */
 export const USER_LIBRARY_SOURCE_CODE = 'user_library' as const
 
 export const TOPIC_USER_LIBRARY_SOURCE = {
   code: USER_LIBRARY_SOURCE_CODE,
-  label: '我的文献',
+  label: '上传文献',
 } as const
 
 export function getUserReferenceUploads(manuscriptId: string): UploadedReferenceItem[] {
@@ -171,6 +177,54 @@ export function createUploadedReferenceFromFile(file: File): UploadedReferenceIt
     uploadedAt: new Date().toISOString(),
     sizeBytes: file.size,
     kind: inferReferenceKind(file.name),
+  }
+}
+
+export type UploadedFigureKind = 'image' | 'pdf' | 'vector' | 'other'
+
+export type UploadedFigureItem = {
+  id: string
+  fileName: string
+  title: string
+  uploadedAt: string
+  sizeBytes: number
+  kind: UploadedFigureKind
+  note?: string
+}
+
+export const FIGURE_UPLOAD_STORAGE_KEY = 'atm:paper:figure-uploads:v1'
+
+export const FIGURE_UPLOAD_ACCEPT = '.png,.jpg,.jpeg,.webp,.svg,.pdf,.eps,.tif,.tiff'
+
+export function getUserFigureUploads(manuscriptId: string): UploadedFigureItem[] {
+  if (!manuscriptId) return []
+  try {
+    const raw = localStorage.getItem(FIGURE_UPLOAD_STORAGE_KEY)
+    if (!raw) return []
+    const data = JSON.parse(raw) as { byManuscript?: Record<string, UploadedFigureItem[]> }
+    return data.byManuscript?.[manuscriptId] ?? []
+  } catch {
+    return []
+  }
+}
+
+export function inferFigureKind(fileName: string): UploadedFigureKind {
+  const lower = fileName.toLowerCase()
+  if (/\.(png|jpe?g|webp|gif|bmp|tiff?)$/.test(lower)) return 'image'
+  if (lower.endsWith('.pdf')) return 'pdf'
+  if (lower.endsWith('.svg') || lower.endsWith('.eps')) return 'vector'
+  return 'other'
+}
+
+export function createUploadedFigureFromFile(file: File): UploadedFigureItem {
+  const base = file.name.replace(/\.[^.]+$/, '')
+  return {
+    id: `fig-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    fileName: file.name,
+    title: base || file.name,
+    uploadedAt: new Date().toISOString(),
+    sizeBytes: file.size,
+    kind: inferFigureKind(file.name),
   }
 }
 

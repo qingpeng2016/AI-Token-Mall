@@ -26,6 +26,7 @@ import {
 } from './types'
 import { DEMO_MODULE_TOKEN_ESTIMATES } from './demoOperationLogs'
 import PaperModuleNavIcon from './PaperModuleNavIcon.vue'
+import PaperMyManuscriptsPanel from './PaperMyManuscriptsPanel.vue'
 import PaperPersonalCenterPanel from './PaperPersonalCenterPanel.vue'
 import PaperReferenceLibraryPanel from './PaperReferenceLibraryPanel.vue'
 import PaperSelect from './PaperSelect.vue'
@@ -95,6 +96,7 @@ const running = ref(false)
 const topicRunToken = ref(0)
 const topicRunsByManuscript = ref<Record<string, TopicRunDemo>>({})
 const workflowPanelsRef = ref<InstanceType<typeof PaperWorkflowPanels> | null>(null)
+const figureManagementTab = ref<'upload' | 'generate'>('upload')
 const paperMainRef = ref<HTMLElement | null>(null)
 const topicFlowPanelRef = ref<HTMLElement | null>(null)
 
@@ -152,6 +154,11 @@ function onManuscriptChange(id: string) {
   persistManuscripts()
 }
 
+function onManuscriptsListUpdate(list: PaperManuscriptItem[]) {
+  manuscripts.value = list
+  persistManuscripts()
+}
+
 async function onCreateManuscript() {
   try {
     const { value } = await ElMessageBox.prompt(
@@ -197,7 +204,10 @@ const currentManuscript = computed(
 )
 
 const isReferenceLibraryModule = computed(() => activeModule.value === 'reference-library')
-const isUtilityModule = computed(() => isReferenceLibraryModule.value)
+const isMyManuscriptsModule = computed(() => activeModule.value === 'my-manuscripts')
+const isUtilityModule = computed(
+  () => isReferenceLibraryModule.value || isMyManuscriptsModule.value,
+)
 const isTopicDiscoveryModule = computed(() => activeModule.value === 'topic-discovery')
 
 const personalCenterPanelRef = ref<InstanceType<typeof PaperPersonalCenterPanel> | null>(null)
@@ -317,7 +327,11 @@ const topicDiscoveryArtifact = computed((): TopicDiscoveryArtifactSnapshot => {
   }
 })
 
-const showPrimaryAction = computed(() => !isUtilityModule.value)
+const showPrimaryAction = computed(() => {
+  if (isUtilityModule.value) return false
+  if (activeModule.value === 'figure-generation' && figureManagementTab.value === 'upload') return false
+  return true
+})
 
 const topicPrimaryDisabled = computed(() => {
   if (isUtilityModule.value) return true
@@ -557,7 +571,7 @@ async function onPrimaryAction() {
       topicForm.sourceCodes.includes(USER_LIBRARY_SOURCE_CODE) &&
       userReferenceUploadCount.value === 0
     ) {
-      ElMessage.warning('已勾选「我的文献」，请先在「我的文献」上传至少一篇')
+      ElMessage.warning('已勾选「上传文献」，请先在「上传文献」上传至少一篇')
       return
     }
   }
@@ -572,7 +586,7 @@ async function onPrimaryAction() {
       const ok = await workflowPanelsRef.value?.runModule(activeModule.value)
       if (ok) {
         const mod = activeModule.value
-        if (mod !== 'personal-center' && mod !== 'reference-library') {
+        if (mod !== 'personal-center' && mod !== 'reference-library' && mod !== 'my-manuscripts') {
           recordModuleOperationLog(mod, `运行「${currentMeta.value.label}」`)
         }
         ElMessage.success(
@@ -747,7 +761,7 @@ async function onPrimaryAction() {
               <span>{{ TOPIC_USER_LIBRARY_SOURCE.label }}</span>
             </label>
             <p class="paper-hint paper-hint--block">
-              使用本篇「我的文献」中已上传 PDF / BibTeX 等，供模型阅读与归纳（不走 arXiv 等 API）。
+              使用本篇「上传文献」中已上传 PDF / BibTeX 等，供模型阅读与归纳（不走 arXiv 等 API）。
               <template v-if="isTopicSourceChecked(TOPIC_USER_LIBRARY_SOURCE.code)">
                 当前已上传 <strong>{{ userReferenceUploadCount }}</strong> 篇。
               </template>
@@ -855,6 +869,15 @@ async function onPrimaryAction() {
       </section>
       </template>
 
+      <PaperMyManuscriptsPanel
+        v-else-if="activeModule === 'my-manuscripts'"
+        :manuscripts="manuscripts"
+        :active-manuscript-id="activeManuscriptId"
+        @select="onManuscriptChange"
+        @update-manuscripts="onManuscriptsListUpdate"
+        @create="onCreateManuscript"
+      />
+
       <PaperReferenceLibraryPanel
         v-else-if="activeModule === 'reference-library'"
         :manuscript-id="activeManuscriptId"
@@ -874,7 +897,10 @@ async function onPrimaryAction() {
         v-else-if="isSecondaryWorkflowModule"
         :key="activeModule"
         ref="workflowPanelsRef"
+        v-model:figure-tab="figureManagementTab"
         :module-id="activeModule"
+        :manuscript-id="activeManuscriptId"
+        :manuscript-title="currentManuscript?.title ?? '未命名'"
         :topic-artifact="topicDiscoveryArtifact"
       />
       </div>

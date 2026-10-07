@@ -47,13 +47,19 @@ defineProps<{
       <path d="M14 3v5h5" />
       <path d="m9 14 2 2 4-4" />
     </template>
-    <!-- 图表生成：图框 -->
+    <!-- 图表管理：图框 -->
     <template v-else-if="moduleId === 'figure-generation'">
       <rect x="4" y="5" width="16" height="14" rx="2" />
       <circle cx="9" cy="11" r="1.5" fill="currentColor" stroke="none" />
       <path d="M4 16l4-4 3 3 5-6 4 5" />
     </template>
-    <!-- 我的文献：文献叠页 -->
+    <!-- 我的论文：叠层 -->
+    <template v-else-if="moduleId === 'my-manuscripts'">
+      <path d="M8 6h8l4 4v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z" />
+      <path d="M16 6v4h4M12 11h4M12 15h4" opacity="0.5" />
+      <path d="M6 9H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h1" />
+    </template>
+    <!-- 上传文献：文献叠页 -->
     <template v-else-if="moduleId === 'reference-library'">
       <path d="M6 4h8l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
       <path d="M14 4v4h4" />

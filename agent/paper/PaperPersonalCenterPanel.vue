@@ -369,36 +369,43 @@ defineExpose({ reloadLogs })
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  padding: 4px;
+  padding: 0 2px;
   margin-bottom: 24px;
-  background: #f1f5f9;
-  border-radius: 12px;
+  background: transparent;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .pc-tab {
-  flex: 1;
-  min-width: 100px;
-  padding: 10px 16px;
+  position: relative;
+  flex: 0 1 auto;
+  min-width: 112px;
+  padding: 12px 20px;
+  margin-bottom: -1px;
   font-size: 14px;
   font-weight: 500;
   color: #64748b;
+  cursor: pointer;
   background: transparent;
   border: none;
-  border-radius: 8px;
-  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  border-radius: 8px 8px 0 0;
   transition:
+    color 0.15s,
     background 0.15s,
-    color 0.15s;
+    border-color 0.15s;
 }
 
-.pc-tab:hover {
+.pc-tab:hover:not(.pc-tab--active) {
   color: #334155;
+  background: #f8fafc;
 }
 
 .pc-tab--active {
+  font-weight: 600;
   color: #1e293b;
   background: #fff;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  border-bottom-color: #6366f1;
+  box-shadow: inset 0 -1px 0 #fff;
 }
 
 .pc-profile-head {
@@ -407,8 +414,6 @@ defineExpose({ reloadLogs })
   gap: 14px 16px;
   align-items: center;
   margin-bottom: 18px;
-  padding-bottom: 18px;
-  border-bottom: 1px solid #e8ecf1;
 }
 
 .pc-avatar {

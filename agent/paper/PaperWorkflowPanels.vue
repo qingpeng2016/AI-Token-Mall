@@ -9,6 +9,7 @@ import {
   DEMO_MANUSCRIPT,
   DEMO_MANUSCRIPT_ANALYSIS,
 } from './demoModuleOutputs'
+import PaperFigureUploadPanel from './PaperFigureUploadPanel.vue'
 import PaperSelect from './PaperSelect.vue'
 import {
   DEFAULT_AUTO_REVIEW,
@@ -30,13 +31,21 @@ import {
   type TopicDiscoveryArtifactSnapshot,
 } from './types'
 
-const { moduleId, topicArtifact } = withDefaults(
+export type FigureManagementTabId = 'upload' | 'generate'
+
+const figureTab = defineModel<FigureManagementTabId>('figureTab', { default: 'upload' })
+
+const { moduleId, topicArtifact, manuscriptId, manuscriptTitle } = withDefaults(
   defineProps<{
     moduleId: PaperModuleId
     topicArtifact?: TopicDiscoveryArtifactSnapshot
+    manuscriptId?: string
+    manuscriptTitle?: string
   }>(),
   {
     topicArtifact: () => EMPTY_TOPIC_DISCOVERY_ARTIFACT,
+    manuscriptId: '',
+    manuscriptTitle: '未命名',
   },
 )
 
@@ -407,9 +416,41 @@ defineExpose({ runModule })
     </section>
   </div>
 
-  <!-- 图表生成 -->
-  <div v-else-if="moduleId === 'figure-generation'" class="wf-stack">
-    <section class="wf-panel">
+  <!-- 图表管理 -->
+  <section v-else-if="moduleId === 'figure-generation'" class="fig-mgmt-panel">
+    <div class="fig-mgmt-tabs" role="tablist" aria-label="图表管理">
+      <button
+        type="button"
+        role="tab"
+        class="fig-mgmt-tab"
+        :class="{ 'fig-mgmt-tab--active': figureTab === 'upload' }"
+        :aria-selected="figureTab === 'upload'"
+        @click="figureTab = 'upload'"
+      >
+        上传图表
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="fig-mgmt-tab"
+        :class="{ 'fig-mgmt-tab--active': figureTab === 'generate' }"
+        :aria-selected="figureTab === 'generate'"
+        @click="figureTab = 'generate'"
+      >
+        一键生成
+      </button>
+    </div>
+
+    <div v-show="figureTab === 'upload'" class="fig-mgmt-pane" role="tabpanel">
+      <PaperFigureUploadPanel
+        embedded
+        :manuscript-id="manuscriptId"
+        :manuscript-title="manuscriptTitle"
+      />
+    </div>
+
+    <div v-show="figureTab === 'generate'" class="fig-mgmt-pane fig-mgmt-pane--stack" role="tabpanel">
+    <section class="wf-panel wf-panel--in-fig-mgmt">
       <h2 class="wf-title">参数</h2>
       <p class="wf-lead">基于实验数据生成可复现统计图（非通用美工工具）。</p>
       <label class="wf-field wf-field--block">
@@ -438,7 +479,10 @@ defineExpose({ runModule })
         <PaperSelect v-model="figureForm.captionLang" :options="captionLangOptions" />
       </label>
     </section>
-    <section v-if="resultVisible['figure-generation']" class="wf-panel wf-panel--result">
+    <section
+      v-if="resultVisible['figure-generation']"
+      class="wf-panel wf-panel--in-fig-mgmt wf-panel--in-fig-mgmt-result"
+    >
       <h2 class="wf-title">Figure 产出（演示）</h2>
       <div class="wf-figure-grid">
         <div v-for="fig in DEMO_FIGURES.files" :key="fig.id" class="wf-figure-card">
@@ -466,7 +510,8 @@ defineExpose({ runModule })
         </tbody>
       </table>
     </section>
-  </div>
+    </div>
+  </section>
 
   <!-- 论文审查 -->
   <div v-else-if="moduleId === 'manuscript-analysis'" class="wf-stack">
@@ -519,6 +564,78 @@ defineExpose({ runModule })
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+.fig-mgmt-panel {
+  padding: 20px 26px 28px;
+  background: #fff;
+  border: 1px solid #e8eaf0;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(30, 27, 75, 0.06);
+}
+
+.fig-mgmt-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 2px;
+  margin-bottom: 24px;
+  background: transparent;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.fig-mgmt-pane--stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.fig-mgmt-pane .wf-panel--in-fig-mgmt {
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.fig-mgmt-pane .wf-panel--in-fig-mgmt-result {
+  padding-top: 24px;
+  margin-top: 24px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.fig-mgmt-tab {
+  position: relative;
+  flex: 0 1 auto;
+  min-width: 112px;
+  padding: 12px 20px;
+  margin-bottom: -1px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 8px 8px 0 0;
+  transition:
+    color 0.15s,
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.fig-mgmt-tab:hover:not(.fig-mgmt-tab--active) {
+  color: #334155;
+  background: #f8fafc;
+}
+
+.fig-mgmt-tab--active {
+  font-weight: 600;
+  color: #1e293b;
+  background: #fff;
+  border-bottom-color: #6366f1;
+  box-shadow: inset 0 -1px 0 #fff;
 }
 
 .wf-panel {
