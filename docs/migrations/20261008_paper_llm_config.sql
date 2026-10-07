@@ -2,7 +2,7 @@
 -- · paper_llm_model_config：Provider、model、Base URL、Key、超时等连接参数
 -- · paper_llm_workflow_binding：module / stage / 任务角色 → 使用哪条 model_config
 -- 依赖：20261005（及可选 20261007）
--- 说明：已有 paper_model_profile 仍可并存；新接入优先本表，run 解析 binding 后写入 paper_llm_call_logs.model_config_id
+-- 说明：run 按 paper_llm_workflow_binding 解析 model_config，写入 paper_llm_call_logs.model_config_id
 -- 引擎：MySQL 8.0+，utf8mb4
 
 SET NAMES utf8mb4;
@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS `paper_llm_workflow_binding` (
 RENAME TABLE `paper_llm_call` TO `paper_llm_call_logs`;
 
 ALTER TABLE `paper_llm_call_logs`
-  ADD COLUMN `model_config_id` BIGINT UNSIGNED DEFAULT NULL COMMENT 'paper_llm_model_config.id' AFTER `profile_id`,
+  ADD COLUMN `model_config_id` BIGINT UNSIGNED DEFAULT NULL COMMENT 'paper_llm_model_config.id' AFTER `stage_id`,
   ADD COLUMN `workflow_binding_id` BIGINT UNSIGNED DEFAULT NULL COMMENT '命中的 paper_llm_workflow_binding.id' AFTER `model_config_id`;
 
 -- 若已是 paper_llm_call_logs 或列已存在，请跳过 RENAME / ALTER
@@ -91,6 +91,6 @@ ALTER TABLE `paper_llm_call_logs`
 -- ---------------------------------------------------------------------------
 
 -- 不在 migration 里 INSERT 具体 model_config_id，避免空库 FK 语义混乱。
--- 应用启动时：若 user_id=0 无 binding，则回退 paper_model_profile / 环境变量。
+-- 应用启动时：若 user_id=0 无 binding，则报错或回退环境变量默认 model_config。
 
 SET FOREIGN_KEY_CHECKS = 1;

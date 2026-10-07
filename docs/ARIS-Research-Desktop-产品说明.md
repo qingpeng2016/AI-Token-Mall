@@ -217,11 +217,12 @@
 |------|------|
 | `docs/migrations/20261005_paper_workflow_schema.sql` | 基线：`paper_run` / artifact / 文献门禁等 |
 | `docs/migrations/20261007_paper_workflow_align.sql` | 对齐主流程续跑、上传、里程碑、操作日志（已建库则执行本增量） |
-| `docs/migrations/20261008_paper_llm_config.sql` | LLM 端点配置 + 环节绑定；`paper_llm_call`→`paper_llm_call_logs` 及溯源列（已建库则执行） |
+| `docs/migrations/20261008_paper_llm_config.sql` | LLM 端点配置 + 环节绑定；`paper_llm_call_logs` 溯源列（已建库则执行） |
+| `docs/migrations/20261009_drop_paper_model_profile.sql` | 删除废弃 `paper_model_profile` 及 profile_id 列（旧库执行） |
 
-新增表：**`paper_manuscript_upload`**、**`paper_manuscript_milestone`**、**`paper_operation_log`**；**`paper_llm_model_config`**（Key、Host、model 等）、**`paper_llm_workflow_binding`**（module/stage/role → 用哪条配置）。`paper_manuscript` 可选字段：`manuscript_kind`、`deadline_at`、`target_words`、`citation_style`。
+新增表：**`paper_manuscript_upload`**、**`paper_manuscript_milestone`**、**`paper_operation_log`**；**`paper_llm_model_config`**、**`paper_llm_workflow_binding`**。已废弃 **`paper_model_profile`**（由上述两表替代）。`paper_manuscript` 可选字段：`manuscript_kind`、`deadline_at`、`target_words`、`citation_style`。
 
-**LLM 路由解析顺序（实现约定）**：`manuscript_id` 专属 binding → `user_id` binding → `user_id=0` 平台默认 → 回退 `paper_model_profile`。
+**LLM 路由解析顺序**：`manuscript_id` binding → `user_id` binding → `user_id=0` 平台默认；`paper_run` 可快照 `executor_model_config_id` / `reviewer_model_config_id`。
 
 ---
 

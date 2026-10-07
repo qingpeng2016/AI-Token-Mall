@@ -13,7 +13,7 @@
 -- | ref        | paper_ref_discipline, paper_ref_venue, paper_ref_literature_source, paper_ref_execution_intensity, paper_ref_audit_level, paper_ref_prompt_template |
 -- | manuscript | paper_manuscript, paper_manuscript_runtime, paper_manuscript_upload, paper_manuscript_milestone |
 -- | user       | paper_user_preference |
--- | model      | paper_model_profile（旧）, paper_llm_model_config, paper_llm_workflow_binding |
+-- | model      | paper_llm_model_config, paper_llm_workflow_binding |
 -- | run        | paper_run, paper_run_stage, paper_run_checkpoint, paper_run_literature_hit |
 -- | literature | paper_literature_record |
 -- | citation   | paper_citation_gate |
@@ -77,17 +77,21 @@ CREATE TABLE IF NOT EXISTS `paper_ref_literature_source` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文献/API 数据源';
 
 CREATE TABLE IF NOT EXISTS `paper_ref_execution_intensity` (
-  `code`        VARCHAR(16)  NOT NULL COMMENT 'fast|balanced|deep',
-  `name`        VARCHAR(64)  NOT NULL,
-  `multiplier`  DECIMAL(4,2) NOT NULL DEFAULT 1.00 COMMENT '相对检索量/迭代轮数系数',
-  `config`      JSON         DEFAULT NULL,
+  `code`         VARCHAR(16)  NOT NULL COMMENT 'fast|balanced|deep',
+  `name`         VARCHAR(64)  NOT NULL,
+  `multiplier`   DECIMAL(4,2) NOT NULL DEFAULT 1.00 COMMENT '相对检索量/迭代轮数系数',
+  `max_papers`   INT UNSIGNED NOT NULL DEFAULT 80 COMMENT '检索文献上限（选题/综述等）',
+  `max_ideas`    INT UNSIGNED NOT NULL DEFAULT 12 COMMENT '选题候选 idea 上限',
   PRIMARY KEY (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='执行强度档位';
 
 CREATE TABLE IF NOT EXISTS `paper_ref_audit_level` (
-  `code`        VARCHAR(16)  NOT NULL COMMENT 'standard|polished|strict',
-  `name`        VARCHAR(64)  NOT NULL,
-  `config`      JSON         NOT NULL COMMENT 'citation|claim|kill_argument 强度与轮数',
+  `code`                   VARCHAR(16)  NOT NULL COMMENT 'standard|polished|strict',
+  `name`                   VARCHAR(64)  NOT NULL,
+  `citation_strength`      TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '0=关,1-3=引用审计强度',
+  `claim_strength`         TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '0=关,1-3=论断审计强度',
+  `kill_argument_strength` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '0=关,1-3=驳论审计强度',
+  `audit_rounds`           TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '审计迭代轮数',
   PRIMARY KEY (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='审计等级';
 
@@ -149,24 +153,6 @@ CREATE TABLE IF NOT EXISTS `paper_user_preference` (
 -- 3. 平台运行时（模型、算力、文献源凭证 — 不对用户暴露）
 -- ---------------------------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS `paper_model_profile` (
-  `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `user_id`         BIGINT UNSIGNED NOT NULL,
-  `label`           VARCHAR(128) NOT NULL COMMENT '如「公司网关 Codex」',
-  `role`            VARCHAR(16)  NOT NULL COMMENT 'executor|reviewer|both',
-  `provider_code`   VARCHAR(32)  NOT NULL COMMENT 'openai|anthropic|gateway|ollama|…',
-  `model_name`      VARCHAR(128) NOT NULL,
-  `base_url`        VARCHAR(512) DEFAULT NULL,
-  `api_key_ciphertext` VARBINARY(2048) DEFAULT NULL COMMENT '或走 user_api_keys 仅存 id',
-  `user_api_key_id` BIGINT UNSIGNED DEFAULT NULL COMMENT '商城平台 Key，可选',
-  `extra`           JSON         DEFAULT NULL,
-  `status`          VARCHAR(16)  NOT NULL DEFAULT 'active',
-  `created_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_paper_model_profile_user` (`user_id`, `status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='模型 Provider 配置（逐步迁移至 paper_llm_model_config）';
-
 CREATE TABLE IF NOT EXISTS `paper_llm_model_config` (
   `id`                   BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`              BIGINT UNSIGNED NOT NULL COMMENT 'users.id；0=平台预置',
@@ -217,8 +203,6 @@ CREATE TABLE IF NOT EXISTS `paper_manuscript_runtime` (
   `id`                    BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `manuscript_id`         BIGINT UNSIGNED NOT NULL,
   `label`                 VARCHAR(128) NOT NULL DEFAULT 'default',
-  `executor_profile_id`   BIGINT UNSIGNED DEFAULT NULL,
-  `reviewer_profile_id`   BIGINT UNSIGNED DEFAULT NULL,
   `literature_credentials` JSON        DEFAULT NULL COMMENT 'source_id -> 密钥密文/引用 id',
   `literature_source_ids` JSON        NOT NULL COMMENT '本稿件启用的 source id 列表',
   `gpu_profile`           JSON         DEFAULT NULL COMMENT 'SSH/集群/本地',
@@ -250,8 +234,8 @@ CREATE TABLE IF NOT EXISTS `paper_run` (
   `human_checkpoint_enabled` TINYINT(1)  NOT NULL DEFAULT 1,
   `literature_source_ids`   JSON         NOT NULL COMMENT '本次运行使用的文献源',
   `input_params`            JSON         NOT NULL COMMENT '模块表单全量：研究方向等，schema 由代码/学科配置约束',
-  `executor_profile_id`     BIGINT UNSIGNED DEFAULT NULL,
-  `reviewer_profile_id`     BIGINT UNSIGNED DEFAULT NULL,
+  `executor_model_config_id` BIGINT UNSIGNED DEFAULT NULL COMMENT '本次 run 解析后的 executor（快照）',
+  `reviewer_model_config_id` BIGINT UNSIGNED DEFAULT NULL COMMENT '本次 run 解析后的 reviewer（快照）',
   `error_code`              VARCHAR(64)  DEFAULT NULL,
   `error_message`           TEXT         DEFAULT NULL,
   `started_at`              DATETIME     DEFAULT NULL,
@@ -383,7 +367,6 @@ CREATE TABLE IF NOT EXISTS `paper_llm_call_logs` (
   `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `run_id`          BIGINT UNSIGNED NOT NULL,
   `stage_id`        BIGINT UNSIGNED DEFAULT NULL,
-  `profile_id`      BIGINT UNSIGNED DEFAULT NULL COMMENT 'legacy paper_model_profile.id',
   `model_config_id` BIGINT UNSIGNED DEFAULT NULL COMMENT 'paper_llm_model_config.id',
   `workflow_binding_id` BIGINT UNSIGNED DEFAULT NULL COMMENT 'paper_llm_workflow_binding.id',
   `role`            VARCHAR(16)  NOT NULL COMMENT 'executor|reviewer',
@@ -460,17 +443,28 @@ CREATE TABLE IF NOT EXISTS `paper_operation_log` (
 -- 8. 种子数据（强度、审计、示例学科与 venue、文献源）
 -- ---------------------------------------------------------------------------
 
-INSERT INTO `paper_ref_execution_intensity` (`code`, `name`, `multiplier`, `config`) VALUES
-  ('fast',     '更快', 0.60, JSON_OBJECT('max_papers', 30,  'max_ideas', 6)),
-  ('balanced', 'Balanced（平衡）', 1.00, JSON_OBJECT('max_papers', 80,  'max_ideas', 12)),
-  ('deep',     '更深', 1.80, JSON_OBJECT('max_papers', 200, 'max_ideas', 20))
-ON DUPLICATE KEY UPDATE `name` = VALUES(`name`);
+INSERT INTO `paper_ref_execution_intensity` (`code`, `name`, `multiplier`, `max_papers`, `max_ideas`) VALUES
+  ('fast',     '更快', 0.60, 30,  6),
+  ('balanced', 'Balanced（平衡）', 1.00, 80,  12),
+  ('deep',     '更深', 1.80, 200, 20)
+ON DUPLICATE KEY UPDATE
+  `name` = VALUES(`name`),
+  `multiplier` = VALUES(`multiplier`),
+  `max_papers` = VALUES(`max_papers`),
+  `max_ideas` = VALUES(`max_ideas`);
 
-INSERT INTO `paper_ref_audit_level` (`code`, `name`, `config`) VALUES
-  ('standard', 'Standard', JSON_OBJECT('citation', 1, 'claim', 1, 'kill_argument', 0, 'rounds', 1)),
-  ('polished', 'Polished（精修）', JSON_OBJECT('citation', 2, 'claim', 2, 'kill_argument', 1, 'rounds', 2)),
-  ('strict',   'Strict', JSON_OBJECT('citation', 3, 'claim', 3, 'kill_argument', 2, 'rounds', 3))
-ON DUPLICATE KEY UPDATE `name` = VALUES(`name`);
+INSERT INTO `paper_ref_audit_level` (
+  `code`, `name`, `citation_strength`, `claim_strength`, `kill_argument_strength`, `audit_rounds`
+) VALUES
+  ('standard', 'Standard', 1, 1, 0, 1),
+  ('polished', 'Polished（精修）', 2, 2, 1, 2),
+  ('strict',   'Strict', 3, 3, 2, 3)
+ON DUPLICATE KEY UPDATE
+  `name` = VALUES(`name`),
+  `citation_strength` = VALUES(`citation_strength`),
+  `claim_strength` = VALUES(`claim_strength`),
+  `kill_argument_strength` = VALUES(`kill_argument_strength`),
+  `audit_rounds` = VALUES(`audit_rounds`);
 
 INSERT INTO `paper_ref_discipline` (`code`, `name`, `name_en`, `sort`, `literature_source_codes`) VALUES
   ('cs_ai', '计算机/人工智能', 'Computer Science & AI', 10,
