@@ -45,18 +45,18 @@
 
 ### 3.2 工作流模块（二级导航）
 
-左侧为 **4 个一级阶段 + 9 个二级模块**（一级分组始终展开，不可折叠）：
+左侧为 **3 个一级阶段 + 9 个二级模块**（一级分组始终展开，不可折叠）：
 
 | 一级 | 二级模块 | 模块 ID | 说明（产品层） |
 |------|----------|---------|----------------|
-| **选题与文献** | 选题发现 | `topic-discovery` | 多源检索与校验入库 + 脑暴 idea、新颖性、实验计划 |
-| | 文献综述 | `literature-review` | 整理选题产出为 `literature_review`（不查库） |
-| **实验与审查** | 实验规划 | `experiment-planning` | 可执行实验方案（假设、基线、指标、步骤） |
+| **选题与实验** | 选题发现 | `topic-discovery` | 多源检索与校验入库 + 脑暴 idea、新颖性、审计 |
+| | 文献综述 | `literature-review` | 整理选题产出为 `literature_review`（不二次检索） |
+| | 实验规划 | `experiment-planning` | 可执行实验方案（假设、基线、指标、步骤） |
 | | 结果审查 | `auto-review` | 写前：对照 plan 审查实验结果与上传数据 |
-| **撰写与成稿** | 论文写作 | `paper-writing` | 分节撰写与润色 |
+| **撰写与审查** | 论文写作 | `paper-writing` | 分节撰写与润色 |
 | | 论文审查 | `manuscript-analysis` | 写后：全文投稿前审查 |
 | | 图表管理 | `figure-generation` | **Tab：上传图表**（本篇 figure 文件）→ **一键生成**（实验数据出图；仅后者显示「运行」） |
-| **资料与设置** | 我的论文 | `my-manuscripts` | 创建、切换、编辑、归档 `paper_manuscript` |
+| **资料与设置** | 我的论文 | `my-manuscripts` | 切换、编辑、归档 `paper_manuscript` |
 | | 上传文献 | `reference-library` | 上传 / 管理本篇 PDF、BibTeX 等 |
 | | 个人中心 | `personal-center` | **Tab：我的信息**（余额/充值/用量）→ **默认配置** → **操作日志**（仅列表） |
 

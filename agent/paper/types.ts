@@ -76,7 +76,7 @@ export const PAPER_MODULES: PaperModuleMeta[] = [
   },
 ]
 
-export type PaperModuleGroupId = 'research' | 'experiment' | 'writing' | 'resources'
+export type PaperModuleGroupId = 'topic-experiment' | 'writing' | 'resources'
 
 export type PaperModuleGroup = {
   id: PaperModuleGroupId
@@ -87,18 +87,18 @@ export type PaperModuleGroup = {
 /** 侧栏二级菜单：一级 = 阶段，二级 = 具体模块 */
 export const PAPER_MODULE_GROUPS: PaperModuleGroup[] = [
   {
-    id: 'research',
-    label: '选题与文献',
-    moduleIds: ['topic-discovery', 'literature-review'],
-  },
-  {
-    id: 'experiment',
-    label: '实验与审查',
-    moduleIds: ['experiment-planning', 'auto-review'],
+    id: 'topic-experiment',
+    label: '选题与实验',
+    moduleIds: [
+      'topic-discovery',
+      'literature-review',
+      'experiment-planning',
+      'auto-review',
+    ],
   },
   {
     id: 'writing',
-    label: '撰写与成稿',
+    label: '撰写与审查',
     moduleIds: ['paper-writing', 'manuscript-analysis', 'figure-generation'],
   },
   {
