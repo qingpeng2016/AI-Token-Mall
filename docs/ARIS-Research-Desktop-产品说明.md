@@ -217,7 +217,7 @@
 |------|------|
 | `docs/migrations/20261005_paper_workflow_schema.sql` | **Paper Agent 唯一 DDL**（见下表架构） |
 
-**我的论文**：`paper_manuscript` + **`paper_manuscript_progress`**（当前阶段、各模块状态、指向当前生效产出 id）。**模块产出表**（均含 `manuscript_id`）：`paper_manuscript_topic` / `paper_topic_idea`（选题）、`paper_literature_review`（文献综述）、`paper_experiment_plan`（实验规划）、`paper_experiment_review`（结果审查）、`paper_manuscript_draft`（论文草稿）、`paper_manuscript_review`（论文审查）、`paper_figure`（图表上传与生成）。**运行引擎**：`paper_run*`、`paper_run_literature_hit`、`paper_citation_gate`。**其它**：`paper_user_literature`、`paper_ref_*`、`paper_llm_*`、`paper_llm_call_logs`、`paper_operation_log`。
+**我的论文**：`paper_manuscript` + **`paper_manuscript_progress`**（当前阶段、各模块状态、指向当前生效产出 id）。**模块产出表**（前缀 `paper_output_*`，均含 `manuscript_id`）：`paper_output_topic` / `paper_output_topic_idea`（选题）、`paper_output_literature_review`（文献综述）、`paper_output_experiment_plan`（实验规划）、`paper_output_experiment_review`（结果审查）、`paper_output_manuscript_draft`（论文草稿）、`paper_output_manuscript_review`（论文审查）、`paper_output_figure`（图表）。**运行引擎**：`paper_run*`、`paper_run_literature_hit`、`paper_citation_gate`。**其它**：`paper_user_literature`、`paper_ref_*`、`paper_llm_*`、`paper_llm_call_logs`、`paper_operation_log`。
 
 **LLM 路由**：`paper_llm_workflow_binding` 解析 **用哪条模型**；`paper_llm_prompt_template` 解析 **用什么话术**（`{{变量}}` 由代码注入 run/venue 等数据）。解析顺序均为：本篇 `manuscript_id` → `user_id` → `user_id=0` 平台默认。`paper_run` 可快照 `executor_model_config_id` / `reviewer_model_config_id`；`paper_llm_call_logs` 记录 `workflow_binding_id` 与 `prompt_template_id`。
 
