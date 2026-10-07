@@ -22,12 +22,12 @@ export const PAPER_MODULES: PaperModuleMeta[] = [
   {
     id: 'topic-discovery',
     label: '选题发现',
-    description: '多源检索与校验入库，并脑暴 idea、新颖性检查、实验计划',
+    description: '多源检索与校验入库，脑暴 idea 与新颖性检查；完成后在顶栏继续生成文献综述',
   },
   {
     id: 'literature-review',
     label: '文献综述',
-    description: '把选题发现整轮产出整理成一篇可引用的 literature_review（不查库）',
+    description: '整理选题产出为综述；完成后顶栏继续生成实验计划（实验规划模块）',
   },
   {
     id: 'experiment-planning',
@@ -332,7 +332,7 @@ export type TopicDiscoveryForm = {
 }
 
 /** 选题发现 run 内阶段（对齐 paper_run_stage.stage_code） */
-export type TopicCheckpointKey = 'ideas_ready' | 'plan_ready'
+export type TopicCheckpointKey = 'ideas_ready'
 
 export type TopicFlowStepDef = {
   stageCode: string
@@ -344,8 +344,7 @@ export const TOPIC_DISCOVERY_FLOW_STEPS: TopicFlowStepDef[] = [
   { stageCode: 'retrieve', label: '多源文献检索与校验入库' },
   { stageCode: 'generate_ideas', label: '脑暴候选选题' },
   { stageCode: 'novelty', label: '新颖性检查', checkpointKey: 'ideas_ready' },
-  { stageCode: 'experiment_plan', label: '生成实验计划', checkpointKey: 'plan_ready' },
-  { stageCode: 'audit', label: '选题与计划初 audit' },
+  { stageCode: 'audit', label: '选题断言初 audit' },
 ]
 
 export type TopicFlowStepStatus =
@@ -363,7 +362,7 @@ export type TopicDiscoveryArtifactSnapshot = {
   runStatus: 'idle' | 'running' | 'checkpoint' | 'completed' | 'failed'
   /** retrieve 已完成，语料已入库 */
   corpusReady: boolean
-  /** 整轮选题 run 已完成，可合并 idea / 新颖性 / 计划进综述 */
+  /** 选题发现已完成（至新颖性 + audit），可生成文献综述 */
   runCompleted: boolean
   disciplineLabel: string
   direction: string

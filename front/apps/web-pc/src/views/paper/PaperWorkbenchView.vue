@@ -24,6 +24,7 @@ import {
   type TopicDiscoveryForm,
   type TopicFlowStepStatus,
 } from '@paper/types'
+import { DEMO_EXPERIMENT_PLAN } from '@paper/demoModuleOutputs'
 import { DEMO_MODULE_TOKEN_ESTIMATES } from '@paper/demoOperationLogs'
 import PaperModuleNavIcon from '@paper/PaperModuleNavIcon.vue'
 import PaperMyManuscriptsPanel from '@paper/PaperMyManuscriptsPanel.vue'
@@ -73,14 +74,19 @@ const CHECKPOINT_COPY: Record<TopicCheckpointKey, Omit<TopicCheckpointView, 'key
       'Idea C：训练无关的 token 合并 — 新颖性：检索命中较少（低风险，建议深检索）',
     ],
   },
-  plan_ready: {
-    title: '实验计划草案',
-    lines: [
-      '主实验：LongBench + 自建 32k 上下文任务；对比 Full、StreamingLLM、代表稀疏法',
-      '消融：路由粒度 / 预算 B / 是否重排 KV',
-      '指标：准确率、吞吐、显存峰值；报告 3 种子均值±方差',
-    ],
-  },
+}
+
+const LIT_REVIEW_RUN_STORAGE_KEY = 'atm:paper:lit-review-run:v1'
+const EXPERIMENT_PLAN_RUN_STORAGE_KEY = 'atm:paper:experiment-plan-run:v1'
+
+function buildDemoExperimentPlanLines(): string[] {
+  return [
+    DEMO_EXPERIMENT_PLAN.hypothesis,
+    `基线：${DEMO_EXPERIMENT_PLAN.baselines.join(' · ')}`,
+    `指标：${DEMO_EXPERIMENT_PLAN.metrics.join(' · ')}`,
+    `消融：${DEMO_EXPERIMENT_PLAN.ablations.join(' · ')}`,
+    ...DEMO_EXPERIMENT_PLAN.steps,
+  ]
 }
 
 const MANUSCRIPTS_STORAGE_KEY = 'atm:paper:manuscripts:v1'
@@ -95,6 +101,8 @@ function selectModule(id: PaperModuleId) {
 const running = ref(false)
 const topicRunToken = ref(0)
 const topicRunsByManuscript = ref<Record<string, TopicRunDemo>>({})
+const litReviewDoneByManuscript = ref<Record<string, boolean>>({})
+const experimentPlanDoneByManuscript = ref<Record<string, boolean>>({})
 const workflowPanelsRef = ref<InstanceType<typeof PaperWorkflowPanels> | null>(null)
 const figureManagementTab = ref<'upload' | 'generate'>('upload')
 const paperMainRef = ref<HTMLElement | null>(null)
@@ -115,6 +123,48 @@ function loadEnvFromStorage() {
   } catch {
     /* ignore */
   }
+}
+
+function loadLitReviewFlagsFromStorage() {
+  try {
+    const raw = localStorage.getItem(LIT_REVIEW_RUN_STORAGE_KEY)
+    if (!raw) return
+    const data = JSON.parse(raw) as { byManuscript?: Record<string, boolean> }
+    if (data.byManuscript) litReviewDoneByManuscript.value = data.byManuscript
+  } catch {
+    /* ignore */
+  }
+}
+
+function persistLitReviewFlags() {
+  localStorage.setItem(
+    LIT_REVIEW_RUN_STORAGE_KEY,
+    JSON.stringify({ byManuscript: litReviewDoneByManuscript.value }),
+  )
+}
+
+function loadExperimentPlanFlagsFromStorage() {
+  try {
+    const raw = localStorage.getItem(EXPERIMENT_PLAN_RUN_STORAGE_KEY)
+    if (!raw) return
+    const data = JSON.parse(raw) as { byManuscript?: Record<string, boolean> }
+    if (data.byManuscript) experimentPlanDoneByManuscript.value = data.byManuscript
+  } catch {
+    /* ignore */
+  }
+}
+
+function persistExperimentPlanFlags() {
+  localStorage.setItem(
+    EXPERIMENT_PLAN_RUN_STORAGE_KEY,
+    JSON.stringify({ byManuscript: experimentPlanDoneByManuscript.value }),
+  )
+}
+
+function clearExperimentPlanDone(msId: string) {
+  if (!experimentPlanDoneByManuscript.value[msId]) return
+  experimentPlanDoneByManuscript.value = { ...experimentPlanDoneByManuscript.value, [msId]: false }
+  persistExperimentPlanFlags()
 }
 
 function loadManuscriptsFromStorage() {
@@ -189,6 +239,8 @@ async function onCreateManuscript() {
 
 loadEnvFromStorage()
 loadManuscriptsFromStorage()
+loadLitReviewFlagsFromStorage()
+loadExperimentPlanFlagsFromStorage()
 topicForm.disciplineCode = envPreference.disciplineCode
 topicForm.venue = envPreference.defaultVenueText || topicForm.venue
 topicForm.sourceCodes = [...envPreference.literatureSourceCodes]
@@ -209,6 +261,7 @@ const isUtilityModule = computed(
   () => isReferenceLibraryModule.value || isMyManuscriptsModule.value,
 )
 const isTopicDiscoveryModule = computed(() => activeModule.value === 'topic-discovery')
+const isLiteratureReviewModule = computed(() => activeModule.value === 'literature-review')
 
 const personalCenterPanelRef = ref<InstanceType<typeof PaperPersonalCenterPanel> | null>(null)
 
@@ -291,7 +344,6 @@ const topicDiscoveryArtifact = computed((): TopicDiscoveryArtifactSnapshot => {
   const run = currentTopicRun.value
   const retrieve = run.steps.find((s) => s.stageCode === 'retrieve')
   const novelty = run.steps.find((s) => s.stageCode === 'novelty')
-  const planStep = run.steps.find((s) => s.stageCode === 'experiment_plan')
   const corpusReady = retrieve?.status === 'completed'
   const runCompleted = run.status === 'completed'
   const sourceLabels = topicForm.sourceCodes.map((c) => getLiteratureSourceLabel(c))
@@ -303,11 +355,6 @@ const topicDiscoveryArtifact = computed((): TopicDiscoveryArtifactSnapshot => {
     novelty?.status === 'completed' ||
     run.status === 'checkpoint' ||
     runCompleted
-  const planReady =
-    planStep?.status === 'completed' ||
-    (run.status === 'checkpoint' && run.checkpoint?.key === 'plan_ready') ||
-    runCompleted
-
   const disciplineLabel =
     DISCIPLINE_OPTIONS.find((d) => d.code === topicForm.disciplineCode)?.label ?? topicForm.disciplineCode
 
@@ -323,9 +370,28 @@ const topicDiscoveryArtifact = computed((): TopicDiscoveryArtifactSnapshot => {
     verifiedHitCount: corpusReady ? 79 : 0,
     candidateIdeas: noveltyReady ? [...CHECKPOINT_COPY.ideas_ready.lines] : [],
     noveltyLines: noveltyReady ? [...CHECKPOINT_COPY.ideas_ready.lines] : [],
-    experimentPlanLines: planReady ? [...CHECKPOINT_COPY.plan_ready.lines] : [],
+    experimentPlanLines: experimentPlanDoneForManuscript.value ? buildDemoExperimentPlanLines() : [],
   }
 })
+
+const litReviewDoneForManuscript = computed(
+  () => !!litReviewDoneByManuscript.value[activeManuscriptId.value],
+)
+
+const experimentPlanDoneForManuscript = computed(
+  () => !!experimentPlanDoneByManuscript.value[activeManuscriptId.value],
+)
+
+const topicReadyForLiteratureReview = computed(
+  () => currentTopicRun.value.status === 'completed' && !litReviewDoneForManuscript.value,
+)
+
+const litReviewReadyForExperimentPlan = computed(
+  () =>
+    isLiteratureReviewModule.value &&
+    litReviewDoneForManuscript.value &&
+    !experimentPlanDoneForManuscript.value,
+)
 
 const showPrimaryAction = computed(() => {
   if (isUtilityModule.value) return false
@@ -349,7 +415,14 @@ const primaryActionLabel = computed(() => {
   if (isTopicDiscoveryModule.value) {
     if (currentTopicRun.value.status === 'checkpoint') return '等待确认'
     if (currentTopicRun.value.status === 'running' || running.value) return '运行中…'
+    if (topicReadyForLiteratureReview.value) return '生成文献综述'
     if (currentTopicRun.value.status === 'completed') return '再次运行'
+    return '运行'
+  }
+  if (isLiteratureReviewModule.value) {
+    if (running.value) return '运行中…'
+    if (litReviewReadyForExperimentPlan.value) return '生成实验计划'
+    if (litReviewDoneForManuscript.value && experimentPlanDoneForManuscript.value) return '再次运行'
     return '运行'
   }
   return running.value ? '运行中…' : '运行'
@@ -412,13 +485,18 @@ async function executeTopicFlow(fromIndex: number, token: number) {
   run.status = 'completed'
   run.checkpoint = null
   persistTopicRun(msId, run)
-  recordModuleOperationLog('topic-discovery', '运行工作流（retrieve → audit → ideas → novelty → plan）')
-  ElMessage.success('选题发现流程已完成（演示）')
+  recordModuleOperationLog('topic-discovery', '运行工作流（retrieve → ideas → novelty → audit）')
+  ElMessage.success('选题发现已完成：可点顶栏「生成文献综述」继续')
 }
 
 function resetTopicRunForAction(msId: string) {
   topicRunToken.value += 1
   persistTopicRun(msId, createIdleTopicRun())
+  if (litReviewDoneByManuscript.value[msId]) {
+    litReviewDoneByManuscript.value = { ...litReviewDoneByManuscript.value, [msId]: false }
+    persistLitReviewFlags()
+  }
+  clearExperimentPlanDone(msId)
 }
 
 async function scrollToTopicFlowPanel() {
@@ -437,6 +515,84 @@ async function scrollToTopicFlowPanel() {
     return
   }
   panel.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+async function markLiteratureReviewDone(msId: string) {
+  litReviewDoneByManuscript.value = { ...litReviewDoneByManuscript.value, [msId]: true }
+  persistLitReviewFlags()
+}
+
+async function runExperimentPlanFromLiteratureReview() {
+  const msId = activeManuscriptId.value
+  if (!msId) return
+  if (!litReviewDoneForManuscript.value) {
+    ElMessage.warning('请先生成文献综述')
+    return
+  }
+
+  selectModule('experiment-planning')
+  running.value = true
+  try {
+    await nextTick()
+    const ok = await workflowPanelsRef.value?.runModule('experiment-planning')
+    if (ok) {
+      experimentPlanDoneByManuscript.value = { ...experimentPlanDoneByManuscript.value, [msId]: true }
+      persistExperimentPlanFlags()
+      recordModuleOperationLog('experiment-planning', '从文献综述续跑 · 生成实验计划')
+      ElMessage.success(
+        `「实验规划」已生成（演示）· 论文「${currentManuscript.value?.title ?? '未命名'}」`,
+      )
+    }
+  } finally {
+    running.value = false
+  }
+}
+
+async function rerunLiteratureReviewModule() {
+  const msId = activeManuscriptId.value
+  if (!msId) return
+  litReviewDoneByManuscript.value = { ...litReviewDoneByManuscript.value, [msId]: false }
+  persistLitReviewFlags()
+  clearExperimentPlanDone(msId)
+  running.value = true
+  try {
+    const ok = await workflowPanelsRef.value?.runModule('literature-review')
+    if (ok) {
+      await markLiteratureReviewDone(msId)
+      recordModuleOperationLog('literature-review', '再次运行 · 生成文献综述')
+      ElMessage.success(
+        `「文献综述」已重新生成（演示）· 论文「${currentManuscript.value?.title ?? '未命名'}」`,
+      )
+    }
+  } finally {
+    running.value = false
+  }
+}
+
+async function runLiteratureReviewFromTopic() {
+  const msId = activeManuscriptId.value
+  if (!msId) return
+  if (currentTopicRun.value.status !== 'completed') {
+    ElMessage.warning('请先完成选题发现（至新颖性检查）')
+    return
+  }
+
+  selectModule('literature-review')
+  running.value = true
+  try {
+    await nextTick()
+    const ok = await workflowPanelsRef.value?.runModule('literature-review')
+    if (ok) {
+      clearExperimentPlanDone(msId)
+      await markLiteratureReviewDone(msId)
+      recordModuleOperationLog('literature-review', '从选题发现续跑 · 生成文献综述')
+      ElMessage.success(
+        `「文献综述」已生成 · 可点顶栏「生成实验计划」继续（演示）`,
+      )
+    }
+  } finally {
+    running.value = false
+  }
 }
 
 async function startTopicDiscoveryRun() {
@@ -576,22 +732,51 @@ async function onPrimaryAction() {
     }
   }
   if (activeModule.value === 'topic-discovery') {
-    await startTopicDiscoveryRun()
+    if (topicReadyForLiteratureReview.value) {
+      await runLiteratureReviewFromTopic()
+    } else {
+      await startTopicDiscoveryRun()
+    }
     return
+  }
+
+  if (activeModule.value === 'literature-review') {
+    if (litReviewReadyForExperimentPlan.value) {
+      await runExperimentPlanFromLiteratureReview()
+      return
+    }
+    if (litReviewDoneForManuscript.value && experimentPlanDoneForManuscript.value) {
+      await rerunLiteratureReviewModule()
+      return
+    }
   }
 
   if (isSecondaryWorkflowModule.value) {
     running.value = true
     try {
+      const msId = activeManuscriptId.value
       const ok = await workflowPanelsRef.value?.runModule(activeModule.value)
       if (ok) {
         const mod = activeModule.value
+        if (mod === 'literature-review' && msId) {
+          clearExperimentPlanDone(msId)
+          await markLiteratureReviewDone(msId)
+        }
+        if (mod === 'experiment-planning' && msId) {
+          experimentPlanDoneByManuscript.value = {
+            ...experimentPlanDoneByManuscript.value,
+            [msId]: true,
+          }
+          persistExperimentPlanFlags()
+        }
         if (mod !== 'personal-center' && mod !== 'reference-library' && mod !== 'my-manuscripts') {
           recordModuleOperationLog(mod, `运行「${currentMeta.value.label}」`)
         }
-        ElMessage.success(
-          `「${currentMeta.value.label}」已完成演示运行 · 论文「${currentManuscript.value?.title ?? '未命名'}」`,
-        )
+        const successHint =
+          mod === 'literature-review' && msId && !experimentPlanDoneForManuscript.value
+            ? `「${currentMeta.value.label}」已生成 · 可点顶栏「生成实验计划」继续`
+            : `「${currentMeta.value.label}」已完成演示运行 · 论文「${currentManuscript.value?.title ?? '未命名'}」`
+        ElMessage.success(successHint)
       }
     } finally {
       running.value = false
@@ -781,7 +966,7 @@ async function onPrimaryAction() {
           <span>
             <strong>人工检查点</strong>
             <span class="paper-hint paper-hint--inline">
-              开启后会在 <em>2 个节点</em> 暂停：① 选题与新颖性完成后 ② 实验计划生成后
+              开启后会在 <em>新颖性检查</em> 完成后暂停，确认后再执行选题 audit
             </span>
           </span>
         </label>
@@ -864,7 +1049,8 @@ async function onPrimaryAction() {
         </div>
 
         <div v-else-if="currentTopicRun.status === 'completed'" class="paper-flow-done">
-          产出将写入当前论文（idea 列表、新颖性报告、实验计划 · 演示）。
+          产出已写入当前论文（入库语料、候选 idea、新颖性结论 · 演示）。下一步请点顶栏
+          <strong>「生成文献综述」</strong>；实验方案请在「实验规划」模块单独制定。
         </div>
       </section>
       </template>

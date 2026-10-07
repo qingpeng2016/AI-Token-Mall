@@ -117,7 +117,7 @@ function isChartChecked(value: string) {
 async function runModule(id: PaperModuleId): Promise<boolean> {
   if (id === 'literature-review') {
     if (!topicArtifact.runCompleted) {
-      ElMessage.warning('请先在「选题发现」跑完一整轮（检索 → idea → 新颖性 → 实验计划），再在此整理成综述')
+      ElMessage.warning('请先在「选题发现」完成检索 → idea → 新颖性检查，再整理成综述')
       return false
     }
     if (
@@ -158,7 +158,7 @@ defineExpose({ runModule })
     <section class="wf-panel">
       <h2 class="wf-title">整理选题产出 → 一篇综述</h2>
       <p class="wf-lead">
-        本步<strong>不查文献、不填检索参数</strong>。把「选题发现」整轮结果（入库语料、候选 idea、新颖性、实验计划）合并成可引用的
+        本步<strong>不查文献、不填检索参数</strong>。把「选题发现」产出（入库语料、候选 idea、新颖性）与可选「实验规划」语境合并成可引用的
         <code>literature_review</code> artifact，供论文写作 Related Work 使用。
       </p>
       <div class="wf-pipeline" aria-label="文献综述流程">
@@ -173,7 +173,7 @@ defineExpose({ runModule })
 
       <p v-if="!topicArtifact.runCompleted" class="wf-callout wf-callout--warn">
         当前选题 run 状态：<strong>{{ topicArtifact.runStatus }}</strong>。
-        请先在「选题发现」跑完一整轮后再点运行；下方为只读预览（有则显示）。
+        请先在「选题发现」完成新颖性检查后再点运行；下方为只读预览（有则显示）。
       </p>
 
       <h3 class="wf-subhead">输入 · 选题发现产出（只读）</h3>
@@ -206,11 +206,11 @@ defineExpose({ runModule })
           <p v-else class="wf-artifact-empty">选题 run 未到新颖性阶段</p>
         </article>
         <article class="wf-artifact-card wf-artifact-card--wide">
-          <h4 class="wf-artifact-title">实验计划摘要</h4>
+          <h4 class="wf-artifact-title">实验规划摘要（可选）</h4>
           <ul v-if="topicArtifact.experimentPlanLines.length" class="wf-list wf-list--tight">
             <li v-for="(line, i) in topicArtifact.experimentPlanLines" :key="i">{{ line }}</li>
           </ul>
-          <p v-else class="wf-artifact-empty">尚未生成实验计划</p>
+          <p v-else class="wf-artifact-empty">尚未运行「实验规划」</p>
         </article>
       </div>
 
@@ -232,7 +232,7 @@ defineExpose({ runModule })
         </label>
         <label class="wf-check wf-check--inline">
           <input v-model="litForm.includeExperimentContext" type="checkbox" />
-          <span>实验计划中的基线 / 指标语境</span>
+          <span>实验规划中的基线 / 指标语境（若已有）</span>
         </label>
         <label class="wf-check wf-check--inline">
           <input v-model="litForm.includeGap" type="checkbox" />
@@ -265,6 +265,9 @@ defineExpose({ runModule })
       </div>
       <p class="wf-callout"><strong>Research gap：</strong>{{ DEMO_LIT_REVIEW.gap }}</p>
       <pre class="wf-pre">{{ DEMO_LIT_REVIEW.unifiedExcerpt }}</pre>
+      <p class="wf-callout wf-callout--next">
+        综述已就绪。返回本页顶栏点击 <strong>「生成实验计划」</strong>，将跳转「实验规划」并产出可执行方案（演示）。
+      </p>
     </section>
   </div>
 
