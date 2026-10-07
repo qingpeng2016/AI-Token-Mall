@@ -211,7 +211,18 @@
 
 ---
 
-## 10. 术语表
+## 10. 数据模型（MySQL）
+
+| 脚本 | 说明 |
+|------|------|
+| `docs/migrations/20261005_paper_workflow_schema.sql` | 基线：`paper_run` / artifact / 文献门禁等 |
+| `docs/migrations/20261007_paper_workflow_align.sql` | 对齐主流程续跑、上传、里程碑、操作日志（已建库则执行本增量） |
+
+新增表：**`paper_manuscript_upload`**（上传文献 / 图表）、**`paper_manuscript_milestone`**（各模块完成态，供顶栏续跑）、**`paper_operation_log`**（个人中心日志）。`paper_manuscript` 可选字段：`manuscript_kind`、`deadline_at`、`target_words`、`citation_style`。
+
+---
+
+## 11. 术语表
 
 | 术语 | 含义 |
 |------|------|
@@ -224,7 +235,7 @@
 
 ---
 
-## 11. 文档修订
+## 12. 文档修订
 
 | 版本 | 日期 | 说明 |
 |------|------|------|

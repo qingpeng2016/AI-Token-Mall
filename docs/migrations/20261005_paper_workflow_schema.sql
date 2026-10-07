@@ -11,7 +11,7 @@
 -- | 类型       | 表名 |
 -- |------------|------|
 -- | ref        | paper_ref_discipline, paper_ref_venue, paper_ref_literature_source, paper_ref_execution_intensity, paper_ref_audit_level, paper_ref_prompt_template |
--- | manuscript | paper_manuscript, paper_manuscript_runtime |
+-- | manuscript | paper_manuscript, paper_manuscript_runtime, paper_manuscript_upload, paper_manuscript_milestone |
 -- | user       | paper_user_preference |
 -- | model      | paper_model_profile |
 -- | run        | paper_run, paper_run_stage, paper_run_checkpoint, paper_run_literature_hit |
@@ -19,6 +19,7 @@
 -- | citation   | paper_citation_gate |
 -- | artifact   | paper_artifact, paper_artifact_idea |
 -- | llm        | paper_llm_call |
+-- | audit      | paper_operation_log |
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
@@ -116,6 +117,10 @@ CREATE TABLE IF NOT EXISTS `paper_manuscript` (
   `user_id`           BIGINT UNSIGNED NOT NULL COMMENT 'users.id',
   `title`             VARCHAR(256) NOT NULL COMMENT '工作标题 / 暂定篇名',
   `description`       TEXT         DEFAULT NULL,
+  `manuscript_kind`   VARCHAR(32)  DEFAULT NULL COMMENT 'conference|journal|thesis|course|report',
+  `deadline_at`       DATETIME     DEFAULT NULL,
+  `target_words`      INT UNSIGNED DEFAULT NULL,
+  `citation_style`    VARCHAR(64)  DEFAULT NULL COMMENT 'apa|ieee|acm|…',
   `discipline_id`     BIGINT UNSIGNED DEFAULT NULL,
   `default_venue_id`  BIGINT UNSIGNED DEFAULT NULL,
   `reference_gate_enabled` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '参考文献门禁',
@@ -187,7 +192,7 @@ CREATE TABLE IF NOT EXISTS `paper_run` (
   `id`                      BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `manuscript_id`           BIGINT UNSIGNED NOT NULL,
   `user_id`                 BIGINT UNSIGNED NOT NULL,
-  `module_code`             VARCHAR(32)  NOT NULL COMMENT 'topic_discovery|literature_review|…',
+  `module_code`             VARCHAR(32)  NOT NULL COMMENT 'topic_discovery|literature_review|experiment_planning|auto_review|paper_writing|figure_generation|manuscript_analysis',
   `parent_run_id`           BIGINT UNSIGNED DEFAULT NULL COMMENT '上游模块产出触发下游时链接',
   `status`                  VARCHAR(32)  NOT NULL DEFAULT 'pending'
     COMMENT 'pending|running|checkpoint|completed|failed|cancelled',
@@ -215,7 +220,7 @@ CREATE TABLE IF NOT EXISTS `paper_run` (
 CREATE TABLE IF NOT EXISTS `paper_run_stage` (
   `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `run_id`      BIGINT UNSIGNED NOT NULL,
-  `stage_code`  VARCHAR(64)  NOT NULL COMMENT 'retrieve|generate_ideas|novelty|experiment_plan|audit|…',
+  `stage_code`  VARCHAR(64)  NOT NULL COMMENT 'topic_discovery: retrieve|generate_ideas|novelty|audit；其他 module 自定义',
   `status`      VARCHAR(32)  NOT NULL DEFAULT 'pending' COMMENT 'pending|running|completed|failed|skipped',
   `sort`        INT          NOT NULL DEFAULT 0,
   `meta`        JSON         DEFAULT NULL COMMENT 'token 用量、耗时等',
@@ -229,7 +234,7 @@ CREATE TABLE IF NOT EXISTS `paper_run_checkpoint` (
   `id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `run_id`            BIGINT UNSIGNED NOT NULL,
   `stage_id`          BIGINT UNSIGNED DEFAULT NULL,
-  `checkpoint_key`    VARCHAR(64)  NOT NULL COMMENT 'ideas_ready|plan_ready|review_outline|…',
+  `checkpoint_key`    VARCHAR(64)  NOT NULL COMMENT 'topic: ideas_ready；experiment_planning: plan_ready（可选）',
   `status`            VARCHAR(16)  NOT NULL DEFAULT 'waiting' COMMENT 'waiting|approved|rejected|skipped',
   `payload`           JSON         NOT NULL COMMENT '展示给用户的中間产物摘要/全文引用',
   `user_note`         TEXT         DEFAULT NULL,
@@ -294,7 +299,7 @@ CREATE TABLE IF NOT EXISTS `paper_artifact` (
   `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `run_id`        BIGINT UNSIGNED NOT NULL,
   `artifact_type` VARCHAR(32)  NOT NULL COMMENT
-    'idea_report|novelty_report|literature_review|experiment_plan|review_report|manuscript|figure|bibtex|other',
+    'idea_report|novelty_report|literature_review|experiment_plan|result_review_report|manuscript_analysis_report|review_report|manuscript|figure|bibtex|other',
   `format`        VARCHAR(16)  NOT NULL COMMENT 'md|json|tex|pdf|png|svg|bib',
   `title`         VARCHAR(256) DEFAULT NULL,
   `storage_uri`   VARCHAR(1024) DEFAULT NULL COMMENT '对象存储或本地相对路径',
@@ -343,6 +348,65 @@ CREATE TABLE IF NOT EXISTS `paper_llm_call` (
   PRIMARY KEY (`id`),
   KEY `idx_paper_llm_call_run` (`run_id`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='LLM 调用明细';
+
+-- ---------------------------------------------------------------------------
+-- 7b. 上传、里程碑、操作日志（与 20261007 增量一致；新库一次建全）
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS `paper_manuscript_upload` (
+  `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `manuscript_id` BIGINT UNSIGNED NOT NULL,
+  `user_id`       BIGINT UNSIGNED NOT NULL COMMENT 'users.id',
+  `upload_scope`  VARCHAR(16)  NOT NULL COMMENT 'reference|figure',
+  `file_kind`     VARCHAR(16)  NOT NULL COMMENT 'pdf|bib|txt|image|vector|other',
+  `file_name`     VARCHAR(512) NOT NULL,
+  `title`         VARCHAR(512) NOT NULL,
+  `note`          TEXT         DEFAULT NULL,
+  `size_bytes`    BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `storage_uri`   VARCHAR(1024) DEFAULT NULL,
+  `content_hash`  CHAR(64)     DEFAULT NULL,
+  `status`        VARCHAR(16)  NOT NULL DEFAULT 'active' COMMENT 'active|deleted',
+  `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_paper_ms_upload_ms` (`manuscript_id`, `upload_scope`, `status`),
+  KEY `idx_paper_ms_upload_user` (`user_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='本篇上传文件（文献库/figure 资产）';
+
+CREATE TABLE IF NOT EXISTS `paper_manuscript_milestone` (
+  `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `manuscript_id`   BIGINT UNSIGNED NOT NULL,
+  `milestone_code`  VARCHAR(64)  NOT NULL COMMENT
+    'topic_discovery|literature_review|experiment_planning|auto_review|paper_writing|figure_generation|manuscript_analysis',
+  `run_id`          BIGINT UNSIGNED DEFAULT NULL,
+  `completed_at`    DATETIME     NOT NULL,
+  `meta`            JSON         DEFAULT NULL,
+  `created_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_paper_ms_milestone` (`manuscript_id`, `milestone_code`),
+  KEY `idx_paper_ms_milestone_run` (`run_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='稿件工作流里程碑';
+
+CREATE TABLE IF NOT EXISTS `paper_operation_log` (
+  `id`                 BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`            BIGINT UNSIGNED NOT NULL,
+  `manuscript_id`      BIGINT UNSIGNED DEFAULT NULL,
+  `manuscript_title`   VARCHAR(256) DEFAULT NULL,
+  `module_code`        VARCHAR(32)  NOT NULL,
+  `module_label`       VARCHAR(64)  NOT NULL,
+  `action`             VARCHAR(512) NOT NULL,
+  `tokens_prompt`      INT UNSIGNED NOT NULL DEFAULT 0,
+  `tokens_completion`  INT UNSIGNED NOT NULL DEFAULT 0,
+  `tokens_total`       INT UNSIGNED NOT NULL DEFAULT 0,
+  `status`             VARCHAR(16)  NOT NULL COMMENT 'success|failed|cancelled',
+  `note`               TEXT         DEFAULT NULL,
+  `occurred_at`        DATETIME     NOT NULL,
+  `created_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_paper_oplog_user` (`user_id`, `occurred_at`),
+  KEY `idx_paper_oplog_ms` (`manuscript_id`, `occurred_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Paper Agent 操作日志';
 
 -- ---------------------------------------------------------------------------
 -- 8. 种子数据（强度、审计、示例学科与 venue、文献源）
