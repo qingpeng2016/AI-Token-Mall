@@ -100,7 +100,7 @@
 
 | 字段名 | 必填 | 控件类型 | 默认值 / 占位 | 产品说明 |
 |--------|------|----------|---------------|----------|
-| **学科** | 否 | 下拉 | 默认与环境配置一致（如计算机 / 人工智能） | 对齐 `paper_discipline`；影响默认文献库与 Prompt 模板 |
+| **学科** | 否 | 下拉 | 默认与环境配置一致（如计算机 / 人工智能） | 对齐 `paper_ref_discipline`；影响默认文献源与 venue 关联 |
 | **研究方向 / 检索主题** | 是 * | 多行文本 | 研究主题、问题或关键词 | 同时作为多源检索 query 依据 |
 | **目标会议/期刊** | 否 | 单行文本 | `NeurIPS/ICLR/ICML` | **风格约束**：贡献类型、实验严谨度、写作调性按目标 venue 调节 |
 | **文献来源** | 是 * | 多选 | 默认 arXiv / OpenAlex / Semantic Scholar | **仅此模块**发起多源检索，结果写入 `paper_run_literature_hit` |
@@ -215,12 +215,9 @@
 
 | 脚本 | 说明 |
 |------|------|
-| `docs/migrations/20261005_paper_workflow_schema.sql` | 基线：`paper_run` / artifact / 文献门禁等 |
-| `docs/migrations/20261007_paper_workflow_align.sql` | 对齐主流程续跑、上传、里程碑、操作日志（已建库则执行本增量） |
-| `docs/migrations/20261008_paper_llm_config.sql` | LLM 端点配置 + 环节绑定；`paper_llm_call_logs` 溯源列（已建库则执行） |
-| `docs/migrations/20261009_drop_paper_model_profile.sql` | 删除废弃 `paper_model_profile` 及 profile_id 列（旧库执行） |
+| `docs/migrations/20261005_paper_workflow_schema.sql` | **Paper Agent 唯一 DDL**：ref 字典、稿件/run、文献与门禁、artifact、LLM 配置与 binding、上传/里程碑/操作日志及种子数据 |
 
-新增表：**`paper_manuscript_upload`**、**`paper_manuscript_milestone`**、**`paper_operation_log`**；**`paper_llm_model_config`**、**`paper_llm_workflow_binding`**。已废弃 **`paper_model_profile`**（由上述两表替代）。`paper_manuscript` 可选字段：`manuscript_kind`、`deadline_at`、`target_words`、`citation_style`。
+核心表族：`paper_ref_*`、`paper_manuscript*`、`paper_run*`、`paper_literature_*`、`paper_citation_gate`、`paper_artifact*`、`paper_llm_model_config`、`paper_llm_workflow_binding`、`paper_llm_call_logs`。`paper_manuscript` 可选：`manuscript_kind`、`deadline_at`、`target_words`、`citation_style`。
 
 **LLM 路由解析顺序**：`manuscript_id` binding → `user_id` binding → `user_id=0` 平台默认；`paper_run` 可快照 `executor_model_config_id` / `reviewer_model_config_id`。
 
