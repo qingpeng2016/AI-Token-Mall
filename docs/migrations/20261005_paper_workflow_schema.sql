@@ -11,7 +11,7 @@
 -- | 类型       | 表名 |
 -- |------------|------|
 -- | ref        | paper_ref_* |
--- | manuscript | paper_manuscript（我的论文）, paper_manuscript_progress, paper_manuscript_runtime, |
+-- | manuscript | paper_manuscript（我的论文）, paper_manuscript_runtime, |
 -- |            | paper_manuscript_citation_gate, paper_manuscript_literature_hit, paper_manuscript_review |
 -- | output     | paper_output_*（各模块业务产出，均含 manuscript_id） |
 -- | user       | paper_user_preference, paper_user_literature |
@@ -124,26 +124,6 @@ CREATE TABLE IF NOT EXISTS `paper_manuscript` (
   PRIMARY KEY (`id`),
   KEY `idx_paper_manuscript_user` (`user_id`, `status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='我的论文（元数据 + 当前论文正文草稿）';
-
-CREATE TABLE IF NOT EXISTS `paper_manuscript_progress` (
-  `manuscript_id`           BIGINT UNSIGNED NOT NULL COMMENT 'paper_manuscript.id',
-  `current_module_code`     VARCHAR(32)  NOT NULL DEFAULT 'topic_discovery' COMMENT
-    '当前主流程位置：topic_discovery|literature_review|experiment_planning|auto_review|paper_writing|figure_generation|manuscript_analysis',
-  `topic_discovery_status`      VARCHAR(16) NOT NULL DEFAULT 'not_started' COMMENT 'not_started|running|completed',
-  `manuscript_topic_id`         BIGINT UNSIGNED DEFAULT NULL COMMENT '当前生效 paper_output_topic.id',
-  `literature_review_status`    VARCHAR(16) NOT NULL DEFAULT 'not_started',
-  `literature_review_id`        BIGINT UNSIGNED DEFAULT NULL COMMENT '当前生效 paper_output_literature_review.id',
-  `experiment_plan_status`      VARCHAR(16) NOT NULL DEFAULT 'not_started',
-  `experiment_plan_id`          BIGINT UNSIGNED DEFAULT NULL COMMENT '当前生效 paper_output_experiment_plan.id',
-  `experiment_review_status`    VARCHAR(16) NOT NULL DEFAULT 'not_started' COMMENT '结果审查 auto_review',
-  `experiment_review_id`        BIGINT UNSIGNED DEFAULT NULL COMMENT '当前生效 paper_output_experiment_review.id',
-  `paper_writing_status`        VARCHAR(16) NOT NULL DEFAULT 'not_started' COMMENT '正文见 paper_manuscript.draft_*',
-  `figure_generation_status`    VARCHAR(16) NOT NULL DEFAULT 'not_started',
-  `manuscript_analysis_status`  VARCHAR(16) NOT NULL DEFAULT 'not_started' COMMENT '论文审查',
-  `manuscript_review_id`        BIGINT UNSIGNED DEFAULT NULL COMMENT '当前生效 paper_manuscript_review.id',
-  `updated_at`                  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`manuscript_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='我的论文 · 主流程阶段与当前产出指针';
 
 CREATE TABLE IF NOT EXISTS `paper_user_preference` (
   `user_id`                   BIGINT UNSIGNED NOT NULL,
@@ -468,7 +448,7 @@ CREATE TABLE IF NOT EXISTS `paper_llm_call_logs` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='LLM 调用明细日志';
 
 -- ---------------------------------------------------------------------------
--- 8. 上传文献、操作日志（新建 paper_manuscript 时须 INSERT paper_manuscript_progress）
+-- 8. 上传文献、操作日志（阶段进度由 paper_output_* / draft_* 是否存在推导，不落单独 progress 表）
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS `paper_user_literature` (

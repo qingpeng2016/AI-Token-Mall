@@ -11,7 +11,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   select: [id: string]
   updateManuscripts: [list: PaperManuscriptItem[]]
-  create: []
 }>()
 
 const tab = ref<'active' | 'archived'>('active')
@@ -101,7 +100,6 @@ function selectAsCurrent(id: string) {
     </p>
 
     <div class="ms-toolbar">
-      <button type="button" class="ms-btn-primary" @click="emit('create')">+ 新建论文</button>
       <input v-model="searchQuery" type="search" class="ms-search" placeholder="搜索标题、venue…" />
     </div>
 
@@ -125,7 +123,7 @@ function selectAsCurrent(id: string) {
     </div>
 
     <div v-if="filteredList.length === 0" class="ms-empty">
-      {{ tab === 'active' ? '暂无进行中的论文，点击「新建论文」创建。' : '暂无归档论文。' }}
+      {{ tab === 'active' ? '暂无进行中的论文。' : '暂无归档论文。' }}
     </div>
 
     <ul v-else class="ms-list">

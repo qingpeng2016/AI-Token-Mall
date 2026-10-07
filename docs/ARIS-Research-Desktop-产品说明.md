@@ -39,8 +39,8 @@
 | 项 | 说明 |
 |----|------|
 | **位置** | 侧栏品牌区下方、模块导航上方 |
-| **能力** | 下拉切换 `paper_manuscript`；**新建论文** 创建新的稿件线 |
-| **作用** | 同一用户可同时推进多篇论文；各模块 **产出与 progress** 均归属 **当前选中论文** |
+| **能力** | 侧栏下拉切换 `paper_manuscript`；在「我的论文」中编辑、归档与设为当前 |
+| **作用** | 同一用户可同时推进多篇论文；各模块 **产出** 均归属 **当前选中论文** |
 | **存储** | 工作区路径、Wiki、artifact 等由 **平台按稿件默认 provision**，用户无需填写 |
 
 ### 3.2 工作流模块（二级导航）
@@ -217,7 +217,7 @@
 |------|------|
 | `docs/migrations/20261005_paper_workflow_schema.sql` | **Paper Agent 唯一 DDL**（见下表架构） |
 
-**我的论文**：`paper_manuscript` + **`paper_manuscript_progress`**（当前阶段、各模块状态、指向当前生效产出 id）。**模块产出表**（前缀 `paper_output_*`，均含 `manuscript_id`）：`paper_output_topic` / `paper_output_topic_idea`（选题）、`paper_output_literature_review`（文献综述）、`paper_output_experiment_plan`（实验规划）、`paper_output_experiment_review`（结果审查）；**论文正文草稿**在 **`paper_manuscript.draft_*`**；**论文审查报告**在 **`paper_manuscript_review`**、`paper_output_figure`（图表）。**本篇文献与引用**：`paper_manuscript_literature_hit`、`paper_manuscript_citation_gate`。**其它**：`paper_user_literature`、`paper_ref_*`、`paper_llm_*`、`paper_llm_call_logs`、`paper_operation_log`。
+**我的论文**：`paper_manuscript`（含 `draft_*` 当前正文）。**阶段进度**：由是否存在当前 `paper_output_*` / `draft_*` 推导，无单独 progress 表。**模块产出表**（前缀 `paper_output_*`，均含 `manuscript_id`）：`paper_output_topic` / `paper_output_topic_idea`（选题）、`paper_output_literature_review`（文献综述）、`paper_output_experiment_plan`（实验规划）、`paper_output_experiment_review`（结果审查）；**论文正文草稿**在 **`paper_manuscript.draft_*`**；**论文审查报告**在 **`paper_manuscript_review`**、`paper_output_figure`（图表）。**本篇文献与引用**：`paper_manuscript_literature_hit`、`paper_manuscript_citation_gate`。**其它**：`paper_user_literature`、`paper_ref_*`、`paper_llm_*`、`paper_llm_call_logs`、`paper_operation_log`。
 
 **LLM 路由**：`paper_llm_workflow_binding` / `paper_llm_prompt_template`；解析顺序：本篇 `manuscript_id` → `user_id` → `user_id=0`。`paper_llm_call_logs` 按 `manuscript_id` + `module_code` 记调用。
 

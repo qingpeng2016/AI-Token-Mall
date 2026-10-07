@@ -62,7 +62,7 @@ export const PAPER_MODULES: PaperModuleMeta[] = [
   {
     id: 'my-manuscripts',
     label: '我的论文',
-    description: '创建、切换、编辑与归档工作台下的论文项目（paper_manuscript）',
+    description: '切换、编辑与归档工作台下的论文项目（paper_manuscript）',
   },
   {
     id: 'personal-center',

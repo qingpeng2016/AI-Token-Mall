@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import {
   DEFAULT_ENV_PREFERENCE,
   ENV_PREFERENCE_STORAGE_KEY,
@@ -207,34 +207,6 @@ function onManuscriptChange(id: string) {
 function onManuscriptsListUpdate(list: PaperManuscriptItem[]) {
   manuscripts.value = list
   persistManuscripts()
-}
-
-async function onCreateManuscript() {
-  try {
-    const { value } = await ElMessageBox.prompt(
-      '每篇论文独立存放选题、各阶段运行与稿件产出。',
-      '新建论文',
-      {
-        confirmButtonText: '创建',
-        cancelButtonText: '取消',
-        inputPlaceholder: '如：稀疏注意力 · NeurIPS 2026',
-      },
-    )
-    const title = value?.trim()
-    if (!title) return
-    const item: PaperManuscriptItem = {
-      id: `ms-${Date.now()}`,
-      title,
-      venueHint: '',
-      status: 'active',
-    }
-    manuscripts.value = [item, ...manuscripts.value]
-    activeManuscriptId.value = item.id
-    persistManuscripts()
-    ElMessage.success('论文已创建（演示：接入后将同步 paper_manuscript）')
-  } catch {
-    /* cancelled */
-  }
 }
 
 loadEnvFromStorage()
@@ -819,7 +791,6 @@ async function onPrimaryAction() {
             {{ m.title }}{{ m.venueHint ? ` · ${m.venueHint}` : '' }}
           </option>
         </select>
-        <button type="button" class="paper-manuscript-new" @click="onCreateManuscript">+ 新建论文</button>
       </div>
 
       <nav class="paper-nav" aria-label="科研工作流">
@@ -1002,7 +973,7 @@ async function onPrimaryAction() {
           </button>
         </div>
         <p class="paper-section-lead">
-          阶段进度由 <code>paper_manuscript_progress</code> 与各 <code>paper_output_*</code> 体现（演示交互，非真实 Agent）。
+          阶段进度由各 <code>paper_output_*</code> 与 <code>paper_manuscript.draft_*</code> 是否存在推导（演示交互，非真实 Agent）。
         </p>
 
         <ol class="paper-flow-steps">
@@ -1060,7 +1031,6 @@ async function onPrimaryAction() {
         :active-manuscript-id="activeManuscriptId"
         @select="onManuscriptChange"
         @update-manuscripts="onManuscriptsListUpdate"
-        @create="onCreateManuscript"
       />
 
       <PaperReferenceLibraryPanel
