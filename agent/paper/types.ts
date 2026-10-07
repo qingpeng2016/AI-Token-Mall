@@ -6,6 +6,7 @@ export type PaperModuleId =
   | 'paper-writing'
   | 'figure-generation'
   | 'manuscript-analysis'
+  | 'reference-library'
   | 'environment'
 
 export type PaperModuleMeta = {
@@ -51,11 +52,49 @@ export const PAPER_MODULES: PaperModuleMeta[] = [
     description: '写作完成后：对全文做投稿前全面分析（贡献、实验、引用、venue  fit、kill argument）',
   },
   {
+    id: 'reference-library',
+    label: '参考文献',
+    description: '上传并管理本篇论文的 PDF、BibTeX 等文献文件',
+  },
+  {
     id: 'environment',
     label: '环境配置',
     description: '新建运行时的默认科研偏好与文献策略（产出由平台按项目自动存储）',
   },
 ]
+
+export type UploadedReferenceKind = 'pdf' | 'bib' | 'other'
+
+export type UploadedReferenceItem = {
+  id: string
+  fileName: string
+  title: string
+  uploadedAt: string
+  sizeBytes: number
+  kind: UploadedReferenceKind
+  note?: string
+}
+
+export const REFERENCE_UPLOAD_ACCEPT = '.pdf,.bib,.txt,.md,.json'
+
+export function inferReferenceKind(fileName: string): UploadedReferenceKind {
+  const lower = fileName.toLowerCase()
+  if (lower.endsWith('.pdf')) return 'pdf'
+  if (lower.endsWith('.bib')) return 'bib'
+  return 'other'
+}
+
+export function createUploadedReferenceFromFile(file: File): UploadedReferenceItem {
+  const base = file.name.replace(/\.[^.]+$/, '')
+  return {
+    id: `ref-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    fileName: file.name,
+    title: base || file.name,
+    uploadedAt: new Date().toISOString(),
+    sizeBytes: file.size,
+    kind: inferReferenceKind(file.name),
+  }
+}
 
 /** 工作台「当前论文」（对应 paper_manuscript） */
 export type PaperManuscriptItem = {
@@ -84,6 +123,8 @@ export type ExecutionIntensity = 'fast' | 'balanced' | 'deep'
 export type AuditLevel = 'standard' | 'polished' | 'strict'
 
 export type TopicDiscoveryForm = {
+  /** 对齐 paper_discipline，影响检索策略与 Prompt 模板 */
+  disciplineCode: string
   direction: string
   venue: string
   /** 多源检索（写入 paper_literature_record / paper_run_literature_hit） */
@@ -127,6 +168,7 @@ export type TopicDiscoveryArtifactSnapshot = {
   corpusReady: boolean
   /** 整轮选题 run 已完成，可合并 idea / 新颖性 / 计划进综述 */
   runCompleted: boolean
+  disciplineLabel: string
   direction: string
   venue: string
   sourceLabels: string[]
@@ -141,6 +183,7 @@ export const EMPTY_TOPIC_DISCOVERY_ARTIFACT: TopicDiscoveryArtifactSnapshot = {
   runStatus: 'idle',
   corpusReady: false,
   runCompleted: false,
+  disciplineLabel: '—',
   direction: '（尚未运行选题发现）',
   venue: '—',
   sourceLabels: [],
@@ -261,6 +304,7 @@ export const FIGURE_CHART_OPTIONS = [
 ] as const
 
 export const DEFAULT_TOPIC_DISCOVERY: TopicDiscoveryForm = {
+  disciplineCode: 'cs_ai',
   direction: '',
   venue: 'NeurIPS/ICLR/ICML',
   sourceCodes: ['arxiv', 'openalex', 'semantic_scholar'],

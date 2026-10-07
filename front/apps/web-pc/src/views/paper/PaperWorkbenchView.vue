@@ -18,6 +18,7 @@ import {
   type TopicDiscoveryForm,
   type TopicFlowStepStatus,
 } from '@paper/types'
+import PaperReferenceLibraryPanel from '@paper/PaperReferenceLibraryPanel.vue'
 import PaperSelect from '@paper/PaperSelect.vue'
 import PaperWorkflowPanels from './PaperWorkflowPanels.vue'
 
@@ -166,6 +167,12 @@ async function onCreateManuscript() {
 
 loadEnvFromStorage()
 loadManuscriptsFromStorage()
+topicForm.disciplineCode = envPreference.disciplineCode
+topicForm.venue = envPreference.defaultVenueText || topicForm.venue
+topicForm.sourceCodes = [...envPreference.literatureSourceCodes]
+topicForm.intensity = envPreference.intensity
+topicForm.auditLevel = envPreference.auditLevel
+topicForm.humanCheckpoint = envPreference.humanCheckpoint
 
 const activeManuscripts = computed(() => manuscripts.value.filter((m) => m.status === 'active'))
 
@@ -175,6 +182,7 @@ const currentManuscript = computed(
 )
 
 const isEnvironmentModule = computed(() => activeModule.value === 'environment')
+const isReferenceLibraryModule = computed(() => activeModule.value === 'reference-library')
 const isTopicDiscoveryModule = computed(() => activeModule.value === 'topic-discovery')
 
 const SECONDARY_WORKFLOW_MODULES = [
@@ -242,10 +250,14 @@ const topicDiscoveryArtifact = computed((): TopicDiscoveryArtifactSnapshot => {
     (run.status === 'checkpoint' && run.checkpoint?.key === 'plan_ready') ||
     runCompleted
 
+  const disciplineLabel =
+    DISCIPLINE_OPTIONS.find((d) => d.code === topicForm.disciplineCode)?.label ?? topicForm.disciplineCode
+
   return {
     runStatus: run.status,
     corpusReady,
     runCompleted,
+    disciplineLabel,
     direction,
     venue: topicForm.venue,
     sourceLabels,
@@ -257,7 +269,10 @@ const topicDiscoveryArtifact = computed((): TopicDiscoveryArtifactSnapshot => {
   }
 })
 
+const showPrimaryAction = computed(() => !isReferenceLibraryModule.value)
+
 const topicPrimaryDisabled = computed(() => {
+  if (isReferenceLibraryModule.value) return true
   if (isEnvironmentModule.value) return running.value
   if (isTopicDiscoveryModule.value) {
     return (
@@ -576,6 +591,7 @@ async function onPrimaryAction() {
           <p class="paper-main-desc">{{ currentMeta.description }}</p>
         </div>
         <button
+          v-if="showPrimaryAction"
           type="button"
           class="paper-run-btn"
           :disabled="topicPrimaryDisabled"
@@ -598,11 +614,6 @@ async function onPrimaryAction() {
       <!-- 选题发现（与运行进度同属一块，避免 v-else-if 链误绑） -->
       <template v-if="activeModule === 'topic-discovery'">
       <section class="paper-panel">
-        <h2 class="paper-panel-title">检索、选题与计划</h2>
-        <p class="paper-section-lead">
-          <strong>文献只在这里查一次</strong>（多源 API → 校验 → 入库）。「文献综述」模块只读这些结果写 Related Work，不会再次查库。
-        </p>
-
         <label class="paper-field paper-field--block">
           <span class="paper-label">研究方向 / 检索主题 <em class="req">*</em></span>
           <textarea
@@ -614,6 +625,12 @@ async function onPrimaryAction() {
         </label>
 
         <div class="paper-field-grid">
+          <label class="paper-field">
+            <span class="paper-label">学科</span>
+            <PaperSelect v-model="topicForm.disciplineCode" :options="disciplineSelectOptions" />
+            <span class="paper-hint">与「环境配置」同一套学科；影响文献库与模板</span>
+          </label>
+
           <label class="paper-field">
             <span class="paper-label">目标会议/期刊</span>
             <input v-model="topicForm.venue" type="text" class="paper-input" />
@@ -633,7 +650,7 @@ async function onPrimaryAction() {
           </label>
         </div>
 
-        <div class="paper-field paper-field--block">
+        <div class="paper-field paper-field--block paper-field--section-gap">
           <span class="paper-label">文献来源（检索用）</span>
           <div class="paper-check-group">
             <label
@@ -746,6 +763,12 @@ async function onPrimaryAction() {
         </div>
       </section>
       </template>
+
+      <PaperReferenceLibraryPanel
+        v-else-if="activeModule === 'reference-library'"
+        :manuscript-id="activeManuscriptId"
+        :manuscript-title="currentManuscript?.title ?? '未命名'"
+      />
 
       <!-- 环境配置 -->
       <section v-else-if="activeModule === 'environment'" class="paper-panel paper-panel--env">
@@ -1355,6 +1378,10 @@ async function onPrimaryAction() {
 
 .paper-field--block {
   margin-bottom: 4px;
+}
+
+.paper-field--section-gap {
+  margin-top: 28px;
 }
 
 .paper-label {

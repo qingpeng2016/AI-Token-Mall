@@ -170,7 +170,8 @@ defineExpose({ runModule })
       <h3 class="wf-subhead">输入 · 选题发现产出（只读）</h3>
       <div class="wf-artifact-grid">
         <article class="wf-artifact-card wf-artifact-card--wide">
-          <h4 class="wf-artifact-title">研究方向与 venue</h4>
+          <h4 class="wf-artifact-title">学科 · 方向 · venue</h4>
+          <p class="wf-artifact-meta">学科：{{ topicArtifact.disciplineLabel }}</p>
           <p class="wf-artifact-body">{{ topicArtifact.direction }}</p>
           <p class="wf-artifact-meta">目标：{{ topicArtifact.venue }}</p>
         </article>
