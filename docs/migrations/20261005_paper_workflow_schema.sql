@@ -13,12 +13,12 @@
 -- | ref        | paper_ref_discipline, paper_ref_venue, paper_ref_literature_source, paper_ref_execution_intensity, paper_ref_audit_level, paper_ref_prompt_template |
 -- | manuscript | paper_manuscript, paper_manuscript_runtime, paper_manuscript_upload, paper_manuscript_milestone |
 -- | user       | paper_user_preference |
--- | model      | paper_model_profile |
+-- | model      | paper_model_profile（旧）, paper_llm_model_config, paper_llm_workflow_binding |
 -- | run        | paper_run, paper_run_stage, paper_run_checkpoint, paper_run_literature_hit |
 -- | literature | paper_literature_record |
 -- | citation   | paper_citation_gate |
 -- | artifact   | paper_artifact, paper_artifact_idea |
--- | llm        | paper_llm_call |
+-- | llm        | paper_llm_call_logs |
 -- | audit      | paper_operation_log |
 
 SET NAMES utf8mb4;
@@ -165,7 +165,53 @@ CREATE TABLE IF NOT EXISTS `paper_model_profile` (
   `updated_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_paper_model_profile_user` (`user_id`, `status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='模型 Provider 配置';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='模型 Provider 配置（逐步迁移至 paper_llm_model_config）';
+
+CREATE TABLE IF NOT EXISTS `paper_llm_model_config` (
+  `id`                   BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`              BIGINT UNSIGNED NOT NULL COMMENT 'users.id；0=平台预置',
+  `label`                VARCHAR(128) NOT NULL,
+  `provider_code`        VARCHAR(32)  NOT NULL,
+  `model_name`           VARCHAR(128) NOT NULL,
+  `api_base_url`         VARCHAR(512) NOT NULL,
+  `api_path_chat`        VARCHAR(128) DEFAULT NULL,
+  `api_key_ciphertext`   VARBINARY(4096) DEFAULT NULL,
+  `api_key_header`       VARCHAR(64)  NOT NULL DEFAULT 'Authorization',
+  `api_key_prefix`       VARCHAR(32)  DEFAULT 'Bearer ',
+  `user_api_key_id`      BIGINT UNSIGNED DEFAULT NULL,
+  `default_headers`      JSON         DEFAULT NULL,
+  `default_params`       JSON         DEFAULT NULL,
+  `timeout_ms`           INT UNSIGNED NOT NULL DEFAULT 120000,
+  `max_retries`          TINYINT UNSIGNED NOT NULL DEFAULT 2,
+  `supports_vision`      TINYINT(1)   NOT NULL DEFAULT 0,
+  `context_window_hint`  INT UNSIGNED DEFAULT NULL,
+  `extra`                JSON         DEFAULT NULL,
+  `status`               VARCHAR(16)  NOT NULL DEFAULT 'active',
+  `created_at`           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_paper_llm_model_cfg_user` (`user_id`, `status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='LLM 端点配置';
+
+CREATE TABLE IF NOT EXISTS `paper_llm_workflow_binding` (
+  `id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`           BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `manuscript_id`     BIGINT UNSIGNED DEFAULT NULL,
+  `module_code`       VARCHAR(32)  NOT NULL,
+  `stage_code`        VARCHAR(64)  DEFAULT NULL,
+  `llm_role`          VARCHAR(32)  NOT NULL,
+  `intensity_code`    VARCHAR(16)  DEFAULT NULL,
+  `audit_level_code`  VARCHAR(16)  DEFAULT NULL,
+  `model_config_id`   BIGINT UNSIGNED NOT NULL,
+  `priority`          INT          NOT NULL DEFAULT 100,
+  `status`            VARCHAR(16)  NOT NULL DEFAULT 'active',
+  `note`              VARCHAR(256) DEFAULT NULL,
+  `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_paper_llm_bind_lookup` (`user_id`, `module_code`, `stage_code`, `llm_role`, `status`, `priority`),
+  KEY `idx_paper_llm_bind_model` (`model_config_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='环节→LLM 配置';
 
 CREATE TABLE IF NOT EXISTS `paper_manuscript_runtime` (
   `id`                    BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -333,11 +379,13 @@ CREATE TABLE IF NOT EXISTS `paper_artifact_idea` (
 -- 7. LLM 调用日志（计费、排错；不存完整 prompt 时可只存 hash）
 -- ---------------------------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS `paper_llm_call` (
+CREATE TABLE IF NOT EXISTS `paper_llm_call_logs` (
   `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `run_id`          BIGINT UNSIGNED NOT NULL,
   `stage_id`        BIGINT UNSIGNED DEFAULT NULL,
-  `profile_id`      BIGINT UNSIGNED DEFAULT NULL,
+  `profile_id`      BIGINT UNSIGNED DEFAULT NULL COMMENT 'legacy paper_model_profile.id',
+  `model_config_id` BIGINT UNSIGNED DEFAULT NULL COMMENT 'paper_llm_model_config.id',
+  `workflow_binding_id` BIGINT UNSIGNED DEFAULT NULL COMMENT 'paper_llm_workflow_binding.id',
   `role`            VARCHAR(16)  NOT NULL COMMENT 'executor|reviewer',
   `model_name`      VARCHAR(128) NOT NULL,
   `prompt_tokens`   INT          DEFAULT NULL,
@@ -346,8 +394,8 @@ CREATE TABLE IF NOT EXISTS `paper_llm_call` (
   `status`          SMALLINT     NOT NULL COMMENT 'HTTP 或业务码',
   `created_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_paper_llm_call_run` (`run_id`, `created_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='LLM 调用明细';
+  KEY `idx_paper_llm_call_logs_run` (`run_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='LLM 调用明细日志';
 
 -- ---------------------------------------------------------------------------
 -- 7b. 上传、里程碑、操作日志（与 20261007 增量一致；新库一次建全）
