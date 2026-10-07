@@ -10,15 +10,17 @@
 --
 -- | 类型       | 表名 |
 -- |------------|------|
--- | ref        | paper_ref_discipline, paper_ref_venue, paper_ref_literature_source, paper_ref_execution_intensity, paper_ref_audit_level |
--- | manuscript | paper_manuscript, paper_manuscript_runtime, paper_manuscript_milestone |
--- | user       | paper_user_preference, paper_user_literature, paper_user_figure |
+-- | ref        | paper_ref_* |
+-- | manuscript | paper_manuscript（我的论文）, paper_manuscript_progress, paper_manuscript_runtime |
+-- | module     | paper_manuscript_topic, paper_topic_idea, paper_literature_review, paper_experiment_plan, |
+-- |            | paper_experiment_review, paper_manuscript_draft, paper_manuscript_review, paper_figure |
+-- | user       | paper_user_preference, paper_user_literature |
 -- | model      | paper_llm_model_config, paper_llm_workflow_binding, paper_llm_prompt_template |
 -- | run        | paper_run, paper_run_stage, paper_run_checkpoint, paper_run_literature_hit |
 -- | citation   | paper_citation_gate |
--- | artifact   | paper_artifact, paper_artifact_idea |
 -- | llm        | paper_llm_call_logs |
 -- | audit      | paper_operation_log |
+-- 业务表均含 manuscript_id → paper_manuscript.id（逻辑外键，不设 DB FK）
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
@@ -117,7 +119,36 @@ CREATE TABLE IF NOT EXISTS `paper_manuscript` (
   `updated_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_paper_manuscript_user` (`user_id`, `status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='单篇论文稿件线（数据隔离单元）';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='我的论文（工作台数据隔离根）';
+
+CREATE TABLE IF NOT EXISTS `paper_manuscript_progress` (
+  `manuscript_id`           BIGINT UNSIGNED NOT NULL COMMENT 'paper_manuscript.id',
+  `current_module_code`     VARCHAR(32)  NOT NULL DEFAULT 'topic_discovery' COMMENT
+    '当前主流程位置：topic_discovery|literature_review|experiment_planning|auto_review|paper_writing|figure_generation|manuscript_analysis',
+  `topic_discovery_status`      VARCHAR(16) NOT NULL DEFAULT 'not_started' COMMENT 'not_started|running|completed',
+  `topic_discovery_run_id`      BIGINT UNSIGNED DEFAULT NULL,
+  `manuscript_topic_id`         BIGINT UNSIGNED DEFAULT NULL COMMENT '当前生效 paper_manuscript_topic.id',
+  `literature_review_status`    VARCHAR(16) NOT NULL DEFAULT 'not_started',
+  `literature_review_run_id`    BIGINT UNSIGNED DEFAULT NULL,
+  `literature_review_id`        BIGINT UNSIGNED DEFAULT NULL COMMENT '当前生效 paper_literature_review.id',
+  `experiment_plan_status`      VARCHAR(16) NOT NULL DEFAULT 'not_started',
+  `experiment_plan_run_id`      BIGINT UNSIGNED DEFAULT NULL,
+  `experiment_plan_id`          BIGINT UNSIGNED DEFAULT NULL,
+  `experiment_review_status`    VARCHAR(16) NOT NULL DEFAULT 'not_started' COMMENT '结果审查 auto_review',
+  `experiment_review_run_id`  BIGINT UNSIGNED DEFAULT NULL,
+  `experiment_review_id`        BIGINT UNSIGNED DEFAULT NULL,
+  `paper_writing_status`        VARCHAR(16) NOT NULL DEFAULT 'not_started',
+  `paper_writing_run_id`        BIGINT UNSIGNED DEFAULT NULL,
+  `manuscript_draft_id`         BIGINT UNSIGNED DEFAULT NULL COMMENT '当前生效 paper_manuscript_draft.id',
+  `figure_generation_status`    VARCHAR(16) NOT NULL DEFAULT 'not_started',
+  `figure_generation_run_id`    BIGINT UNSIGNED DEFAULT NULL,
+  `manuscript_analysis_status`  VARCHAR(16) NOT NULL DEFAULT 'not_started' COMMENT '论文审查',
+  `manuscript_analysis_run_id`  BIGINT UNSIGNED DEFAULT NULL,
+  `manuscript_review_id`        BIGINT UNSIGNED DEFAULT NULL,
+  `active_run_id`               BIGINT UNSIGNED DEFAULT NULL COMMENT '任意模块进行中的 paper_run.id',
+  `updated_at`                  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`manuscript_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='我的论文 · 主流程阶段与当前产出指针';
 
 CREATE TABLE IF NOT EXISTS `paper_user_preference` (
   `user_id`                   BIGINT UNSIGNED NOT NULL,
@@ -303,6 +334,7 @@ CREATE TABLE IF NOT EXISTS `paper_run_checkpoint` (
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS `paper_run_literature_hit` (
+  `manuscript_id`       BIGINT UNSIGNED NOT NULL COMMENT 'paper_manuscript.id',
   `run_id`              BIGINT UNSIGNED NOT NULL,
   `source_id`           BIGINT UNSIGNED NOT NULL COMMENT 'paper_ref_literature_source.id',
   `external_key`        VARCHAR(256) NOT NULL COMMENT 'arxiv:2401.12345 / doi:… / s2:…',
@@ -312,13 +344,16 @@ CREATE TABLE IF NOT EXISTS `paper_run_literature_hit` (
   `meta`                JSON         DEFAULT NULL COMMENT 'title、authors、doi 等命中快照（暂无全局文献缓存表）',
   `created_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`run_id`, `source_id`, `external_key`),
+  KEY `idx_paper_run_lit_ms` (`manuscript_id`, `created_at`),
   KEY `idx_paper_run_lit_doi` (`external_key`(64))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='某次运行检索命中的文献';
 
 CREATE TABLE IF NOT EXISTS `paper_citation_gate` (
   `id`                  BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `manuscript_id`       BIGINT UNSIGNED NOT NULL COMMENT 'paper_manuscript.id',
   `run_id`              BIGINT UNSIGNED NOT NULL,
-  `artifact_id`         BIGINT UNSIGNED DEFAULT NULL,
+  `target_module`       VARCHAR(32)  DEFAULT NULL COMMENT '产出所属模块，如 paper_writing',
+  `target_id`           BIGINT UNSIGNED DEFAULT NULL COMMENT '如 paper_manuscript_draft.id',
   `source_id`           BIGINT UNSIGNED DEFAULT NULL COMMENT '门禁关联文献源',
   `external_key`        VARCHAR(256) DEFAULT NULL COMMENT '与 hit 表同源键',
   `cited_key`           VARCHAR(256) DEFAULT NULL COMMENT '正文中的 cite key',
@@ -327,46 +362,193 @@ CREATE TABLE IF NOT EXISTS `paper_citation_gate` (
   `detail`              JSON         DEFAULT NULL,
   `created_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
+  KEY `idx_paper_citation_gate_ms` (`manuscript_id`, `gate_type`, `status`),
   KEY `idx_paper_citation_gate_run` (`run_id`, `gate_type`, `status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='参考文献/审计门禁记录';
 
 -- ---------------------------------------------------------------------------
--- 6. 产出物（idea 报告、综述、计划、审稿意见、稿、图）
+-- 6. 各模块业务产出（均关联 paper_manuscript.id）
 -- ---------------------------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS `paper_artifact` (
-  `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `run_id`        BIGINT UNSIGNED NOT NULL,
-  `artifact_type` VARCHAR(32)  NOT NULL COMMENT
-    'idea_report|novelty_report|literature_review|experiment_plan|result_review_report|manuscript_analysis_report|manuscript|figure|bibtex|other（review_report 仅兼容旧数据）',
-  `format`        VARCHAR(16)  NOT NULL COMMENT 'md|json|tex|pdf|png|svg|bib',
-  `title`         VARCHAR(256) DEFAULT NULL,
-  `storage_uri`   VARCHAR(1024) DEFAULT NULL COMMENT '对象存储或本地相对路径',
-  `content_medium` MEDIUMTEXT   DEFAULT NULL COMMENT '小文件可内联',
-  `content_hash`  CHAR(64)     DEFAULT NULL COMMENT 'SHA-256',
-  `meta`          JSON         DEFAULT NULL COMMENT 'idea 条数、venue、版本号等',
-  `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+CREATE TABLE IF NOT EXISTS `paper_manuscript_topic` (
+  `id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `manuscript_id`     BIGINT UNSIGNED NOT NULL,
+  `run_id`            BIGINT UNSIGNED NOT NULL,
+  `user_id`           BIGINT UNSIGNED NOT NULL,
+  `version`           INT          NOT NULL DEFAULT 1,
+  `is_current`        TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '本篇当前生效版本',
+  `status`            VARCHAR(16)  NOT NULL DEFAULT 'completed',
+  `direction`         TEXT         DEFAULT NULL,
+  `venue_label`       VARCHAR(256) DEFAULT NULL,
+  `literature_hit_count` INT UNSIGNED NOT NULL DEFAULT 0,
+  `verified_hit_count`   INT UNSIGNED NOT NULL DEFAULT 0,
+  `novelty_report`    MEDIUMTEXT   DEFAULT NULL,
+  `audit_summary`     TEXT         DEFAULT NULL,
+  `input_params`      JSON         DEFAULT NULL,
+  `meta`              JSON         DEFAULT NULL,
+  `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_paper_artifact_run` (`run_id`, `artifact_type`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='运行产出';
+  KEY `idx_paper_ms_topic_ms` (`manuscript_id`, `is_current`),
+  KEY `idx_paper_ms_topic_run` (`run_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='选题发现 · 本轮汇总';
 
-CREATE TABLE IF NOT EXISTS `paper_artifact_idea` (
-  `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `run_id`        BIGINT UNSIGNED NOT NULL,
-  `artifact_id`   BIGINT UNSIGNED DEFAULT NULL,
-  `rank_no`       INT          NOT NULL DEFAULT 0,
-  `title`         VARCHAR(512) NOT NULL,
-  `problem`       TEXT         DEFAULT NULL,
-  `approach`      TEXT         DEFAULT NULL,
-  `contribution`  TEXT         DEFAULT NULL,
-  `novelty_summary` TEXT       DEFAULT NULL,
-  `novelty_risk`  VARCHAR(16)  DEFAULT NULL COMMENT 'low|medium|high',
-  `status`        VARCHAR(16)  NOT NULL DEFAULT 'candidate' COMMENT 'candidate|selected|rejected',
-  `meta`          JSON         DEFAULT NULL,
-  `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+CREATE TABLE IF NOT EXISTS `paper_topic_idea` (
+  `id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `manuscript_id`     BIGINT UNSIGNED NOT NULL,
+  `run_id`            BIGINT UNSIGNED NOT NULL,
+  `topic_id`          BIGINT UNSIGNED DEFAULT NULL COMMENT 'paper_manuscript_topic.id',
+  `rank_no`           INT          NOT NULL DEFAULT 0,
+  `title`             VARCHAR(512) NOT NULL,
+  `problem`           TEXT         DEFAULT NULL,
+  `approach`          TEXT         DEFAULT NULL,
+  `contribution`      TEXT         DEFAULT NULL,
+  `novelty_summary`   TEXT         DEFAULT NULL,
+  `novelty_risk`      VARCHAR(16)  DEFAULT NULL COMMENT 'low|medium|high',
+  `status`            VARCHAR(16)  NOT NULL DEFAULT 'candidate' COMMENT 'candidate|selected|rejected',
+  `meta`              JSON         DEFAULT NULL,
+  `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_paper_artifact_idea_run` (`run_id`, `rank_no`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='选题发现：结构化 idea 行';
+  KEY `idx_paper_topic_idea_ms` (`manuscript_id`, `rank_no`),
+  KEY `idx_paper_topic_idea_run` (`run_id`, `rank_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='选题发现 · 结构化 idea';
+
+CREATE TABLE IF NOT EXISTS `paper_literature_review` (
+  `id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `manuscript_id`     BIGINT UNSIGNED NOT NULL,
+  `run_id`            BIGINT UNSIGNED NOT NULL,
+  `user_id`           BIGINT UNSIGNED NOT NULL,
+  `version`           INT          NOT NULL DEFAULT 1,
+  `is_current`        TINYINT(1)   NOT NULL DEFAULT 1,
+  `status`            VARCHAR(16)  NOT NULL DEFAULT 'completed' COMMENT 'draft|completed|superseded',
+  `structure`         VARCHAR(32)  DEFAULT NULL COMMENT 'thematic|chronological|method',
+  `title`             VARCHAR(256) DEFAULT NULL,
+  `summary`           TEXT         DEFAULT NULL,
+  `content_medium`    MEDIUMTEXT   DEFAULT NULL,
+  `storage_uri`       VARCHAR(1024) DEFAULT NULL,
+  `format`            VARCHAR(16)  NOT NULL DEFAULT 'md',
+  `citations`         JSON         DEFAULT NULL COMMENT '引用表 / cite key 列表',
+  `input_params`      JSON         DEFAULT NULL,
+  `meta`              JSON         DEFAULT NULL,
+  `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_paper_lit_review_ms` (`manuscript_id`, `is_current`),
+  KEY `idx_paper_lit_review_run` (`run_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文献综述';
+
+CREATE TABLE IF NOT EXISTS `paper_experiment_plan` (
+  `id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `manuscript_id`     BIGINT UNSIGNED NOT NULL,
+  `run_id`            BIGINT UNSIGNED NOT NULL,
+  `user_id`           BIGINT UNSIGNED NOT NULL,
+  `version`           INT          NOT NULL DEFAULT 1,
+  `is_current`        TINYINT(1)   NOT NULL DEFAULT 1,
+  `status`            VARCHAR(16)  NOT NULL DEFAULT 'completed',
+  `title`             VARCHAR(256) DEFAULT NULL,
+  `summary`           TEXT         DEFAULT NULL,
+  `content_medium`    MEDIUMTEXT   DEFAULT NULL,
+  `storage_uri`       VARCHAR(1024) DEFAULT NULL,
+  `format`            VARCHAR(16)  NOT NULL DEFAULT 'md',
+  `input_params`      JSON         DEFAULT NULL,
+  `meta`              JSON         DEFAULT NULL COMMENT 'baseline、ablation、资源估算等',
+  `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_paper_exp_plan_ms` (`manuscript_id`, `is_current`),
+  KEY `idx_paper_exp_plan_run` (`run_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='实验规划';
+
+CREATE TABLE IF NOT EXISTS `paper_experiment_review` (
+  `id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `manuscript_id`     BIGINT UNSIGNED NOT NULL,
+  `run_id`            BIGINT UNSIGNED NOT NULL,
+  `user_id`           BIGINT UNSIGNED NOT NULL,
+  `version`           INT          NOT NULL DEFAULT 1,
+  `is_current`        TINYINT(1)   NOT NULL DEFAULT 1,
+  `status`            VARCHAR(16)  NOT NULL DEFAULT 'completed',
+  `title`             VARCHAR(256) DEFAULT NULL,
+  `summary`           TEXT         DEFAULT NULL,
+  `content_medium`    MEDIUMTEXT   DEFAULT NULL COMMENT '结果审查报告正文',
+  `storage_uri`       VARCHAR(1024) DEFAULT NULL,
+  `format`            VARCHAR(16)  NOT NULL DEFAULT 'md',
+  `findings`          JSON         DEFAULT NULL COMMENT '结构化问题与建议',
+  `input_params`      JSON         DEFAULT NULL,
+  `meta`              JSON         DEFAULT NULL,
+  `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_paper_exp_review_ms` (`manuscript_id`, `is_current`),
+  KEY `idx_paper_exp_review_run` (`run_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='实验审查（结果审查 auto_review）';
+
+CREATE TABLE IF NOT EXISTS `paper_manuscript_draft` (
+  `id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `manuscript_id`     BIGINT UNSIGNED NOT NULL,
+  `run_id`            BIGINT UNSIGNED NOT NULL,
+  `user_id`           BIGINT UNSIGNED NOT NULL,
+  `version`           INT          NOT NULL DEFAULT 1,
+  `is_current`        TINYINT(1)   NOT NULL DEFAULT 1,
+  `status`            VARCHAR(16)  NOT NULL DEFAULT 'draft' COMMENT 'draft|completed|superseded',
+  `title`             VARCHAR(256) DEFAULT NULL,
+  `word_count`        INT UNSIGNED DEFAULT NULL,
+  `content_medium`    MEDIUMTEXT   DEFAULT NULL,
+  `storage_uri`       VARCHAR(1024) DEFAULT NULL,
+  `format`            VARCHAR(16)  NOT NULL DEFAULT 'md' COMMENT 'md|tex|pdf',
+  `bibtex_uri`        VARCHAR(1024) DEFAULT NULL,
+  `input_params`      JSON         DEFAULT NULL,
+  `meta`              JSON         DEFAULT NULL,
+  `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_paper_ms_draft_ms` (`manuscript_id`, `is_current`),
+  KEY `idx_paper_ms_draft_run` (`run_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='论文草稿（论文写作）';
+
+CREATE TABLE IF NOT EXISTS `paper_manuscript_review` (
+  `id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `manuscript_id`     BIGINT UNSIGNED NOT NULL,
+  `run_id`            BIGINT UNSIGNED NOT NULL,
+  `user_id`           BIGINT UNSIGNED NOT NULL,
+  `version`           INT          NOT NULL DEFAULT 1,
+  `is_current`        TINYINT(1)   NOT NULL DEFAULT 1,
+  `status`            VARCHAR(16)  NOT NULL DEFAULT 'completed',
+  `title`             VARCHAR(256) DEFAULT NULL,
+  `summary`           TEXT         DEFAULT NULL,
+  `content_medium`    MEDIUMTEXT   DEFAULT NULL COMMENT '论文审查报告',
+  `storage_uri`       VARCHAR(1024) DEFAULT NULL,
+  `format`            VARCHAR(16)  NOT NULL DEFAULT 'md',
+  `findings`          JSON         DEFAULT NULL COMMENT '分维度审稿意见',
+  `input_params`      JSON         DEFAULT NULL,
+  `meta`              JSON         DEFAULT NULL,
+  `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_paper_ms_review_ms` (`manuscript_id`, `is_current`),
+  KEY `idx_paper_ms_review_run` (`run_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='论文审查（manuscript_analysis）';
+
+CREATE TABLE IF NOT EXISTS `paper_figure` (
+  `id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `manuscript_id`     BIGINT UNSIGNED NOT NULL,
+  `user_id`           BIGINT UNSIGNED NOT NULL,
+  `run_id`            BIGINT UNSIGNED DEFAULT NULL COMMENT '一键生成时有值；上传为 NULL',
+  `origin`            VARCHAR(16)  NOT NULL COMMENT 'upload|generated',
+  `file_kind`         VARCHAR(16)  NOT NULL COMMENT 'image|pdf|vector|other',
+  `file_name`         VARCHAR(512) NOT NULL,
+  `title`             VARCHAR(512) NOT NULL,
+  `note`              TEXT         DEFAULT NULL,
+  `size_bytes`        BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `storage_uri`       VARCHAR(1024) DEFAULT NULL,
+  `content_hash`      CHAR(64)     DEFAULT NULL,
+  `prompt_snapshot`   TEXT         DEFAULT NULL COMMENT '生成图时的提示词摘要',
+  `status`            VARCHAR(16)  NOT NULL DEFAULT 'active' COMMENT 'active|deleted',
+  `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_paper_figure_ms` (`manuscript_id`, `origin`, `status`),
+  KEY `idx_paper_figure_run` (`run_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='图表记录（上传 + 一键生成）';
 
 -- ---------------------------------------------------------------------------
 -- 7. LLM 调用日志（计费、排错；不存完整 prompt 时可只存 hash）
@@ -374,6 +556,7 @@ CREATE TABLE IF NOT EXISTS `paper_artifact_idea` (
 
 CREATE TABLE IF NOT EXISTS `paper_llm_call_logs` (
   `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `manuscript_id`   BIGINT UNSIGNED NOT NULL COMMENT 'paper_manuscript.id',
   `run_id`          BIGINT UNSIGNED NOT NULL,
   `stage_id`        BIGINT UNSIGNED DEFAULT NULL,
   `model_config_id` BIGINT UNSIGNED DEFAULT NULL COMMENT 'paper_llm_model_config.id',
@@ -391,7 +574,7 @@ CREATE TABLE IF NOT EXISTS `paper_llm_call_logs` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='LLM 调用明细日志';
 
 -- ---------------------------------------------------------------------------
--- 8. 上传、里程碑、操作日志
+-- 8. 上传文献、操作日志（新建 paper_manuscript 时须 INSERT paper_manuscript_progress）
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS `paper_user_literature` (
@@ -412,40 +595,6 @@ CREATE TABLE IF NOT EXISTS `paper_user_literature` (
   KEY `idx_paper_user_lit_ms` (`manuscript_id`, `status`),
   KEY `idx_paper_user_lit_user` (`user_id`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户上传文献（上传文献模块 / 参考文献门禁语料）';
-
-CREATE TABLE IF NOT EXISTS `paper_user_figure` (
-  `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `user_id`       BIGINT UNSIGNED NOT NULL COMMENT 'users.id',
-  `manuscript_id` BIGINT UNSIGNED NOT NULL COMMENT '本篇「图表管理·上传图表」',
-  `file_kind`     VARCHAR(16)  NOT NULL COMMENT 'image|pdf|vector|other',
-  `file_name`     VARCHAR(512) NOT NULL,
-  `title`         VARCHAR(512) NOT NULL,
-  `note`          TEXT         DEFAULT NULL,
-  `size_bytes`    BIGINT UNSIGNED NOT NULL DEFAULT 0,
-  `storage_uri`   VARCHAR(1024) DEFAULT NULL,
-  `content_hash`  CHAR(64)     DEFAULT NULL,
-  `status`        VARCHAR(16)  NOT NULL DEFAULT 'active' COMMENT 'active|deleted',
-  `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_paper_user_fig_ms` (`manuscript_id`, `status`),
-  KEY `idx_paper_user_fig_user` (`user_id`, `created_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户上传图表资产';
-
-CREATE TABLE IF NOT EXISTS `paper_manuscript_milestone` (
-  `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `manuscript_id`   BIGINT UNSIGNED NOT NULL,
-  `milestone_code`  VARCHAR(64)  NOT NULL COMMENT
-    'topic_discovery|literature_review|experiment_planning|auto_review|paper_writing|figure_generation|manuscript_analysis',
-  `run_id`          BIGINT UNSIGNED DEFAULT NULL COMMENT '完成时 paper_run.id',
-  `completed_at`    DATETIME     NOT NULL,
-  `meta`            JSON         DEFAULT NULL,
-  `created_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_paper_ms_milestone` (`manuscript_id`, `milestone_code`),
-  KEY `idx_paper_ms_milestone_run` (`run_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='稿件工作流里程碑（顶栏续跑状态）';
 
 CREATE TABLE IF NOT EXISTS `paper_operation_log` (
   `id`                 BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,

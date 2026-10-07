@@ -183,7 +183,7 @@ export function createUploadedReferenceFromFile(file: File): UploadedReferenceIt
 
 export type UploadedFigureKind = 'image' | 'pdf' | 'vector' | 'other'
 
-/** 对齐 paper_user_figure */
+/** 对齐 paper_figure（origin=upload） */
 export type UploadedFigureItem = {
   id: string
   fileName: string
