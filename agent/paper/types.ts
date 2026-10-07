@@ -36,7 +36,7 @@ export const PAPER_MODULES: PaperModuleMeta[] = [
   },
   {
     id: 'auto-review',
-    label: '实验审查',
+    label: '结果审查',
     description: '写作前：审查实验方案与上传数据，模拟审稿人挑 plan / 证据硬伤',
   },
   {

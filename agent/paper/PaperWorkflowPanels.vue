@@ -310,7 +310,7 @@ defineExpose({ runModule })
     </section>
   </div>
 
-  <!-- 实验审查（写前） -->
+  <!-- 结果审查（写前） -->
   <div v-else-if="moduleId === 'auto-review'" class="wf-stack">
     <section class="wf-panel">
       <h2 class="wf-title">参数</h2>
