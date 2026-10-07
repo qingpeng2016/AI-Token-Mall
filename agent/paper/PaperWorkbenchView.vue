@@ -94,6 +94,7 @@ const running = ref(false)
 const topicRunToken = ref(0)
 const topicRunsByManuscript = ref<Record<string, TopicRunDemo>>({})
 const workflowPanelsRef = ref<InstanceType<typeof PaperWorkflowPanels> | null>(null)
+const paperMainRef = ref<HTMLElement | null>(null)
 const topicFlowPanelRef = ref<HTMLElement | null>(null)
 
 const topicForm = reactive<TopicDiscoveryForm>({ ...DEFAULT_TOPIC_DISCOVERY })
@@ -238,8 +239,8 @@ const SECONDARY_WORKFLOW_MODULES = [
   'experiment-planning',
   'auto-review',
   'paper-writing',
-  'figure-generation',
   'manuscript-analysis',
+  'figure-generation',
 ] as const
 
 const isSecondaryWorkflowModule = computed(() =>
@@ -407,7 +408,20 @@ function resetTopicRunForAction(msId: string) {
 
 async function scrollToTopicFlowPanel() {
   await nextTick()
-  topicFlowPanelRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+  const panel = topicFlowPanelRef.value
+  const scroller = paperMainRef.value
+  if (!panel) return
+  if (scroller) {
+    const top =
+      panel.getBoundingClientRect().top -
+      scroller.getBoundingClientRect().top +
+      scroller.scrollTop -
+      12
+    scroller.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
+    return
+  }
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 async function startTopicDiscoveryRun() {
@@ -630,7 +644,7 @@ async function onPrimaryAction() {
       </nav>
     </aside>
 
-    <main class="paper-main">
+    <main ref="paperMainRef" class="paper-main">
       <header class="paper-main-head">
         <div>
           <h1 class="paper-main-title">{{ currentMeta.label }}</h1>

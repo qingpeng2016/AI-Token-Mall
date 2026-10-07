@@ -35,7 +35,7 @@ export const PAPER_MODULES: PaperModuleMeta[] = [
   },
   {
     id: 'auto-review',
-    label: '自动审查',
+    label: '实验审查',
     description: '写作前：审查实验方案与上传数据，模拟审稿人挑 plan / 证据硬伤',
   },
   {
@@ -50,8 +50,8 @@ export const PAPER_MODULES: PaperModuleMeta[] = [
   },
   {
     id: 'manuscript-analysis',
-    label: '成稿分析',
-    description: '写作完成后：对全文做投稿前全面分析（贡献、实验、引用、venue  fit、kill argument）',
+    label: '论文审查',
+    description: '写作完成后：对全文做投稿前全面审查（贡献、实验、引用、venue fit、kill argument）',
   },
   {
     id: 'reference-library',
@@ -93,7 +93,7 @@ export const PAPER_MODULE_GROUPS: PaperModuleGroup[] = [
   {
     id: 'writing',
     label: '撰写与成稿',
-    moduleIds: ['paper-writing', 'figure-generation', 'manuscript-analysis'],
+    moduleIds: ['paper-writing', 'manuscript-analysis', 'figure-generation'],
   },
   {
     id: 'resources',

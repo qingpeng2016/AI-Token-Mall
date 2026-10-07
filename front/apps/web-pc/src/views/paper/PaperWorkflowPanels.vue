@@ -298,7 +298,7 @@ defineExpose({ runModule })
     </section>
   </div>
 
-  <!-- 自动审查（写前） -->
+  <!-- 实验审查（写前） -->
   <div v-else-if="moduleId === 'auto-review'" class="wf-stack">
     <section class="wf-panel">
       <h2 class="wf-title">参数</h2>
@@ -468,7 +468,7 @@ defineExpose({ runModule })
     </section>
   </div>
 
-  <!-- 成稿分析 -->
+  <!-- 论文审查 -->
   <div v-else-if="moduleId === 'manuscript-analysis'" class="wf-stack">
     <section class="wf-panel">
       <h2 class="wf-title">参数</h2>
@@ -489,7 +489,7 @@ defineExpose({ runModule })
       </label>
     </section>
     <section v-if="resultVisible['manuscript-analysis']" class="wf-panel wf-panel--result">
-      <h2 class="wf-title">成稿分析报告（演示）</h2>
+      <h2 class="wf-title">论文审查报告（演示）</h2>
       <p class="wf-score-big">总评 {{ DEMO_MANUSCRIPT_ANALYSIS.overall }} / 10</p>
       <p class="wf-meta">{{ DEMO_MANUSCRIPT_ANALYSIS.recommendation }}</p>
       <div class="wf-dim-grid">

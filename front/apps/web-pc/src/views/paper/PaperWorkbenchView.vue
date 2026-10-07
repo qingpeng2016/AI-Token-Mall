@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   DEFAULT_ENV_PREFERENCE,
@@ -94,6 +94,8 @@ const running = ref(false)
 const topicRunToken = ref(0)
 const topicRunsByManuscript = ref<Record<string, TopicRunDemo>>({})
 const workflowPanelsRef = ref<InstanceType<typeof PaperWorkflowPanels> | null>(null)
+const paperMainRef = ref<HTMLElement | null>(null)
+const topicFlowPanelRef = ref<HTMLElement | null>(null)
 
 const topicForm = reactive<TopicDiscoveryForm>({ ...DEFAULT_TOPIC_DISCOVERY })
 const envPreference = reactive<EnvironmentPreferenceForm>({ ...DEFAULT_ENV_PREFERENCE })
@@ -237,8 +239,8 @@ const SECONDARY_WORKFLOW_MODULES = [
   'experiment-planning',
   'auto-review',
   'paper-writing',
-  'figure-generation',
   'manuscript-analysis',
+  'figure-generation',
 ] as const
 
 const isSecondaryWorkflowModule = computed(() =>
@@ -404,6 +406,24 @@ function resetTopicRunForAction(msId: string) {
   persistTopicRun(msId, createIdleTopicRun())
 }
 
+async function scrollToTopicFlowPanel() {
+  await nextTick()
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+  const panel = topicFlowPanelRef.value
+  const scroller = paperMainRef.value
+  if (!panel) return
+  if (scroller) {
+    const top =
+      panel.getBoundingClientRect().top -
+      scroller.getBoundingClientRect().top +
+      scroller.scrollTop -
+      12
+    scroller.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
+    return
+  }
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
 async function startTopicDiscoveryRun() {
   const msId = activeManuscriptId.value
   if (!msId) return
@@ -415,6 +435,7 @@ async function startTopicDiscoveryRun() {
   let run = createIdleTopicRun()
   run.status = 'running'
   persistTopicRun(msId, run)
+  await scrollToTopicFlowPanel()
 
   try {
     await executeTopicFlow(0, token)
@@ -623,7 +644,7 @@ async function onPrimaryAction() {
       </nav>
     </aside>
 
-    <main class="paper-main">
+    <main ref="paperMainRef" class="paper-main">
       <header class="paper-main-head">
         <div>
           <h1 class="paper-main-title">{{ currentMeta.label }}</h1>
@@ -752,6 +773,7 @@ async function onPrimaryAction() {
 
       <section
         v-if="topicRunVisible"
+        ref="topicFlowPanelRef"
         class="paper-panel paper-panel--flow"
       >
         <div class="paper-flow-head">
