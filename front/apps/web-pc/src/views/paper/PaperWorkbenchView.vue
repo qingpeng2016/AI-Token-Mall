@@ -861,7 +861,9 @@ async function onPrimaryAction() {
 <style scoped>
 .paper-workbench {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
   background: var(--atm-bg, #f5f3ff);
 }
 
@@ -870,9 +872,11 @@ async function onPrimaryAction() {
   flex-direction: column;
   flex-shrink: 0;
   width: 220px;
+  min-height: 0;
   padding: 20px 12px 16px;
   color: #fff;
   background: linear-gradient(180deg, #1e1b4b 0%, #5b21b6 55%, #6366f1 100%);
+  overflow: hidden;
 }
 
 .paper-sidebar-brand {
@@ -958,8 +962,11 @@ async function onPrimaryAction() {
   flex: 1;
   flex-direction: column;
   gap: 8px;
+  min-height: 0;
   margin-top: 16px;
+  overflow-x: hidden;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .paper-nav-group {
@@ -1037,7 +1044,11 @@ async function onPrimaryAction() {
 .paper-main {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   padding: 28px 32px 40px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .paper-module-body {
@@ -1408,12 +1419,19 @@ async function onPrimaryAction() {
     grid-template-columns: 1fr;
   }
 
-  .paper-sidebar {
-    width: 100%;
-  }
-
   .paper-workbench {
     flex-direction: column;
+  }
+
+  .paper-sidebar {
+    flex-shrink: 0;
+    width: 100%;
+    max-height: 42vh;
+  }
+
+  .paper-main {
+    flex: 1;
+    min-height: 0;
   }
 }
 

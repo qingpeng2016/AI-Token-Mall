@@ -10,7 +10,9 @@ import { RouterView } from 'vue-router'
 
 <style scoped>
 .workbench-layout {
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
   background: var(--atm-bg, #f5f3ff);
 }
 </style>
