@@ -3,11 +3,10 @@ import { computed, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   REFERENCE_UPLOAD_ACCEPT,
+  REFERENCE_UPLOAD_STORAGE_KEY,
   type UploadedReferenceItem,
   createUploadedReferenceFromFile,
 } from './types'
-
-const REF_STORAGE_KEY = 'atm:paper:reference-uploads:v1'
 
 const { manuscriptId, manuscriptTitle } = defineProps<{
   manuscriptId: string
@@ -20,7 +19,7 @@ const searchQuery = ref('')
 
 function loadFromStorage() {
   try {
-    const raw = localStorage.getItem(REF_STORAGE_KEY)
+    const raw = localStorage.getItem(REFERENCE_UPLOAD_STORAGE_KEY)
     if (!raw) return
     const data = JSON.parse(raw) as { byManuscript?: Record<string, UploadedReferenceItem[]> }
     if (data.byManuscript) itemsByManuscript.value = data.byManuscript
@@ -31,7 +30,7 @@ function loadFromStorage() {
 
 function persist() {
   localStorage.setItem(
-    REF_STORAGE_KEY,
+    REFERENCE_UPLOAD_STORAGE_KEY,
     JSON.stringify({ byManuscript: itemsByManuscript.value }),
   )
 }
@@ -127,7 +126,7 @@ function formatDate(iso: string) {
 <template>
   <section class="ref-panel">
     <p class="ref-lead">
-      为当前论文「<strong>{{ manuscriptTitle }}</strong>」上传 PDF、BibTeX 等参考文献文件，供写作与引用门禁对照（演示：本地仅存文件名与元数据）。
+      为当前论文「<strong>{{ manuscriptTitle }}</strong>」上传 PDF、BibTeX 等文件，供写作与引用门禁对照（演示：本地仅存文件名与元数据）。
     </p>
 
     <div class="ref-toolbar">

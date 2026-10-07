@@ -7,6 +7,8 @@ export type PaperModuleId =
   | 'figure-generation'
   | 'manuscript-analysis'
   | 'reference-library'
+  | 'personal-center'
+  /** 仅用于操作日志条目，侧栏无独立入口（环境配置在个人中心 Tab） */
   | 'environment'
 
 export type PaperModuleMeta = {
@@ -53,15 +55,64 @@ export const PAPER_MODULES: PaperModuleMeta[] = [
   },
   {
     id: 'reference-library',
-    label: '参考文献',
+    label: '我的文献',
     description: '上传并管理本篇论文的 PDF、BibTeX 等文献文件',
+  },
+  {
+    id: 'personal-center',
+    label: '个人中心',
+    description: '我的信息、Token 操作日志与默认科研环境配置',
   },
   {
     id: 'environment',
     label: '环境配置',
-    description: '新建运行时的默认科研偏好与文献策略（产出由平台按项目自动存储）',
+    description: '默认科研偏好（入口在个人中心 · 环境配置 Tab）',
   },
 ]
+
+export type PaperModuleGroupId = 'research' | 'experiment' | 'writing' | 'resources'
+
+export type PaperModuleGroup = {
+  id: PaperModuleGroupId
+  label: string
+  moduleIds: PaperModuleId[]
+}
+
+/** 侧栏二级菜单：一级 = 阶段，二级 = 具体模块 */
+export const PAPER_MODULE_GROUPS: PaperModuleGroup[] = [
+  {
+    id: 'research',
+    label: '选题与文献',
+    moduleIds: ['topic-discovery', 'literature-review'],
+  },
+  {
+    id: 'experiment',
+    label: '实验与审查',
+    moduleIds: ['experiment-planning', 'auto-review'],
+  },
+  {
+    id: 'writing',
+    label: '撰写与成稿',
+    moduleIds: ['paper-writing', 'figure-generation', 'manuscript-analysis'],
+  },
+  {
+    id: 'resources',
+    label: '资料与设置',
+    moduleIds: ['reference-library', 'personal-center'],
+  },
+]
+
+const PAPER_MODULE_MAP = new Map(PAPER_MODULES.map((m) => [m.id, m]))
+
+export function getPaperModuleMeta(id: PaperModuleId): PaperModuleMeta {
+  const meta = PAPER_MODULE_MAP.get(id)
+  if (!meta) throw new Error(`unknown paper module: ${id}`)
+  return meta
+}
+
+export function findPaperModuleGroupId(moduleId: PaperModuleId): PaperModuleGroupId | undefined {
+  return PAPER_MODULE_GROUPS.find((g) => g.moduleIds.includes(moduleId))?.id
+}
 
 export type UploadedReferenceKind = 'pdf' | 'bib' | 'other'
 
@@ -75,7 +126,34 @@ export type UploadedReferenceItem = {
   note?: string
 }
 
+export const REFERENCE_UPLOAD_STORAGE_KEY = 'atm:paper:reference-uploads:v1'
+
 export const REFERENCE_UPLOAD_ACCEPT = '.pdf,.bib,.txt,.md,.json'
+
+/** 选题发现：用户在本篇「我的文献」中上传的文件，作为模型分析语料（非第三方 API 检索） */
+export const USER_LIBRARY_SOURCE_CODE = 'user_library' as const
+
+export const TOPIC_USER_LIBRARY_SOURCE = {
+  code: USER_LIBRARY_SOURCE_CODE,
+  label: '我的文献',
+} as const
+
+export function getUserReferenceUploads(manuscriptId: string): UploadedReferenceItem[] {
+  if (!manuscriptId) return []
+  try {
+    const raw = localStorage.getItem(REFERENCE_UPLOAD_STORAGE_KEY)
+    if (!raw) return []
+    const data = JSON.parse(raw) as { byManuscript?: Record<string, UploadedReferenceItem[]> }
+    return data.byManuscript?.[manuscriptId] ?? []
+  } catch {
+    return []
+  }
+}
+
+export function getLiteratureSourceLabel(code: string): string {
+  if (code === USER_LIBRARY_SOURCE_CODE) return TOPIC_USER_LIBRARY_SOURCE.label
+  return LITERATURE_SOURCE_OPTIONS.find((o) => o.code === code)?.label ?? code
+}
 
 export function inferReferenceKind(fileName: string): UploadedReferenceKind {
   const lower = fileName.toLowerCase()
@@ -94,6 +172,71 @@ export function createUploadedReferenceFromFile(file: File): UploadedReferenceIt
     sizeBytes: file.size,
     kind: inferReferenceKind(file.name),
   }
+}
+
+export type PaperOperationLogStatus = 'success' | 'failed' | 'cancelled'
+
+export type PaperOperationLogEntry = {
+  id: string
+  occurredAt: string
+  moduleId: PaperModuleId | 'system'
+  moduleLabel: string
+  action: string
+  tokensPrompt: number
+  tokensCompletion: number
+  tokensTotal: number
+  manuscriptId?: string
+  manuscriptTitle?: string
+  status: PaperOperationLogStatus
+  note?: string
+}
+
+export const OPERATION_LOG_STORAGE_KEY = 'atm:paper:operation-logs:v1'
+
+export function getOperationLogs(): PaperOperationLogEntry[] {
+  try {
+    const raw = localStorage.getItem(OPERATION_LOG_STORAGE_KEY)
+    if (!raw) return []
+    const data = JSON.parse(raw) as { entries?: PaperOperationLogEntry[] }
+    const entries = data.entries ?? []
+    return [...entries].sort(
+      (a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
+    )
+  } catch {
+    return []
+  }
+}
+
+export function setOperationLogs(entries: PaperOperationLogEntry[]) {
+  localStorage.setItem(OPERATION_LOG_STORAGE_KEY, JSON.stringify({ entries }))
+}
+
+export function appendOperationLog(
+  entry: Omit<PaperOperationLogEntry, 'id' | 'occurredAt' | 'tokensTotal'> & {
+    id?: string
+    occurredAt?: string
+    tokensTotal?: number
+  },
+) {
+  const tokensTotal =
+    entry.tokensTotal ?? Math.max(0, entry.tokensPrompt + entry.tokensCompletion)
+  const row: PaperOperationLogEntry = {
+    id: entry.id ?? `op-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    occurredAt: entry.occurredAt ?? new Date().toISOString(),
+    moduleId: entry.moduleId,
+    moduleLabel: entry.moduleLabel,
+    action: entry.action,
+    tokensPrompt: entry.tokensPrompt,
+    tokensCompletion: entry.tokensCompletion,
+    tokensTotal,
+    manuscriptId: entry.manuscriptId,
+    manuscriptTitle: entry.manuscriptTitle,
+    status: entry.status,
+    note: entry.note,
+  }
+  const prev = getOperationLogs()
+  setOperationLogs([row, ...prev])
+  return row
 }
 
 /** 工作台「当前论文」（对应 paper_manuscript） */
@@ -335,6 +478,8 @@ export const DISCIPLINE_OPTIONS = [
   { code: 'cs_ai', label: '计算机 / 人工智能' },
   { code: 'general', label: '跨学科通用' },
 ] as const
+
+export const ENV_PREFERENCE_STORAGE_KEY = 'atm:paper:environment:v3'
 
 export const DEFAULT_ENV_PREFERENCE: EnvironmentPreferenceForm = {
   disciplineCode: 'cs_ai',

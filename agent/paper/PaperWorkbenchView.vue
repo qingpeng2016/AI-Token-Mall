@@ -1,15 +1,21 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   DEFAULT_ENV_PREFERENCE,
+  ENV_PREFERENCE_STORAGE_KEY,
   DEFAULT_TOPIC_DISCOVERY,
   DEMO_PAPER_MANUSCRIPTS,
   DISCIPLINE_OPTIONS,
   LITERATURE_SOURCE_OPTIONS,
-  PAPER_MODULES,
+  PAPER_MODULE_GROUPS,
+  TOPIC_USER_LIBRARY_SOURCE,
+  USER_LIBRARY_SOURCE_CODE,
+  getLiteratureSourceLabel,
+  getUserReferenceUploads,
+  appendOperationLog,
   TOPIC_DISCOVERY_FLOW_STEPS,
+  getPaperModuleMeta,
   type EnvironmentPreferenceForm,
   type PaperManuscriptItem,
   type PaperModuleId,
@@ -18,6 +24,8 @@ import {
   type TopicDiscoveryForm,
   type TopicFlowStepStatus,
 } from './types'
+import { DEMO_MODULE_TOKEN_ESTIMATES } from './demoOperationLogs'
+import PaperPersonalCenterPanel from './PaperPersonalCenterPanel.vue'
 import PaperReferenceLibraryPanel from './PaperReferenceLibraryPanel.vue'
 import PaperSelect from './PaperSelect.vue'
 import PaperWorkflowPanels from './PaperWorkflowPanels.vue'
@@ -73,15 +81,20 @@ const CHECKPOINT_COPY: Record<TopicCheckpointKey, Omit<TopicCheckpointView, 'key
   },
 }
 
-const ENV_STORAGE_KEY = 'atm:paper:environment:v3'
 const MANUSCRIPTS_STORAGE_KEY = 'atm:paper:manuscripts:v1'
 const LEGACY_PROJECTS_STORAGE_KEY = 'atm:paper:projects:v1'
 
 const activeModule = ref<PaperModuleId>('topic-discovery')
+
+function selectModule(id: PaperModuleId) {
+  activeModule.value = id
+}
+
 const running = ref(false)
 const topicRunToken = ref(0)
 const topicRunsByManuscript = ref<Record<string, TopicRunDemo>>({})
 const workflowPanelsRef = ref<InstanceType<typeof PaperWorkflowPanels> | null>(null)
+const topicFlowPanelRef = ref<HTMLElement | null>(null)
 
 const topicForm = reactive<TopicDiscoveryForm>({ ...DEFAULT_TOPIC_DISCOVERY })
 const envPreference = reactive<EnvironmentPreferenceForm>({ ...DEFAULT_ENV_PREFERENCE })
@@ -91,7 +104,7 @@ const activeManuscriptId = ref<string>(DEMO_PAPER_MANUSCRIPTS[0]?.id ?? '')
 
 function loadEnvFromStorage() {
   try {
-    const raw = localStorage.getItem(ENV_STORAGE_KEY)
+    const raw = localStorage.getItem(ENV_PREFERENCE_STORAGE_KEY)
     if (!raw) return
     const data = JSON.parse(raw) as { preference?: EnvironmentPreferenceForm }
     if (data.preference) Object.assign(envPreference, data.preference)
@@ -181,9 +194,44 @@ const currentManuscript = computed(
     manuscripts.value.find((m) => m.id === activeManuscriptId.value) ?? activeManuscripts.value[0],
 )
 
-const isEnvironmentModule = computed(() => activeModule.value === 'environment')
 const isReferenceLibraryModule = computed(() => activeModule.value === 'reference-library')
+const isUtilityModule = computed(() => isReferenceLibraryModule.value)
 const isTopicDiscoveryModule = computed(() => activeModule.value === 'topic-discovery')
+
+const personalCenterPanelRef = ref<InstanceType<typeof PaperPersonalCenterPanel> | null>(null)
+
+function recordModuleOperationLog(
+  moduleId: PaperModuleId,
+  action: string,
+  status: 'success' | 'failed' = 'success',
+  note?: string,
+) {
+  const meta = getPaperModuleMeta(moduleId)
+  const est = DEMO_MODULE_TOKEN_ESTIMATES[moduleId]
+  const tokensPrompt = status === 'success' ? (est?.prompt ?? 0) : 0
+  const tokensCompletion = status === 'success' ? (est?.completion ?? 0) : 0
+  appendOperationLog({
+    moduleId,
+    moduleLabel: meta.label,
+    action,
+    tokensPrompt,
+    tokensCompletion,
+    manuscriptId: activeManuscriptId.value,
+    manuscriptTitle: currentManuscript.value?.title,
+    status,
+    note,
+  })
+  personalCenterPanelRef.value?.reloadLogs()
+}
+
+function onPersonalCenterEnvironmentSaved() {
+  topicForm.disciplineCode = envPreference.disciplineCode
+  topicForm.venue = envPreference.defaultVenueText || topicForm.venue
+  topicForm.intensity = envPreference.intensity
+  topicForm.auditLevel = envPreference.auditLevel
+  topicForm.humanCheckpoint = envPreference.humanCheckpoint
+  recordModuleOperationLog('environment', '保存环境配置')
+}
 
 const SECONDARY_WORKFLOW_MODULES = [
   'literature-review',
@@ -234,9 +282,7 @@ const topicDiscoveryArtifact = computed((): TopicDiscoveryArtifactSnapshot => {
   const planStep = run.steps.find((s) => s.stageCode === 'experiment_plan')
   const corpusReady = retrieve?.status === 'completed'
   const runCompleted = run.status === 'completed'
-  const sourceLabels = topicForm.sourceCodes.map(
-    (c) => LITERATURE_SOURCE_OPTIONS.find((o) => o.code === c)?.label ?? c,
-  )
+  const sourceLabels = topicForm.sourceCodes.map((c) => getLiteratureSourceLabel(c))
   const direction =
     topicForm.direction.trim() ||
     (corpusReady ? '（本次 run 未保留方向文案 · 演示）' : '（尚未填写研究方向）')
@@ -269,11 +315,10 @@ const topicDiscoveryArtifact = computed((): TopicDiscoveryArtifactSnapshot => {
   }
 })
 
-const showPrimaryAction = computed(() => !isReferenceLibraryModule.value)
+const showPrimaryAction = computed(() => !isUtilityModule.value)
 
 const topicPrimaryDisabled = computed(() => {
-  if (isReferenceLibraryModule.value) return true
-  if (isEnvironmentModule.value) return running.value
+  if (isUtilityModule.value) return true
   if (isTopicDiscoveryModule.value) {
     return (
       topicRunBusy.value ||
@@ -285,9 +330,6 @@ const topicPrimaryDisabled = computed(() => {
 })
 
 const primaryActionLabel = computed(() => {
-  if (isEnvironmentModule.value) {
-    return running.value ? '保存中…' : '保存配置'
-  }
   if (isTopicDiscoveryModule.value) {
     if (currentTopicRun.value.status === 'checkpoint') return '等待确认'
     if (currentTopicRun.value.status === 'running' || running.value) return '运行中…'
@@ -354,12 +396,18 @@ async function executeTopicFlow(fromIndex: number, token: number) {
   run.status = 'completed'
   run.checkpoint = null
   persistTopicRun(msId, run)
+  recordModuleOperationLog('topic-discovery', '运行工作流（retrieve → audit → ideas → novelty → plan）')
   ElMessage.success('选题发现流程已完成（演示）')
 }
 
 function resetTopicRunForAction(msId: string) {
   topicRunToken.value += 1
   persistTopicRun(msId, createIdleTopicRun())
+}
+
+async function scrollToTopicFlowPanel() {
+  await nextTick()
+  topicFlowPanelRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 async function startTopicDiscoveryRun() {
@@ -373,6 +421,7 @@ async function startTopicDiscoveryRun() {
   let run = createIdleTopicRun()
   run.status = 'running'
   persistTopicRun(msId, run)
+  await scrollToTopicFlowPanel()
 
   try {
     await executeTopicFlow(0, token)
@@ -440,9 +489,7 @@ watch(activeManuscriptId, () => {
   running.value = false
 })
 
-const currentMeta = computed(
-  () => PAPER_MODULES.find((m) => m.id === activeModule.value) ?? PAPER_MODULES[0],
-)
+const currentMeta = computed(() => getPaperModuleMeta(activeModule.value))
 
 const intensityOptions = [
   { value: 'fast', label: '更快' },
@@ -461,17 +508,6 @@ const disciplineSelectOptions = DISCIPLINE_OPTIONS.map((d) => ({
   label: d.label,
 }))
 
-function toggleLiteratureSource(code: string, checked: boolean) {
-  const set = new Set(envPreference.literatureSourceCodes)
-  if (checked) set.add(code)
-  else set.delete(code)
-  envPreference.literatureSourceCodes = [...set]
-}
-
-function isLiteratureSourceChecked(code: string) {
-  return envPreference.literatureSourceCodes.includes(code)
-}
-
 function toggleTopicSource(code: string, checked: boolean) {
   const set = new Set(topicForm.sourceCodes)
   if (checked) set.add(code)
@@ -481,6 +517,15 @@ function toggleTopicSource(code: string, checked: boolean) {
 
 function isTopicSourceChecked(code: string) {
   return topicForm.sourceCodes.includes(code)
+}
+
+const userReferenceUploadCount = computed(() => {
+  void activeModule.value
+  return getUserReferenceUploads(activeManuscriptId.value).length
+})
+
+function goToUserReferenceLibrary() {
+  selectModule('reference-library')
 }
 
 async function onPrimaryAction() {
@@ -493,10 +538,11 @@ async function onPrimaryAction() {
       ElMessage.warning('请至少选择一个文献来源（检索在选题发现完成）')
       return
     }
-  }
-  if (activeModule.value === 'environment') {
-    if (envPreference.literatureSourceCodes.length === 0) {
-      ElMessage.warning('请至少选择一个文献来源')
+    if (
+      topicForm.sourceCodes.includes(USER_LIBRARY_SOURCE_CODE) &&
+      userReferenceUploadCount.value === 0
+    ) {
+      ElMessage.warning('已勾选「我的文献」，请先在「我的文献」上传至少一篇')
       return
     }
   }
@@ -510,6 +556,10 @@ async function onPrimaryAction() {
     try {
       const ok = await workflowPanelsRef.value?.runModule(activeModule.value)
       if (ok) {
+        const mod = activeModule.value
+        if (mod !== 'personal-center' && mod !== 'reference-library') {
+          recordModuleOperationLog(mod, `运行「${currentMeta.value.label}」`)
+        }
         ElMessage.success(
           `「${currentMeta.value.label}」已完成演示运行 · 论文「${currentManuscript.value?.title ?? '未命名'}」`,
         )
@@ -523,12 +573,6 @@ async function onPrimaryAction() {
   running.value = true
   try {
     await new Promise((r) => setTimeout(r, 500))
-    if (activeModule.value === 'environment') {
-      const toStore = { preference: { ...envPreference } }
-      localStorage.setItem(ENV_STORAGE_KEY, JSON.stringify(toStore))
-      ElMessage.success('环境配置已保存（本地演示）')
-      return
-    }
     ElMessage.success(
       `「${currentMeta.value.label}」已在论文「${currentManuscript.value?.title ?? '未命名'}」下启动（演示）`,
     )
@@ -565,19 +609,25 @@ async function onPrimaryAction() {
       </div>
 
       <nav class="paper-nav" aria-label="科研工作流">
-        <button
-          v-for="mod in PAPER_MODULES"
-          :key="mod.id"
-          type="button"
-          class="paper-nav-item"
-          :class="{ 'paper-nav-item--active': activeModule === mod.id }"
-          @click="activeModule = mod.id"
-        >
-          {{ mod.label }}
-        </button>
+        <div v-for="group in PAPER_MODULE_GROUPS" :key="group.id" class="paper-nav-group">
+          <div class="paper-nav-group-head">
+            <span class="paper-nav-group-chevron" aria-hidden="true">▾</span>
+            <span class="paper-nav-group-label">{{ group.label }}</span>
+          </div>
+          <div class="paper-nav-group-items">
+            <button
+              v-for="moduleId in group.moduleIds"
+              :key="moduleId"
+              type="button"
+              class="paper-nav-item paper-nav-item--child"
+              :class="{ 'paper-nav-item--active': activeModule === moduleId }"
+              @click="selectModule(moduleId)"
+            >
+              {{ getPaperModuleMeta(moduleId).label }}
+            </button>
+          </div>
+        </div>
       </nav>
-
-      <RouterLink to="/member" class="paper-sidebar-back">← 返回会员中心</RouterLink>
     </aside>
 
     <main class="paper-main">
@@ -597,12 +647,12 @@ async function onPrimaryAction() {
           :disabled="topicPrimaryDisabled"
           @click="onPrimaryAction"
         >
-          <span class="paper-run-icon" aria-hidden="true">{{ isEnvironmentModule ? '✓' : '▶' }}</span>
+          <span class="paper-run-icon" aria-hidden="true">▶</span>
           {{ primaryActionLabel }}
         </button>
       </header>
 
-      <div v-if="!isEnvironmentModule" class="paper-gate" role="status">
+      <div class="paper-gate" role="status">
         <span class="paper-gate-icon" aria-hidden="true">📖</span>
         <p>
           <strong>参考文献门禁已启用：</strong>
@@ -666,6 +716,30 @@ async function onPrimaryAction() {
               <span>{{ src.label }}</span>
             </label>
           </div>
+          <div class="paper-user-lib-source">
+            <label class="paper-check paper-check--inline">
+              <input
+                type="checkbox"
+                :checked="isTopicSourceChecked(TOPIC_USER_LIBRARY_SOURCE.code)"
+                @change="
+                  toggleTopicSource(
+                    TOPIC_USER_LIBRARY_SOURCE.code,
+                    ($event.target as HTMLInputElement).checked,
+                  )
+                "
+              />
+              <span>{{ TOPIC_USER_LIBRARY_SOURCE.label }}</span>
+            </label>
+            <p class="paper-hint paper-hint--block">
+              使用本篇「我的文献」中已上传 PDF / BibTeX 等，供模型阅读与归纳（不走 arXiv 等 API）。
+              <template v-if="isTopicSourceChecked(TOPIC_USER_LIBRARY_SOURCE.code)">
+                当前已上传 <strong>{{ userReferenceUploadCount }}</strong> 篇。
+              </template>
+              <button type="button" class="paper-inline-link" @click="goToUserReferenceLibrary">
+                去管理
+              </button>
+            </p>
+          </div>
         </div>
 
         <label class="paper-check">
@@ -685,6 +759,7 @@ async function onPrimaryAction() {
 
       <section
         v-if="topicRunVisible"
+        ref="topicFlowPanelRef"
         class="paper-panel paper-panel--flow"
       >
         <div class="paper-flow-head">
@@ -770,66 +845,14 @@ async function onPrimaryAction() {
         :manuscript-title="currentManuscript?.title ?? '未命名'"
       />
 
-      <!-- 环境配置 -->
-      <section v-else-if="activeModule === 'environment'" class="paper-panel paper-panel--env">
-        <h2 class="paper-panel-title">全局默认</h2>
-        <p class="paper-section-lead">对应用户偏好；新建工作流时将预填以下选项。</p>
-
-        <div class="paper-field-grid">
-          <label class="paper-field">
-            <span class="paper-label">默认学科</span>
-            <PaperSelect v-model="envPreference.disciplineCode" :options="disciplineSelectOptions" />
-          </label>
-
-          <label class="paper-field">
-            <span class="paper-label">默认目标会议/期刊</span>
-            <input v-model="envPreference.defaultVenueText" type="text" class="paper-input" />
-          </label>
-
-          <label class="paper-field">
-            <span class="paper-label">默认执行强度</span>
-            <PaperSelect v-model="envPreference.intensity" :options="intensityOptions" />
-          </label>
-
-          <label class="paper-field">
-            <span class="paper-label">默认审计等级</span>
-            <PaperSelect v-model="envPreference.auditLevel" :options="auditOptions" />
-          </label>
-        </div>
-
-        <div class="paper-field paper-field--block">
-          <span class="paper-label">默认文献来源</span>
-          <div class="paper-check-group">
-            <label
-              v-for="src in LITERATURE_SOURCE_OPTIONS"
-              :key="src.code"
-              class="paper-check paper-check--inline"
-            >
-              <input
-                type="checkbox"
-                :checked="isLiteratureSourceChecked(src.code)"
-                @change="toggleLiteratureSource(src.code, ($event.target as HTMLInputElement).checked)"
-              />
-              <span>{{ src.label }}</span>
-            </label>
-          </div>
-        </div>
-
-        <label class="paper-check">
-          <input v-model="envPreference.humanCheckpoint" type="checkbox" />
-          <span>
-            <strong>默认开启人工检查点</strong>
-          </span>
-        </label>
-
-        <label class="paper-check">
-          <input v-model="envPreference.referenceGateEnabled" type="checkbox" />
-          <span>
-            <strong>参考文献门禁</strong>
-            <span class="paper-hint paper-hint--inline">未验证文献不得进入引用与正文</span>
-          </span>
-        </label>
-      </section>
+      <PaperPersonalCenterPanel
+        v-else-if="activeModule === 'personal-center'"
+        ref="personalCenterPanelRef"
+        :manuscript-id="activeManuscriptId"
+        :manuscript-title="currentManuscript?.title ?? '未命名'"
+        :env-preference="envPreference"
+        @environment-saved="onPersonalCenterEnvironmentSaved"
+      />
 
       <PaperWorkflowPanels
         v-else-if="isSecondaryWorkflowModule"
@@ -942,15 +965,55 @@ async function onPrimaryAction() {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
   margin-top: 16px;
+  overflow-y: auto;
+}
+
+.paper-nav-group {
+  --nav-label-inset: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.paper-nav-group-head {
+  display: grid;
+  grid-template-columns: 12px 1fr;
+  column-gap: 6px;
+  align-items: center;
+  padding: 9px 10px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #fff;
+  user-select: none;
+}
+
+.paper-nav-group-chevron {
+  flex-shrink: 0;
+  width: 12px;
+  font-size: 10px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.paper-nav-group-label {
+  min-width: 0;
+}
+
+.paper-nav-group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 0;
 }
 
 .paper-nav-item {
   padding: 10px 12px;
   font-size: 14px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(255, 255, 255, 0.82);
   text-align: left;
   background: transparent;
   border: none;
@@ -974,18 +1037,9 @@ async function onPrimaryAction() {
   background: rgba(255, 255, 255, 0.18);
 }
 
-.paper-sidebar-back {
-  margin-top: 12px;
-  padding: 12px 12px;
-  font-size: 15px;
-  font-weight: 500;
-  color: #fff;
-  text-decoration: none;
-  border-radius: 10px;
-}
-
-.paper-sidebar-back:hover {
-  background: rgba(255, 255, 255, 0.1);
+.paper-nav-item--child {
+  padding: 10px 12px 10px var(--nav-label-inset);
+  font-size: 14px;
 }
 
 .paper-main {
@@ -1110,6 +1164,7 @@ async function onPrimaryAction() {
 }
 
 .paper-panel--flow {
+  scroll-margin-top: 24px;
   margin-top: 18px;
 }
 
@@ -1431,6 +1486,32 @@ async function onPrimaryAction() {
   display: block;
   margin-top: 2px;
   font-weight: 400;
+}
+
+.paper-hint--block {
+  margin: 10px 0 0;
+}
+
+.paper-user-lib-source {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.paper-inline-link {
+  margin-left: 6px;
+  padding: 0;
+  font-size: inherit;
+  font-weight: 600;
+  color: #6366f1;
+  cursor: pointer;
+  background: none;
+  border: none;
+  text-decoration: underline;
+}
+
+.paper-inline-link:hover {
+  color: #4f46e5;
 }
 
 .paper-check {
